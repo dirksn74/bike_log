@@ -107,11 +107,12 @@ function i18n_constant_keys(string $root): array
 {
     require_once $root . '/app/core.php';
     require_once $root . '/app/i18n.php';
-    foreach (['catalog', 'chains', 'groupsets', 'money', 'records', 'workshop', 'domain', 'inventory', 'backups'] as $f) {
+    foreach (['catalog', 'chains', 'groupsets', 'money', 'records', 'workshop', 'domain', 'inventory', 'backups', 'timeline'] as $f) {
         require_once $root . '/app/' . $f . '.php';
     }
     $k = array_merge(array_values(Catalog::CONSUMABLE_KINDS), array_values(Groupsets::OCCUPIED), array_values(ServiceOrders::OUTCOMES),
-        array_values(Workshop::FIT_TEXT), array_values(ChangeLog::ENTITY_LABELS), array_column(PickLists::LISTS, 'hint'), array_column(PickLists::LISTS, 'name'));
+        array_values(Workshop::FIT_TEXT), array_values(ChangeLog::ENTITY_LABELS), array_column(PickLists::LISTS, 'hint'), array_column(PickLists::LISTS, 'name'),
+        array_values(Timeline::KINDS));
     return array_values(array_unique($k));
 }
 

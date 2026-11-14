@@ -54,7 +54,7 @@ match before it is released; since round 5b (2026-11-02) every desktop feature e
 (`php/README.md`, TASKS.md). Local test on Windows: `php/LOCAL_TEST_WINDOWS.md` + `php/start-local.bat`
 (XAMPP's php.exe built-in server on 127.0.0.1:8080, `config/config.local-sample.php`, mail transport `log`).
 Rules there: every bike query filters on `user_id`; every POST checks the CSRF token; no inline JS (CSP);
-schema changes are new files `php/sql/migrations/NNN_*.sql`; tests `php php/tests/run.php` need MySQL or
+schema changes are new files `php/sql/migrations/NNN_*.sql`; tests `php php/tests/run.php` (704 checks) need MySQL or
 MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3). Domain modules: `domain.php`
 (installations, km), `reminders.php`, `inventory.php` (dispositions, work sessions/undo, frame and wheels,
 counted stock, spares, shopping list), `groupsets.php`, `incidents.php` (journal, incidents and fixes,
@@ -65,7 +65,7 @@ service orders, part life), `products.php` (products, JSON product import, templ
 export with `schema`, stored copies, restore with new ids, older files upgraded via `UserBackups::upgrade` /
 `FILE_UPGRADES`, fresh start; a new table with user data must be added to `UserBackups::TABLES` with its
 reference columns), `workshop.php` (replace a part with carry-over, wheels
-into a wheelset, product–bike fits, brake overview, charge history). A multi-step change (groupset import, fix) runs inside one work session so it can be
+into a wheelset, product–bike fits, brake overview, charge history), `timeline.php` (timeline of a bike or part with km, CSV; route `timeline`). A multi-step change (groupset import, fix) runs inside one work session so it can be
 undone as a whole.
 **PHP UI texts are bilingual (English/German, DECISIONS 140).** Never echo a bare English UI string in
 `php/`: write `t('English text {name}', ['name' => $v])` (placeholders, never string concatenation of
@@ -391,6 +391,7 @@ the choices of the incident's ride). e2e helpers `setupItem`, `openGroups`, `ope
 | Look and feel (top bar, orange accent, cards, stat blocks; phone bottom tab bar) | n/a | App.tsx (skeleton), index.css (tokens on :root) | docs/ui-style.md, DECISIONS 100 |
 | Screen order (needs doing → state → history), reminder grouping, two-line reasons with "more", part page More… menu | n/a | TaskList.tsx (`GroupedTasks`, `Why`), Overview.tsx, Maintenance.tsx, Bikes.tsx, Inventory.tsx | docs/ui-style.md "Screen order", DECISIONS 121 |
 | Journal | journal.py | components/Journal.tsx (bike and part pages) | DECISIONS 35 |
+| Timeline (bike tab, part page fold): every record in date order with bike km and part km (≈/≥ status), filters, CSV export | services/timeline.py (`bike_timeline`, `component_timeline`, `to_csv`) | components/Timeline.tsx (`Timeline`, `FoldedTimeline`), Bikes.tsx tab `timeline`, Inventory.tsx | DECISIONS 142; PHP: app/timeline.php, route `timeline` |
 | Ride incidents (13 types, each with its own affected parts or body areas, several per incident; edit, remove, restore), dry/wet per ride | incidents.py, journal.py, rides.py | components/Incidents.tsx (ride detail; Rides → Incidents tab) | DECISIONS 55–56, 78–80 |
 | Parts inside parts: wheelset → wheels → tire/hub/bearings/spokes/sensor; pulleys on the rear derailleur; carry-over at replace | inventory.py (group_wheels, replace carry_over), allocation.py, spares.py | Bikes.tsx ("Group wheels into a wheelset"), PartChange.tsx | DECISIONS 57–58 |
 | Chain rotation (mark, on / ready / dirty, swap prompt, Wax chains, history) | services/chains.py, maintenance.chain_row | components/ChainRotation.tsx, TaskList.tsx, Inventory.tsx ChainCard | DECISIONS 92–93 |
@@ -462,10 +463,10 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 290 passed (incl. upgrades of older versions' data)
+.venv/bin/python -m pytest -q backend/tests             # currently 297 passed (incl. upgrades of older versions' data)
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 186/186 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 189/189 (the ride-form step can flake once; rerun)
 node e2e/export_import.cjs http://127.0.0.1:8790/ <screenshot-dir>   # full export download + import, 3/3
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
@@ -539,7 +540,7 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
 `bundles/candidates`, `bundles/{id}` (GET/PATCH), `/members` (POST), `/members/{cid}` (DELETE), `/void`. Imports: `imports/csv`,
 `imports`, `imports/template`, `imports/products`, `product-templates`, `product-templates/{type}/schema|example`,
 `product-templates/instructions.md`. Strava: `strava/status`, `credentials` (PUT/DELETE), `connect`,
-`callback`, `sync`, `disconnect`. History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,
+`callback`, `sync`, `disconnect`. Timeline: `bikes/{id}/timeline`, `components/{id}/timeline` (`from`, `to`, `kinds=WORK,CHECK,PARTS,INCIDENT,NOTE,OTHER`, `voided=true`) and the same with `.csv` (+ `style=excel|standard`). History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,
 `logs/download`. Data: `backups` (GET/POST; rows carry `kept`), `backups/{name}/restore` (POST), `backups/{name}/download` (GET),
 `backups/upload` (POST raw .db body, `?file_name=`; checked, stored as `…-uploaded.db`, not restored), `exports` (POST, GET file),
 `exports/upload` (POST raw zip, `?file_name=`; checked completely, stored as `…-uploaded.zip`, returns what is in it),

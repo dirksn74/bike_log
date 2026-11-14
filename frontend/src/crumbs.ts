@@ -31,6 +31,7 @@ export const BIKE_TABS: [string, string][] = [
   ['rides', 'Rides'],
   ['incidents', 'Incidents'],
   ['maintenance', 'Maintenance'],
+  ['timeline', 'Timeline'],
   ['costs', 'Costs'],
   ['history', 'Journal and history'],
 ]

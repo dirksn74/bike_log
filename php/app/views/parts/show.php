@@ -20,6 +20,7 @@
   <a class="btn" href="<?= h(url('part_install', ['id' => $c['id']])) ?>"><?= $open ? t('Move') : t('Install') ?></a>
   <?php endif; ?>
   <a class="btn" href="<?= h(url('part_edit', ['id' => $c['id']])) ?>"><?= h(t('Edit')) ?></a>
+  <a class="btn" href="<?= h(url('timeline', ['part' => $c['id']])) ?>"><?= h(t('Timeline')) ?></a>
   <a class="btn link" href="<?= h(url('changes', ['part' => $c['id']])) ?>"><?= h(t('Change log')) ?></a>
 </div>
 

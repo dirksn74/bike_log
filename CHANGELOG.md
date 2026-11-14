@@ -8,6 +8,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Timeline with km and CSV export** (Dirk 2026-11-14). Bike page → new tab *Timeline*: everything done on
+  the bike, newest first (work, checks and measurements, parts on/off and replaced, incidents, notes, starting
+  km), with the bike's km at that moment and the part's own km. Part page → *Timeline with km · CSV export*
+  (folded): everything that happened to that part with its own lifetime km across all bikes. Filter by type,
+  date range and "show deleted and corrected entries". *Export CSV* downloads exactly the filtered list
+  (oldest first, record ids, ≈/≥ marked as estimated/minimum; Excel format with semicolons by default).
+  Also in the PHP web version (Timeline button on bike and part pages, English and German).
 - **Full export and import in the app** (Dirk 2026-11-14: "just in case something happens"). Settings →
   Backups and export → **Full export (zip)** now downloads straight away. The zip holds the whole database
   with every stable id, the database version (schema), a checksum, row counts, your attachments, and a

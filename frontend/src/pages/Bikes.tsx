@@ -12,6 +12,7 @@ import { SwapTube } from '../components/Repairs'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
 import ChainRotation from '../components/ChainRotation'
 import EventLog from '../components/EventLog'
+import Timeline from '../components/Timeline'
 import { AwayCard } from '../components/ServiceOrders'
 import ShopPicker from '../components/ShopPicker'
 import { BrokenSpokes, SpokeCount } from '../components/Spokes'
@@ -458,6 +459,7 @@ export function BikeDetailPage() {
           </Card>
         </>
       )}
+      {tab === 'timeline' && <Timeline bikeId={data.id} />}
       {tab === 'costs' && (
         <>
           <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} onFrame={() => setSheet({ kind: 'frameCost' })} />

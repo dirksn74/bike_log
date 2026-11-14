@@ -14,6 +14,7 @@
   <a class="btn" href="<?= h(url('chains', ['bike' => $bike['id']])) ?>"><?= h(t('Chains')) ?></a>
   <a class="btn" href="<?= h(url('brakes', ['bike' => $bike['id']])) ?>"><?= h(t('Brakes')) ?></a>
   <a class="btn" href="<?= h(url('costs', ['bike' => $bike['id']])) ?>"><?= h(t('Costs')) ?></a>
+  <a class="btn" href="<?= h(url('timeline', ['bike' => $bike['id']])) ?>"><?= h(t('Timeline')) ?></a>
   <a class="btn" href="<?= h(url('bike_edit', ['id' => $bike['id']])) ?>"><?= h(t('Edit')) ?></a>
   <a class="btn link" href="<?= h(url('changes', ['bike' => $bike['id']])) ?>"><?= h(t('Change log')) ?></a>
 </div>
