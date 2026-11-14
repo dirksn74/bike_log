@@ -696,6 +696,26 @@ you disagree. Dates are 2026-10-24 unless noted.
     placeholders, an unused German entry or English UI text left on a German page. Numbers on screen use a
     decimal comma in German; number fields accept both. The Python desktop app stays English only for now.
 
+141. **Existing data is production data; full export and import in the app** (Dirk 2026-11-14: "i need to be
+    able to export the current state of the data ... and if you add new features or if we change anything,
+    we need to make sure that we migrate existing data because the app is live now and in full
+    production"). Rule for every change, written into PROJECT_GUIDE section 0: schema changes only by new
+    migrations that carry existing rows over (never edit a released migration, never drop a person's data);
+    each release gets an upgrade fixture made by that version's own code (scripts/make_upgrade_fixture.py →
+    backend/tests/fixtures/upgrade/), and test_upgrade_real_data.py upgrades every fixture at start, through
+    Restore and through Import, checking rows, uuids, references and km per part. PHP: test_96_upgrade.php
+    builds a database at migration 005 from data written by commit 181ce22 and runs the newer migrations;
+    data files carry `schema` and UserBackups::FILE_UPGRADES repeats a migration's data changes on older
+    files. Export/import builds on what existed (backup.py export zip, reset.py restore) instead of a second
+    format: the zip keeps the SQLite database (the only complete, typed copy; stable ids are the uuid
+    columns) and adds checksum, row counts and CSV copies for reading. Import is two steps (upload + check,
+    then replace) like "Bring data from another computer". Safe order: check everything → unpack → upgrade
+    the UNPACKED copy (foreign keys off, references checked) → kept backup of the current data and
+    attachments → swap in with the SQLite backup API (the file stays in place while the app runs, which
+    Windows needs). The same fix went into Restore, which had migrated the live file with foreign keys on and
+    failed for backups older than migration 0020. Strava login (strava.env) is never in an export.
+    Rows the app removes at start on purpose (DECISIONS 98: automatic forks) are the only allowed drop.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

@@ -5,7 +5,7 @@ declare(strict_types=1);
 //
 //   BIKELOG_TEST_DB_HOST=127.0.0.1 BIKELOG_TEST_DB_USER=bikelog BIKELOG_TEST_DB_PASS=... php tests/run.php
 //
-// It creates (and drops) the database "bikelog_test" (override with BIKELOG_TEST_DB_NAME), so the user
+// It creates (and drops) the databases "bikelog_test" and "bikelog_test_upgrade" (override the first with BIKELOG_TEST_DB_NAME; the second is that name + "_upgrade"), so the user
 // needs CREATE/DROP rights on it. Never point it at a real database.
 
 $root = dirname(__DIR__);

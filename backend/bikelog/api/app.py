@@ -30,7 +30,7 @@ from bikelog.catalog import (
     action_applies,
 )
 from bikelog.connectors.strava import sync as strava
-from bikelog.migrate import head_revision
+from bikelog.migrate import head_revision, known_revisions
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
 from bikelog.services import assemblies
@@ -1608,8 +1608,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         files = sorted(paths.backups.glob("bikelog-*.db"), key=lambda p: p.name, reverse=True)
         return {"directory": str(paths.root), "backup_dir": str(paths.backups),
                 "backups": [{"name": f.name, "size": f.stat().st_size, "kept": backup.KEPT_MARK in f.name} for f in files],
-                "exports": [{"name": f.name, "size": f.stat().st_size}
-                            for f in sorted(paths.exports.glob("*.zip"), reverse=True)]}
+                "exports": [{"name": f.name, "size": f.stat().st_size, "uploaded": f.name.endswith("-uploaded.zip")}
+                            for f in sorted(paths.exports.glob("*.zip"), reverse=True)],
+                "export_privacy": backup.PRIVACY_NOTE}
 
     @app.post("/api/backups", status_code=201)
     def create_backup():
@@ -1645,6 +1646,25 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def create_export():
         dest = backup.export_archive(paths, head_revision())
         return {"name": dest.name}
+
+    @app.post("/api/exports/upload", status_code=201)
+    async def export_upload(request: Request, file_name: str | None = None):
+        """Import step 1: upload a full export (zip). It is checked completely and stored in exports/; nothing
+        changes yet. The answer says what is in it (date, version, counts) for the person to confirm."""
+        data = await request.body()
+        return backup.store_uploaded_export(paths, data, file_name, known_revisions(), head_revision())
+
+    @app.get("/api/exports/{name}/check")
+    def export_check(name: str):
+        from bikelog import reset
+        return reset.check_export(paths, name)
+
+    @app.post("/api/exports/{name}/restore")
+    def export_restore(name: str):
+        """Import step 2: replace all data with the export's (current data backed up first, older exports
+        upgraded to the current schema)."""
+        from bikelog import reset
+        return reset.restore_export(factory, paths, name, strava_web=strava_web)
 
     @app.get("/api/exports/{name}")
     def download_export(name: str):

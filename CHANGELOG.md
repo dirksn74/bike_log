@@ -8,6 +8,18 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Full export and import in the app** (Dirk 2026-11-14: "just in case something happens"). Settings →
+  Backups and export → **Full export (zip)** now downloads straight away. The zip holds the whole database
+  with every stable id, the database version (schema), a checksum, row counts, your attachments, and a
+  readable CSV copy of every table. New **Import a full export**: pick the zip, **Check file** shows what
+  is in it (date, version, bikes, parts, rides ...), then **Replace all my data with this export**. Your
+  current data is backed up first and kept (Restore brings it back), an export from an older Bike Log
+  version is upgraded to the current one, and importing the same file twice gives the same result. A
+  damaged file, a file from a newer version or anything else odd is refused before anything changes.
+  The file holds private data (prices, serial numbers, receipts; no Strava login): keep it private.
+  Web version (PHP): **Download all my data** now names the database version; a file from an older version
+  is brought up to date when you restore it, one from a newer version is refused; texts in English and
+  German.
 - **Bike Log for the web in PHP + MySQL, for several users** (Dirk 2026-11-02, work in progress, not
   released). New folder `php/`, independent of the desktop app: accounts with email confirmation, password
   reset by email, admin page (users, invitations, audit log, site settings, backups, database updates),
@@ -67,6 +79,18 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Settings → Backups: **Download** next to each backup, and **Bring data from another computer** (upload a
   backup file, then Restore it). This is how your data moves from the PC to the server.
 - Settings → **Account** (server only): who is signed in, and Sign out.
+
+### Fixed
+- **Restore of an older backup** (Settings → Backups → Restore, made before 26 Oct 2026) stopped with a
+  database error: the upgrade of the restored data ran with foreign-key checks on. Restore now upgrades a
+  copy first (the same safe way as at start) and only then replaces your data, so a failed upgrade never
+  touches the data you have.
+
+### Tests
+- **Existing data is production data**: tests now upgrade databases written by four older versions
+  (0003, 0.2.0, 26 Oct, 0.3.0) and an old web-version database and file, and check that no row and no
+  stable id is lost and the km per part stay the same. Rule for every future change:
+  docs/PROJECT_GUIDE_FOR_AI_AGENTS.md section 0.
 
 ## 0.3.0 (2026-11-02)
 

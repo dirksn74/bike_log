@@ -42,7 +42,7 @@ $partKm = fn(int $uid) => array_map(fn($c) => Domain::totals($uid, $c)['total_km
 // ------------------------------------------------------------------ export → restore into another account
 $before = $counts($src);
 $doc = json_decode(UserBackups::encode(UserBackups::export($src)), true);
-check($doc['format'] === 'bikelog-php-export' && $doc['version'] === 2 && count($doc['service_orders']) === $before['service_orders'], 'export has every table');
+check($doc['format'] === 'bikelog-php-export' && $doc['version'] === UserBackups::VERSION && count($doc['service_orders']) === $before['service_orders'], 'export has every table');
 $copy = $newUser('restored@example.test');
 UserBackups::restore($copy, $doc, 'test');
 $after = $counts($copy);

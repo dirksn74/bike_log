@@ -49,7 +49,10 @@ Options: `--no-browser`, `--port N`, `--data-dir PATH`, `--backup`, `--export`, 
 ## Checks actually run (final run on this commit)
 | Check | Result |
 |---|---|
-| Backend tests `pytest -q backend/tests` | 272 passed |
+| Backend tests `pytest -q backend/tests` | 290 passed |
+| Older versions' data upgrades without loss (databases from 0003, 0.2.0, 26 Oct, 0.3.0: at start, via Restore, via Import) | pass (test_upgrade_real_data.py) |
+| Full export and import (checksum, bad files refused, backup first, idempotent, failed upgrade changes nothing) | pass (test_export_import.py); browser `e2e/export_import.cjs` 3/3 |
+| PHP tests `php php/tests/run.php` (incl. old database 005 + old data file upgrade, test_96) | 723 passed |
 | Required tests: 260 km liquid wax · liquid wax top-up moves hot wax to 200 km after it (DECISIONS 133) · chain swap · edit/remove/restore once · reimport no duplicates · bleed keeps fluid deadline · DB upgrade keeps records | all pass (test_chain_maintenance, test_rides, test_imports, test_brakes_rules, test_migrations_backup) |
 | Dirk's replacement examples (tube, patch, bar tape, rewrap, tire move, pads 3→2 + undo, stock modes) | pass (test_replacement_stock.py, test_api.py) |
 | Frontend `tsc -b`, `eslint .`, `vite build` | pass |

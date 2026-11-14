@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api'
 import Diagnostics from '../components/Diagnostics'
 import FreshStart from '../components/FreshStart'
+import ImportExport from '../components/ImportExport'
 import PickLists from '../components/PickLists'
 import StravaSettings from '../components/StravaSettings'
 import VersionInfo from '../components/VersionInfo'
@@ -39,7 +40,7 @@ export default function SettingsPage() {
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const batches = useApi<Batch[]>('/imports')
-  const backups = useApi<{ directory: string; backup_dir: string; backups: { name: string; size: number; kept: boolean }[]; exports: { name: string; size: number }[] }>('/backups')
+  const backups = useApi<{ directory: string; backup_dir: string; backups: { name: string; size: number; kept: boolean }[]; exports: { name: string; size: number; uploaded?: boolean }[] }>('/backups')
   const fileRef = useRef<HTMLInputElement>(null)
   const backupFileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -108,6 +109,7 @@ export default function SettingsPage() {
     try {
       const r = await api.post<{ name: string }>(`/${kind}`)
       toast(`${kind === 'backups' ? 'Backup' : 'Export'} written: ${r.name}`)
+      if (kind === 'exports') window.location.assign(`./api/exports/${encodeURIComponent(r.name)}`) // straight to Downloads
       backups.reload()
     } catch (e) {
       toast((e as Error).message)
@@ -245,10 +247,13 @@ export default function SettingsPage() {
                 Full export (zip)
               </button>
             </div>
+            <p className="small muted">
+              A full export holds all your data and attachments, with the database version, so you can import it here or on another computer. Keep it private: it includes prices, serial numbers and receipts (no Strava login).
+            </p>
             <ul className="list small">
               {backups.data.exports.slice(0, 3).map((e) => (
                 <li key={e.name}>
-                  <a href={`./api/exports/${e.name}`}>{e.name}</a>
+                  <a href={`./api/exports/${encodeURIComponent(e.name)}`}>{e.name}</a> <span className="muted">({Math.round(e.size / 1024)} KB{e.uploaded ? ', imported file' : ''})</span>
                 </li>
               ))}
               {backups.data.backups
@@ -265,6 +270,7 @@ export default function SettingsPage() {
                   </li>
                 ))}
             </ul>
+            <ImportExport onChanged={backups.reload} />
             <details>
               <summary>Bring data from another computer</summary>
               <p className="small">

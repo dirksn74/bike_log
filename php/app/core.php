@@ -552,6 +552,21 @@ final class Migrator
         return $out;
     }
 
+    /** The newest migration this app version has (its schema). */
+    public static function latest(): string
+    {
+        $files = glob(self::dir() . '/*.sql') ?: [];
+        sort($files);
+        return $files ? basename(end($files), '.sql') : '';
+    }
+
+    /** The newest migration applied to this database. */
+    public static function current(): string
+    {
+        $applied = self::applied();
+        return $applied ? (string)end($applied) : '';
+    }
+
     /** Apply pending migrations in order. MySQL DDL commits implicitly, so each file is applied whole. */
     public static function migrate(): array
     {
