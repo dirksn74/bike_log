@@ -175,6 +175,19 @@ private), or you download the file yourself and send it to them. Friends read
 Uses GitHub Actions minutes: a run takes about 10–15 minutes on Windows, which counts double on a private
 repository (free plan: 2000 minutes a month).
 
+## Saving all your data and putting it back (full export and import)
+
+Settings → Backups and export → **Full export (zip)** downloads one file with everything: all bikes,
+parts, rides, work done, supplies, attachments, and a readable copy of every table (folder `tables/`,
+opens in Excel). Keep a copy somewhere safe, for example before an update or now and then. The file holds
+private data (prices, serial numbers, receipts); your Strava login is not in it.
+
+To put it back (on this PC or another one): **Import a full export** → choose the zip → **Check file**.
+Bike Log shows what is in it. **Replace all my data with this export** then backs up your current data
+(kept, name ends in `kept-before-import.db`) and puts the export's data in its place. An export from an
+older Bike Log version is upgraded to the current one. A damaged file or one from a newer version is
+refused before anything changes. After importing on a new PC, connect Strava again in Settings.
+
 ## Starting over with an empty database
 
 Settings → **Fresh start**: type `RESET` and press **Reset database**. Bike Log first writes a full backup

@@ -22,6 +22,7 @@
   <form method="post" action="<?= h(url('backups')) ?>" enctype="multipart/form-data" class="card" data-confirm="<?= h(t('Replace ALL your current data with the file? (Your current data is stored as a copy first.)')) ?>"><?= Csrf::field() ?>
     <input type="hidden" name="do" value="upload">
     <p class="muted"><?= h(t('A file from Account → Download all my data (this server or another one). Everything in it gets new numbers, so it also moves data between accounts.')) ?></p>
+    <p class="muted"><?= h(t('A file from an older version of Bike Log works too: it is brought up to date while it is restored. Restoring the same file twice gives the same result.')) ?></p>
     <label><?= h(t('File')) ?><input type="file" name="file" accept=".json,application/json" required></label>
     <?= field('confirm', t('Type {word}', ['word' => UserBackups::CONFIRM_RESTORE]), '', 'text', ['required' => true, 'autocomplete' => 'off']) ?>
     <button class="btn danger"><?= h(t('Restore from file')) ?></button>

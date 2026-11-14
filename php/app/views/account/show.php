@@ -33,6 +33,7 @@
   <h2><?= h(t('Devices and data')) ?></h2>
   <p><?= post_button('account', [], t('Sign out on all devices'), 'btn', null, ['do' => 'logout_all']) ?></p>
   <p><?= post_button('export', [], t('Download all my data (JSON)'), 'btn') ?> <a class="btn" href="<?= h(url('backups')) ?>"><?= h(t('Restore…')) ?></a> <a class="btn" href="<?= h(url('fresh_start')) ?>"><?= h(t('Fresh start…')) ?></a></p>
+  <p class="muted"><?= h(t('The file holds all your Bike Log data, with the version of the database it came from, so it can be restored here or on another Bike Log server (Restore…). It includes prices, serial numbers and notes: keep it private.')) ?></p>
   <details><summary class="danger-text"><?= h(t('Delete my account')) ?></summary>
     <form method="post" action="<?= h(url('account')) ?>" data-confirm="<?= h(t('Delete your account and ALL your data for good? This cannot be undone.')) ?>"><?= Csrf::field() ?>
       <input type="hidden" name="do" value="delete">

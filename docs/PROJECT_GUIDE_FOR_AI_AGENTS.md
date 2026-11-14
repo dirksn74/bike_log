@@ -6,6 +6,35 @@ This document is self-contained. Read it first, then `DECISIONS.md` (why things 
 
 ---
 
+## 0. Existing data is production data (Dirk 2026-11-14, applies to EVERY change)
+
+Bike Log is live and in full production, in both codebases. Every new feature or change must keep the data
+people already have, and older data must keep working. Before you call a change done:
+
+1. **Schema changes only through a new migration** that carries existing rows over: Python
+   `backend/bikelog/migrations/versions/00NN_*.py` (Alembic), PHP `php/sql/migrations/NNN_*.sql`. Never
+   edit a migration that was merged to main; never drop a column or table with a person's data. A new
+   NOT NULL column needs a default or a backfill. Rows the app itself created may be cleaned up only with
+   a DECISIONS entry (example: DECISIONS 98, automatic forks).
+2. **Test the upgrade from the previous version's data**, not just an empty database:
+   `backend/tests/test_upgrade_real_data.py` upgrades databases written by older versions' own code
+   (`backend/tests/fixtures/upgrade/*.sql`) at start, through Restore and through Import, and checks every
+   row, every uuid, all references and the km per part. A migration that changes data also gets its own
+   focused test (see test_migrations_backup.py `test_upgrade_to_00NN_*`). PHP: `php/tests/test_96_upgrade.php`
+   builds a database from migrations 001–005 plus data written by commit 181ce22 and runs the newer
+   migrations (php/tests/upgrade/db_child.php).
+3. **After each release** add a fixture for it: `python scripts/make_upgrade_fixture.py vX.Y.Z` (made-up
+   sample data, never a real person's database).
+4. **Old export files stay importable.** Python: `backup.READABLE_FORMATS` lists every export format ever
+   written; raise `EXPORT_FORMAT` only together with a reader for the old one. PHP: data files carry
+   `schema`; a migration that changes existing data (UPDATE ...) or adds a NOT NULL column without default
+   needs a step in `UserBackups::FILE_UPGRADES`, and test_96 must still restore `fixtures/export-005.json`.
+5. **Upgrades are safe to run**: the app backs up before every schema change (migrate.upgrade_database),
+   Restore and Import upgrade a copy before touching the live data (reset.py), and the PHP admin applies
+   migrations from Admin → System. Never ask Dirk to run SQL by hand.
+
+---
+
 ## 1. What this is
 
 **Bike Log** is a private, local desktop app that tracks the life of road bikes: rides and mileage,
@@ -33,8 +62,9 @@ punctures, spokes), `chains.php` (rotation, wax applications), `money.php` (cost
 service orders, part life), `products.php` (products, JSON product import, templates), `records.php`
 (shop pick list, change log; hooked into `Db::insert`/`Db::updateOwned`), `rides.php` (ride left out, wheels per ride, bulk, CSV import; km of a part come from
 `Domain::usagePeriods` + `periodWhere`, never sum rides per bike for a part by hand), `backups.php` (per-user
-export, stored copies, restore with new ids, fresh start; a new table with user data must be added to
-`UserBackups::TABLES` with its reference columns), `workshop.php` (replace a part with carry-over, wheels
+export with `schema`, stored copies, restore with new ids, older files upgraded via `UserBackups::upgrade` /
+`FILE_UPGRADES`, fresh start; a new table with user data must be added to `UserBackups::TABLES` with its
+reference columns), `workshop.php` (replace a part with carry-over, wheels
 into a wheelset, product–bike fits, brake overview, charge history). A multi-step change (groupset import, fix) runs inside one work session so it can be
 undone as a whole.
 **PHP UI texts are bilingual (English/German, DECISIONS 140).** Never echo a bare English UI string in
@@ -376,7 +406,7 @@ the choices of the incident's ride). e2e helpers `setupItem`, `openGroups`, `ope
 | JSON product import (one template per part type) | product_import.py, product_specs.py | components/ProductImport.tsx (Inventory → Import JSON) | docs/product-import.md, docs/product-templates/AGENT_INSTRUCTIONS.md, DECISIONS 36–38 |
 | CSV ride import (generic + Strava export), resumable | imports.py | pages/Settings.tsx | docs/csv-import.md |
 | Strava API sync | connectors/strava/ | components/StravaSettings.tsx (Settings → Strava) | docs/strava.md, DECISIONS 26, 39, 42 |
-| Backups, export/restore, demo mode | backup.py, services/demo.py | Settings | DECISIONS 4–5 |
+| Backups, full export (zip: database, attachments, CSV copy, schema, checksum) and **Import a full export** (check, then replace; backup first; older exports upgraded) | backup.py (`export_archive`, `inspect_archive`, `store_uploaded_export`), reset.py (`restore_export`, `check_export`) | Settings, components/ImportExport.tsx | DECISIONS 4–5, 141 |
 | Sample database on first start (2 made-up bikes, rides, incidents; banner until Fresh start) | services/demo.py `seed_sample`, launcher.prepare(sample=), setting `sample_data` | App.tsx banner, components/FreshStart.tsx | DECISIONS 74 |
 | Fresh start (reset database) and restore of any backup while the app runs | reset.py, backup.KEPT_MARK | components/FreshStart.tsx, Settings → Backups "Restore" | DECISIONS 54 |
 
@@ -432,10 +462,11 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 272 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 290 passed (incl. upgrades of older versions' data)
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 186/186 (the ride-form step can flake once; rerun)
+node e2e/export_import.cjs http://127.0.0.1:8790/ <screenshot-dir>   # full export download + import, 3/3
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start
@@ -511,6 +542,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
 `callback`, `sync`, `disconnect`. History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,
 `logs/download`. Data: `backups` (GET/POST; rows carry `kept`), `backups/{name}/restore` (POST), `backups/{name}/download` (GET),
 `backups/upload` (POST raw .db body, `?file_name=`; checked, stored as `…-uploaded.db`, not restored), `exports` (POST, GET file),
+`exports/upload` (POST raw zip, `?file_name=`; checked completely, stored as `…-uploaded.zip`, returns what is in it),
+`exports/{name}/check` (GET), `exports/{name}/restore` (POST = import: backup first, older export upgraded),
 `admin/rebuild`, `admin/reset` (POST `{confirm: "RESET", clear_strava}`).
 (*DELETE of a component is refused once it has installations, usage or maintenance; such parts are retired instead.)
 

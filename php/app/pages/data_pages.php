@@ -43,6 +43,7 @@ function page_backups(): void
         }
         Audit::log('data_restored', $uid, $res['summary']);
         Session::flash('ok', t('Restored: {summary}. Your data from before is stored as a copy below.', ['summary' => $res['summary']])
+            . ($res['upgraded'] ? ' ' . t('The file came from an older version of Bike Log and was brought up to date.') : '')
             . ($res['warnings'] ? ' ' . t('Note: {list}', ['list' => implode('; ', $res['warnings'])]) : ''));
         redirect('backups');
     }

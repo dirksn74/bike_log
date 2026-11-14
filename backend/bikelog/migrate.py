@@ -37,18 +37,27 @@ def upgrade_database(engine: Engine, paths: DataPaths) -> dict:
     current = current_revision(engine) if db_existed else None
     if current == head:
         return {"from": current, "to": head, "backup": None}
-    known = {s.revision for s in ScriptDirectory.from_config(alembic_config()).walk_revisions()}
-    if current is not None and current not in known:
+    if current is not None and current not in known_revisions():
         raise RuntimeError(
             f"Database schema revision {current} is newer than this app version knows (head {head}). "
             "Install the newer Bike Log version or restore an older backup."
         )
     backup = backup_database(paths, f"pre-upgrade-{current or 'empty'}-to-{head}") if db_existed else None
     log.info("Migrating database from %s to %s", current, head)
+    run_migrations(engine)
+    return {"from": current, "to": head, "backup": backup.name if backup else None}
+
+
+def known_revisions() -> set[str]:
+    return {s.revision for s in ScriptDirectory.from_config(alembic_config()).walk_revisions()}
+
+
+def run_migrations(engine: Engine) -> None:
+    """Upgrade to head in one transaction. Foreign keys are off while migrating (SQLite's documented way to
+    rebuild a table that others point to, e.g. 0020); every reference is checked before the commit, so a
+    broken one stops the upgrade and nothing is changed. Used at start, by restore and by import."""
     cfg = alembic_config()
     with engine.connect() as conn:
-        # Foreign keys off while migrating (SQLite's documented way to rebuild a table that others point to,
-        # e.g. 0020); every reference is checked before the commit, so a broken one stops the upgrade.
         raw = conn.connection.dbapi_connection          # outside any transaction, or SQLite ignores it
         raw.execute("PRAGMA foreign_keys = OFF")
         try:
@@ -61,4 +70,3 @@ def upgrade_database(engine: Engine, paths: DataPaths) -> dict:
                                        "nothing was changed")
         finally:
             raw.execute("PRAGMA foreign_keys = ON")
-    return {"from": current, "to": head, "backup": backup.name if backup else None}

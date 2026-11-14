@@ -79,7 +79,11 @@ first, then **Update database now**.
 
 **Admin → System → Download backup** gives one `.sql` file with all accounts (keep it safe: it holds
 everybody's data and password hashes). Restore it into an empty database with phpMyAdmin → Import. Each
-user can also download their own data as JSON in **My account**. Use your host's backups as a second copy.
+user can also download their own data as JSON in **My account** and restore it under **Backups** (a copy
+of the current data is stored first; a file from an older version is brought up to date, one from a newer
+version is refused; the file names its database version as `schema`). Use your host's backups as a second
+copy. Every update keeps existing data: new migrations only add to it, and `tests/test_96_upgrade.php`
+upgrades a database and a data file written by an older version.
 
 ## Security in short
 
