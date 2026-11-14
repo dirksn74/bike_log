@@ -31,6 +31,9 @@ end of this file and in TASKS.md.
   (interval 500 km)"), km, months and ride hours, snooze without logging work, "not enough information"
   when the history is unknown, bad check results stay until a newer check. Intervals can be changed for a
   part type or for one part.
+- **Timeline:** on each bike and part page, everything that was done in date order with the km at that
+  moment (bike km, and the part's own km across all bikes), filters by type and dates, and **Export CSV**
+  (Excel format with semicolons, or comma format for other tools).
 - **Supplies:** wax, lube, sealant, brake fluid... with bought / used / correction entries and stock.
 - **English and German:** every screen, message and email in both languages (see "Language" below).
 

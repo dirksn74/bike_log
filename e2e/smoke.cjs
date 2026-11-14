@@ -556,6 +556,25 @@ async function bikeTab(page, name) {
   await bikeTab(page, 'Costs')
   const costText = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('groupset price counts as running cost of the bike', /parts €450\.00/.test(costText), costText.replace(/\s+/g, ' ').slice(0, 160))
+  // timeline: the groupset going on is one folded line; filter by type; CSV export of what is shown
+  await bikeTab(page, 'Timeline')
+  await page.locator('[data-testid=timeline]').waitFor()
+  const group = page.locator('[data-testid=timeline] > li.timeline-group').first()
+  check('timeline: a groupset going on folds into one line', /\d+ part changes/.test(await group.innerText()), (await group.innerText()).slice(0, 80))
+  await page.locator('.timeline-filters summary').click()
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes('/timeline?') && r.url().includes('kinds=PARTS')),
+    page.locator('.timeline-filters').getByRole('button', { name: /^Parts on and off/ }).click(),
+  ])
+  await page.waitForTimeout(200)
+  const kindsShown = await page.locator('[data-testid=timeline] li.tl-row').evaluateAll((els) => [...new Set(els.map((e) => [...e.classList].find((c) => c.startsWith('tl-') && c !== 'tl-row')))])
+  check('timeline: the type filter shows only part changes', kindsShown.length === 1 && kindsShown[0] === 'tl-parts', kindsShown.join(','))
+  const csvHref = await page.getByTestId('timeline-csv').getAttribute('href')
+  const csvRes = await page.request.get(new URL(csvHref, page.url()).toString())
+  const csvText = await csvRes.text()
+  check('timeline: Export CSV downloads the filtered entries with km and record ids',
+    csvRes.ok() && csvText.startsWith('\ufeffdate;time') && csvText.includes('installation:') && !csvText.includes('maintenance_event:'), csvText.slice(0, 120))
+  await page.screenshot({ path: path.join(OUT, '09b-timeline.png'), fullPage: true })
   await page.goto(BASE + '#/inventory?tab=history')
   page.once('dialog', (d) => d.accept('test undo'))
   await page.locator('.list.rows li').filter({ hasText: 'Add groupset' }).getByRole('button', { name: 'Undo' }).click()

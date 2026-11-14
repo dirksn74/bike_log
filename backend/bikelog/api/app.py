@@ -897,6 +897,41 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             return _component_summary(s, c)
         return run_once(s, op_id, "component.create", fn)
 
+    # ---- timeline (services/timeline.py): bike and part, filters, CSV export
+    def _timeline(s: Session, bike_id: int | None, component_id: int | None, date_from: str | None,
+                  date_to: str | None, kinds: str | None, voided: bool) -> dict:
+        from bikelog.services import timeline
+        args = {"date_from": date_from or None, "date_to": date_to or None,
+                "kinds": [k for k in (kinds or "").split(",") if k] or None, "include_voided": voided}
+        if bike_id is not None:
+            return timeline.bike_timeline(s, bike_id, **args)
+        return timeline.component_timeline(s, component_id, **args)
+
+    def _timeline_csv(result: dict, style: str) -> PlainTextResponse:
+        from bikelog.services import timeline
+        return PlainTextResponse(timeline.to_csv(result, style=style), media_type="text/csv; charset=utf-8",
+                                 headers={"Content-Disposition": f'attachment; filename="{timeline.csv_filename(result)}"'})
+
+    @app.get("/api/bikes/{bike_id}/timeline")
+    def bike_timeline(bike_id: int, date_from: str | None = Query(None, alias="from"), date_to: str | None = Query(None, alias="to"),
+                      kinds: str | None = None, voided: bool = False, s: Session = Depends(db)):
+        return _timeline(s, bike_id, None, date_from, date_to, kinds, voided)
+
+    @app.get("/api/bikes/{bike_id}/timeline.csv")
+    def bike_timeline_csv(bike_id: int, date_from: str | None = Query(None, alias="from"), date_to: str | None = Query(None, alias="to"),
+                          kinds: str | None = None, voided: bool = False, style: str = "excel", s: Session = Depends(db)):
+        return _timeline_csv(_timeline(s, bike_id, None, date_from, date_to, kinds, voided), style)
+
+    @app.get("/api/components/{component_id}/timeline")
+    def component_timeline(component_id: int, date_from: str | None = Query(None, alias="from"), date_to: str | None = Query(None, alias="to"),
+                           kinds: str | None = None, voided: bool = False, s: Session = Depends(db)):
+        return _timeline(s, None, component_id, date_from, date_to, kinds, voided)
+
+    @app.get("/api/components/{component_id}/timeline.csv")
+    def component_timeline_csv(component_id: int, date_from: str | None = Query(None, alias="from"), date_to: str | None = Query(None, alias="to"),
+                               kinds: str | None = None, voided: bool = False, style: str = "excel", s: Session = Depends(db)):
+        return _timeline_csv(_timeline(s, None, component_id, date_from, date_to, kinds, voided), style)
+
     @app.get("/api/components/{component_id}")
     def component_detail(component_id: int, s: Session = Depends(db)):
         c = inv.get_component(s, component_id)

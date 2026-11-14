@@ -1479,3 +1479,70 @@ dl.props dd { margin: 0; }
   .wax-apps td{display:flex;justify-content:space-between;gap:12px;border:0;padding:2px 0;text-align:right}
   .wax-apps td::before{content:attr(data-label);color:var(--muted);font-weight:400;text-align:left}
 }
+
+/* Timeline (components/Timeline.tsx, DECISIONS 141): date | what | km, one line per entry on a wide screen */
+.timeline .tl-row {
+  flex-wrap: nowrap;
+}
+.timeline .tl-date {
+  flex: 0 0 8.5rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.timeline .tl-what {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.4rem;
+  align-items: baseline;
+}
+.timeline .tl-detail {
+  flex-basis: 100%;
+}
+.timeline .tl-km {
+  flex: 0 0 auto;
+  text-align: right;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+.timeline .tl-other .tl-what strong,
+.timeline .tl-note .tl-what strong {
+  font-weight: 600;
+}
+.timeline .timeline-group {
+  display: block;
+}
+.timeline .timeline-group summary {
+  cursor: pointer;
+}
+.timeline .timeline-group .list {
+  margin-left: 0.8rem;
+}
+.timeline-filters {
+  margin: 0.4rem 0 0.6rem;
+}
+.timeline-filters summary {
+  cursor: pointer;
+}
+.timeline-fold > summary {
+  list-style: none;
+  display: inline-block;
+}
+.timeline-fold[open] > summary {
+  margin-bottom: 0.6rem;
+}
+@media (max-width: 640px) {
+  .timeline .tl-row {
+    flex-wrap: wrap;
+  }
+  .timeline .tl-date {
+    flex-basis: 100%;
+  }
+  .timeline .tl-what {
+    flex: 1 1 0;
+  }
+}

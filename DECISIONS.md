@@ -696,6 +696,28 @@ you disagree. Dates are 2026-10-24 unless noted.
     placeholders, an unused German entry or English UI text left on a German page. Numbers on screen use a
     decimal comma in German; number fields accept both. The Python desktop app stays English only for now.
 
+141. **Timeline of a bike and of a part, with km and CSV export** (Dirk 2026-11-14: "a time line view where
+    i can see what we did on a bike. what maintenance events happened at what mileage. and i also want that
+    for each component ... a list view that i can export as a csv"). One list built from the records that
+    exist (maintenance events incl. checks and supplies used, installations, journal notes/issues, incidents,
+    starting values and corrections, dispositions, purchase); no new table, nothing cached. The km at each
+    entry are derived in Python only (`services/timeline.py`): the bike's odometer at that instant (starting
+    value + included rides before it; before the starting value it is counted back and marked ≈) and, for a
+    part, its own lifetime km across every bike (starting value + corrections + counted contributions before
+    it). Each km carries KNOWN / ESTIMATED (≈) / MINIMUM (≥) / MISSING. A date-only entry means the start of
+    its local day (end of day for a liquid-wax top-up, DECISIONS 137); km ridden later that day are given as
+    `same_day_km` instead of inventing a time. On the bike timeline a part off and another on in the same
+    place at the same instant is one "Replaced" row; parts put on a part (tire on a wheel) show while that
+    part was on the bike; three or more part changes of one work session on one day fold into one line.
+    Deleted / corrected records are never hidden from the data: they come back with `voided` and the reason,
+    and the screen shows them on request. CSV = the filtered list, oldest first, UTF-8 with BOM, one row per
+    entry with stable record ids (`maintenance_event:12`, uuid where the table has one), dates as local dates
+    and an empty time for date-only entries; style "excel" (semicolon, decimal comma, what Excel expects on
+    a German Windows) is the default, "standard" (comma, decimal point) for other tools. Bike page: new tab
+    Timeline; part page: folded "Timeline with km · CSV export" (loaded only when opened). PHP version:
+    `php/app/timeline.php` + route `timeline` (bike= / part=, &format=csv), dates only, so an entry counts from
+    the start of its day; a PHP bike has no starting odometer, so its km are a minimum (≥).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

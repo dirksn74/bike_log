@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import ChangeLog from '../components/ChangeLog'
 import EventLog from '../components/EventLog'
+import { FoldedTimeline } from '../components/Timeline'
 import GroupsetImport from '../components/GroupsetImport'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
@@ -1446,6 +1447,8 @@ export function ComponentDetailPage() {
       <Card title="Maintenance log" className="span-2">
         <EventLog events={data.events} onChanged={reload} show="none" />
       </Card>
+      {/* everything that happened to this part with its own km at each entry; folded so the page stays short */}
+      <FoldedTimeline componentId={data.id} />
       <Card title="Installation history">
         {data.history.length === 0 ? (
           <Empty title="Never installed" />
