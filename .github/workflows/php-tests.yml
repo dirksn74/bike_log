@@ -38,8 +38,8 @@ jobs:
           coverage: none
       - name: Lint
         run: find php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
-      - name: Allow the test user to drop and create the test database
-        run: mysql -h 127.0.0.1 -uroot -prootpw -e "GRANT ALL ON \`bikelog_test\`.* TO 'bikelog'@'%'; FLUSH PRIVILEGES;"
+      - name: Allow the test user to drop and create the test databases (bikelog_test, bikelog_test_upgrade)
+        run: mysql -h 127.0.0.1 -uroot -prootpw -e "GRANT ALL ON \`bikelog\\_test%\`.* TO 'bikelog'@'%'; FLUSH PRIVILEGES;"
       - name: Tests
         env:
           BIKELOG_TEST_DB_HOST: 127.0.0.1

@@ -5,7 +5,7 @@ supplies used), installations (on, off, replaced), incidents and journal notes, 
 corrections, what happened to a part off the bike, and the purchase. Nothing is hidden: deleted and
 corrected records come back with ``voided`` set and the reason, and the caller decides whether to show them.
 
-The km at each entry are derived here, never stored (DECISIONS 141):
+The km at each entry are derived here, never stored (DECISIONS 142):
 
 * bike: the odometer at the entry's instant = starting value + included rides before it (rides before
   the starting value are inside it; an entry before the starting value is counted back from it);

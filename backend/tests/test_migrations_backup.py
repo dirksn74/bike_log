@@ -84,7 +84,7 @@ def test_backup_export_restore_roundtrip(tmp_path, engine, paths):
     s2 = make_session_factory(eng2)()
     names = set(s2.scalars(select(inv.Bike.name)))
     assert names == {"Cube"} and b.uuid == s2.scalar(select(inv.Bike.uuid))
-    assert any(p.name.endswith("pre-restore.db") for p in paths.backups.iterdir())
+    assert any(p.name.endswith("kept-before-restore.db") for p in paths.backups.iterdir())
     s2.close()
     eng2.dispose()
 

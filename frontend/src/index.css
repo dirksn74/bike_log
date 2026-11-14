@@ -1480,7 +1480,7 @@ dl.props dd { margin: 0; }
   .wax-apps td::before{content:attr(data-label);color:var(--muted);font-weight:400;text-align:left}
 }
 
-/* Timeline (components/Timeline.tsx, DECISIONS 141): date | what | km, one line per entry on a wide screen */
+/* Timeline (components/Timeline.tsx, DECISIONS 142): date | what | km, one line per entry on a wide screen */
 .timeline .tl-row {
   flex-wrap: nowrap;
 }

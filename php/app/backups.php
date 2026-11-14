@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 // One user's data as a JSON file (download, backup, restore) and the fresh start.
 //
+// The file names the database schema it was written with ("schema": the last migration, e.g.
+// "008_user_language"). A restore upgrades a file from an older schema first (upgrade(): new tables are empty,
+// new columns take their default, and FILE_UPGRADES repeats a migration's data changes on the file), and
+// refuses a file from a newer schema. RULE: a migration that changes existing data (UPDATE ...) or adds a
+// NOT NULL column without a default needs a FILE_UPGRADES step, so old files stay restorable.
+//
 // Nothing is lost: a fresh start and a restore first store a copy of the current data (user_backups),
 // which can be restored again. A restore replaces all of the user's data with the file's; every id is
 // given a new number and every reference follows, so a file from another server or account works too.
@@ -10,7 +16,9 @@ declare(strict_types=1);
 final class UserBackups
 {
     public const FORMAT = 'bikelog-php-export';
-    public const VERSION = 2;
+    public const VERSION = 3;          // 3 (2026-11-14): + schema
+    /** Files without "schema" (version 2) were written by a database at least this new: backups came with 005. */
+    public const OLDEST_FILE_SCHEMA = '005_lists_changelog_backups';
     public const KEEP = 20;
     public const MAX_UPLOAD = 20 * 1024 * 1024;
     public const CONFIRM_RESET = 'RESET';
@@ -42,6 +50,13 @@ final class UserBackups
         'pick_list_items' => ['merged_into_id' => 'pick_list_items'],
         'change_log' => ['bike_id' => 'bikes', 'component_id' => 'components'],
     ];
+    /**
+     * Data changes of later migrations, repeated on an older file before it is restored.
+     * Key = migration (schema) that made the change; value = fn(array $file): array $file.
+     * Migrations 006-008 only added tables and nullable columns, so nothing is needed for them.
+     * @var array<string, callable>
+     */
+    public const FILE_UPGRADES = [];
     /** change_log.entity_id points to a different table per entity. */
     private const LOG_ENTITY = ['bike' => 'bikes', 'part' => 'components', 'ride' => 'rides', 'product' => 'products', 'rule' => 'service_rules',
         'supply' => 'consumables', 'installation' => 'installations', 'work' => 'maintenance_events', 'journal' => 'journal_entries',
@@ -56,7 +71,8 @@ final class UserBackups
     public static function export(int $uid): array
     {
         $u = Db::one('SELECT id, email, display_name, timezone, created_at FROM users WHERE id = ?', [$uid]);
-        $out = ['format' => self::FORMAT, 'version' => self::VERSION, 'app_version' => BIKELOG_PHP_VERSION, 'exported_at' => gmdate('c'), 'user' => $u];
+        $out = ['format' => self::FORMAT, 'version' => self::VERSION, 'schema' => Migrator::current(), 'app_version' => BIKELOG_PHP_VERSION,
+            'exported_at' => gmdate('c'), 'user' => $u];
         foreach (array_keys(self::TABLES) as $t) {
             $out[$t] = Db::all("SELECT * FROM $t WHERE user_id = ? ORDER BY id", [$uid]);
         }
@@ -150,6 +166,32 @@ final class UserBackups
         if (!is_int($d['version'] ?? null) || $d['version'] > self::VERSION) {
             throw new UserError(t('This file comes from a newer Bike Log. Update the app first.'));
         }
+        $schema = self::schemaOf($d);
+        if (!preg_match('/^\d{3}_[a-z0-9_]+$/', $schema)) {
+            throw new UserError(t('This is not a Bike Log data file from the web version (Account → Download all my data).'));
+        }
+        if (strcmp($schema, Migrator::latest()) > 0) {
+            throw new UserError(t('This file comes from a newer Bike Log. Update the app first.'));
+        }
+        return $d;
+    }
+
+    /** The database schema the file was written with. */
+    public static function schemaOf(array $d): string
+    {
+        return is_string($d['schema'] ?? null) ? $d['schema'] : self::OLDEST_FILE_SCHEMA;
+    }
+
+    /** Bring a file from an older schema up to the current one (see the note at the top). */
+    public static function upgrade(array $d): array
+    {
+        $from = self::schemaOf($d);
+        foreach (self::FILE_UPGRADES as $schema => $step) {
+            if (strcmp($schema, $from) > 0) {
+                $d = $step($d);
+            }
+        }
+        $d['schema'] = Migrator::latest();
         return $d;
     }
 
@@ -220,6 +262,8 @@ final class UserBackups
     /** Replace all of the user's data with the file's. A copy of the current data is stored first. */
     public static function restore(int $uid, array $d, string $label): array
     {
+        $fromSchema = self::schemaOf($d);
+        $d = self::upgrade($d);
         [$ids, $warnings] = self::check($d);
         $prevOff = ChangeLog::$off;
         try {
@@ -269,6 +313,7 @@ final class UserBackups
         } finally {
             ChangeLog::$off = $prevOff;
         }
-        return ['backup_id' => $result, 'warnings' => $warnings, 'summary' => self::summary($d)];
+        return ['backup_id' => $result, 'warnings' => $warnings, 'summary' => self::summary($d), 'from_schema' => $fromSchema,
+            'upgraded' => $fromSchema !== Migrator::latest()];
     }
 }

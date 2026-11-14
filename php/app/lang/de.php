@@ -1990,7 +1990,7 @@ return [
     '“{name}” is on the list already.' => '„{name}“ ist schon auf der Liste.',
     '“{name}” is on the list already. Use Merge to put the two together.' => '„{name}“ ist schon auf der Liste. Nutze Zusammenführen, um beide zu vereinen.',
     '← Newer' => '← Neuer',
-    // timeline (DECISIONS 141)
+    // timeline (DECISIONS 142)
     '(deleted: {why})' => '(gelöscht: {why})',
     '+ up to {km} that day' => '+ bis zu {km} an dem Tag',
     'An entry counts from the start of its day. ≈ estimated, ≥ at least.' => 'Ein Eintrag zählt ab Beginn seines Tages. ≈ geschätzt, ≥ mindestens.',
@@ -2035,4 +2035,7 @@ return [
     'Parts on and off' => 'Teile ein und aus',
     'Notes and issues' => 'Notizen und Probleme',
     'Km and status' => 'Km und Status',
+    'The file came from an older version of Bike Log and was brought up to date.' => 'Die Datei stammt aus einer älteren Version von Bike Log und wurde auf den aktuellen Stand gebracht.',
+    'A file from an older version of Bike Log works too: it is brought up to date while it is restored. Restoring the same file twice gives the same result.' => 'Eine Datei aus einer älteren Version von Bike Log geht auch: Sie wird beim Wiederherstellen auf den aktuellen Stand gebracht. Dieselbe Datei zweimal wiederherzustellen ergibt dasselbe Ergebnis.',
+    'The file holds all your Bike Log data, with the version of the database it came from, so it can be restored here or on another Bike Log server (Restore…). It includes prices, serial numbers and notes: keep it private.' => 'Die Datei enthält alle deine Bike-Log-Daten samt der Datenbank-Version, aus der sie stammen. So kann sie hier oder auf einem anderen Bike-Log-Server wiederhergestellt werden (Wiederherstellen …). Sie enthält Preise, Seriennummern und Notizen: Behalte sie für dich.',
 ];

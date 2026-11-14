@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// Timeline of a bike or a part (same idea as the desktop app's services/timeline.py, DECISIONS 141):
+// Timeline of a bike or a part (same idea as the desktop app's services/timeline.py, DECISIONS 142):
 // everything that happened to it, newest first, with the km at that moment. Built from the existing records
 // (maintenance, installations, journal and incidents, km corrections, what happened to a part off the bike,
 // purchase); nothing new is stored. Deleted / corrected records come back with 'voided' set.

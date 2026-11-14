@@ -4,7 +4,7 @@ import { euro, when } from '../format'
 import { useApi } from '../hooks'
 import { Card, Empty, ErrorBox, Loading, Tag } from './ui'
 
-// Timeline of a bike or of one part (services/timeline.py, DECISIONS 141): everything done to it, newest
+// Timeline of a bike or of one part (services/timeline.py, DECISIONS 142): everything done to it, newest
 // first, with the km at that moment. The km come from the backend (never added up here) and carry a status:
 // ≈ estimated, ≥ a minimum, "km unknown" before tracking started. Filters fold away; Export CSV downloads
 // exactly what is shown (oldest first).
