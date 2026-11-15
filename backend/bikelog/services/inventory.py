@@ -917,7 +917,7 @@ def installation_history(session: Session, comp: Component) -> list[dict]:
                     "slot": i.slot, "installed_at": i.installed_at, "removed_at": i.removed_at,
                     "removal_reason": i.removal_reason, "removal_outcome": i.removal_outcome,
                     "voided": bool(i.voided_at), "void_reason": i.void_reason,
-                    "note": i.note, "km": round(float(km or 0), 3) if km is not None else None})
+                    "note": i.note, "km": round(float(km or 0), 3) if not i.voided_at else None})
     return out
 
 
@@ -954,11 +954,23 @@ def _setup_row(c: Component, i: Installation, depth: int, root: Installation) ->
 
 
 def bike_installation_history(session: Session, bike: Bike) -> list[dict]:
+    """Every installation on the bike, newest first: parts on the bike itself, and parts on a part while
+    that part was on this bike (a tire or tube on a wheel, a cassette on the hub), with that part's label
+    in ``on_label`` (Dirk 2026-11-15: tire moves were missing)."""
+    from bikelog.services.timeline import _root_bike
+    installs = list(session.scalars(select(Installation).where(Installation.bike_id == bike.id)))
+    for i in session.scalars(select(Installation).where(Installation.parent_component_id.is_not(None))):
+        if _root_bike(session, i.parent_component_id, i.installed_utc) == bike.id or (
+                i.removed_utc and _root_bike(session, i.parent_component_id, i.removed_utc, at_end=True) == bike.id):
+            installs.append(i)
+    installs.sort(key=lambda i: (i.installed_utc, i.id), reverse=True)
     rows = []
-    for i in session.scalars(select(Installation).where(Installation.bike_id == bike.id)
-                             .order_by(Installation.installed_utc.desc())):
+    for i in installs:
         c = session.get(Component, i.component_id)
+        parent = session.get(Component, i.parent_component_id) if i.parent_component_id else None
         rows.append({"id": i.id, "component_id": c.id, "label": c.label, "slot": i.slot,
+                     "parent_component_id": parent.id if parent else None,
+                     "on_label": parent.label if parent else None,
                      "installed_at": i.installed_at, "removed_at": i.removed_at, "removal_reason": i.removal_reason,
                      "removal_outcome": i.removal_outcome, "voided": bool(i.voided_at), "void_reason": i.void_reason})
     return rows

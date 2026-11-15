@@ -8,6 +8,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Rotate tires in one step** (Dirk 2026-11-15). Bike page → Manage parts → **Rotate tires** (Reifen
+  umsetzen): the front tire goes to the rear wheel (or the rear one to the front), the tire that was there
+  comes off (discarded, stored …) and a new one goes on, taken from stock, a stored spare or newly bought
+  (name and price optional). Each tire keeps its own km; Undo (Inventory → History) takes the whole step
+  back. Today means from now on; an earlier day means after that day's rides. No database change.
 - **German version** (Dirk 2026-11-15). Settings → **Language / Sprache**: English or Deutsch for the whole
   app: every screen, reminder explanations, forecasts, messages and errors from the backend, the names of
   part types, actions and default rules, numbers (1.234,5 km) and dates. The choice is kept across restarts;
@@ -93,6 +98,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Settings → **Account** (server only): who is signed in, and Sign out.
 
 ### Fixed
+- **Installation history on the bike page** (Journal and history → Installation history) now also lists
+  tires, tubes and other parts mounted on a part (on the rear wheel, on the hub …), with the part they sit
+  on, so a tire moved from the front to the rear wheel shows up. Before, only parts directly on the bike
+  were listed.
+- **"unknown" km** in a part's installation history for a period without rides now shows **0 km**.
+- **Swap tube in German**: Manage parts → Schlauch tauschen opened the wrong form when the app was in German.
 - **Restore of an older backup** (Settings → Backups → Restore, made before 26 Oct 2026) stopped with a
   database error: the upgrade of the restored data ran with foreign-key checks on. Restore now upgrades a
   copy first (the same safe way as at start) and only then replaces your data, so a failed upgrade never

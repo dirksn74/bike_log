@@ -759,6 +759,18 @@ you disagree. Dates are 2026-10-24 unless noted.
     name is shown in its edit form and then saved keeps that German name. `scripts/i18n_check.py` (also run
     by test_i18n.py) fails when a tr()/trn() text has no German entry or other placeholders.
 
-## Repository
+144. **Rotate tires; wheel-mounted parts in the bike's installation history** (Dirk 2026-11-15, after a rear
+    flat: rear tire binned, front tire to the rear, new tire on the front). `repairs.rotate_tires` (POST
+    /api/bikes/{id}/rotate-tires {move_from, at, source, old_outcome}) does three steps at ONE moment in ONE
+    work session: remove the tire on the other wheel (outcome, default discarded), `inv.move` the tire from
+    `move_from` there, and `replace_at_position` puts the new tire (stock, spare, new with label/price) on
+    `move_from`. Why one endpoint and this order: "Swap front and rear" followed by replacing the swapped tire
+    on the same day fails ("removal must be later", a date-only removal is midnight and earlier than the
+    swap), so the safe order is remove → move → install; a date alone becomes 23:59 of that day (after the
+    day's rides, like Swap tube), today becomes now. `inv.bike_installation_history` now also returns
+    installations on a part while that part was on the bike (same rule as the bike timeline, `_root_bike`),
+    with `on_label`; part installation periods without rides report 0 km instead of null ("unknown").
+    The Manage parts buttons pick their form by a key, not by the translated label (the German "Swap tube"
+    opened the wrong form). No schema change, no migration.
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

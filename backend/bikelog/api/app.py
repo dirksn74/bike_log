@@ -402,6 +402,14 @@ class PositionSwapIn(Body):
     source: dict
 
 
+class RotateTiresIn(Body):
+    move_from: str = "FRONT_WHEEL"
+    at: str
+    source: dict
+    old_outcome: str | None = None
+    reason: str | None = None
+
+
 class IncidentPatch(Body):
     incident_type: str | None = None
     affected: list[str] | None = None
@@ -1437,6 +1445,17 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                                                    source=body.source, work_session_id=w.id, reason=f"swap {what}")
             return {"work_session_id": w.id, "text": f"{repairs_svc.WHEEL_NAMES[body.wheel].capitalize()} {what}: {text}"}
         return run_once(s, op_id, "position.swap", go)
+
+    @app.post("/api/bikes/{bike_id}/rotate-tires")
+    def bike_rotate_tires(bike_id: int, body: RotateTiresIn, s: Session = Depends(db), op_id: str | None = OpId):
+        """Front tire to the rear (or back), the tire there comes off, a new one goes on: one work session."""
+        def go():
+            b = inv.get_bike(s, bike_id)
+            w = ws_svc.begin(s, at=body.at, bike_id=b.id, title=tr("Rotate tires"))
+            text = repairs_svc.rotate_tires(s, bike_id=b.id, move_from=body.move_from, at=body.at, source=body.source,
+                                            old_outcome=body.old_outcome, work_session_id=w.id, reason=body.reason)
+            return {"work_session_id": w.id, "text": text}
+        return run_once(s, op_id, "tires.rotate", go)
 
     @app.post("/api/journal", status_code=201)
     def journal_add(body: JournalIn, s: Session = Depends(db), op_id: str | None = OpId):

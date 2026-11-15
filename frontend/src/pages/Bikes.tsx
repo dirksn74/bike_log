@@ -8,7 +8,7 @@ import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
-import { SwapTube } from '../components/Repairs'
+import { RotateTires, SwapTube } from '../components/Repairs'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
 import ChainRotation from '../components/ChainRotation'
 import EventLog from '../components/EventLog'
@@ -173,7 +173,7 @@ interface BikeDetail extends Bike {
   cost_detail: BikeCosts
   setup: SetupRow[]
   history_counts: { rides: number; installations: number; maintenance: number; journal: number; usage: number }
-  history: { id: number; component_id: number; label: string; slot: string; installed_at: string; removed_at: string | null; removal_reason: string | null; voided: boolean }[]
+  history: { id: number; component_id: number; label: string; slot: string; on_label?: string | null; installed_at: string; removed_at: string | null; removal_reason: string | null; voided: boolean }[]
   queue: Task[]
   brakes: BrakeRow[]
   rides: RideRow[]
@@ -320,7 +320,7 @@ export function BikeDetailPage() {
   useCrumb(`/bikes/${id}`, data?.name)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'frameCost' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'brokenSpokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; prefer?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'frameCost' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean; tube?: boolean } | { kind: 'rotate' } | { kind: 'spokes'; row: SetupRow } | { kind: 'brokenSpokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; prefer?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -420,7 +420,8 @@ export function BikeDetailPage() {
           </Card>
           <ManageParts
             setup={data.setup}
-            onSwap={(title, rows) => setSheet({ kind: 'swap', title, rows })}
+            onSwap={(title, rows, tube) => setSheet({ kind: 'swap', title, rows, tube })}
+            onRotate={() => setSheet({ kind: 'rotate' })}
             onInstall={() => setSheet({ kind: 'install' })}
             onRemove={(rows) => setSheet({ kind: 'swap', title: tr('Remove a part'), rows, remove: true })}
             onReplaceGroupset={() => setSheet({ kind: 'groupset', replace: true })}
@@ -488,7 +489,10 @@ export function BikeDetailPage() {
                     <td>
                       <Link to={`/inventory/${h.component_id}`}>{h.label}</Link>
                     </td>
-                    <td>{slotName(h.slot)}</td>
+                    <td>
+                      {slotName(h.slot)}
+                      {h.on_label && <span className="small muted"> · {tr('on {label}', { label: h.on_label })}</span>}
+                    </td>
                     <td>{when(h.installed_at)}</td>
                     <td>{h.removed_at ? when(h.removed_at) : tr('now')}</td>
                     <td>{h.voided ? tr('corrected (void)') : h.removal_reason}</td>
@@ -573,7 +577,7 @@ export function BikeDetailPage() {
       )}
       {sheet?.kind === 'swap' && (
         <Sheet title={`${sheet.title} · ${data.name}`} onClose={() => setSheet(null)}>
-          {sheet.title === 'Swap tube' ? (
+          {sheet.tube ? (
             <SwapTube
               bikeId={data.id}
               onDone={(text) => {
@@ -585,6 +589,19 @@ export function BikeDetailPage() {
           ) : (
             <SwapPart rows={sheet.rows} setup={data.setup} remove={sheet.remove} onDone={done} />
           )}
+        </Sheet>
+      )}
+      {sheet?.kind === 'rotate' && (
+        <Sheet title={`${tr('Rotate tires')} · ${data.name}`} onClose={() => setSheet(null)}>
+          <RotateTires
+            bikeId={data.id}
+            setup={data.setup}
+            onDone={(text) => {
+              setSheet(null)
+              toast(text)
+              reload()
+            }}
+          />
         </Sheet>
       )}
       {sheet?.kind === 'spokes' && (
@@ -850,7 +867,7 @@ const bareOf = (setup: SetupRow[], type = 'TIRE') => setup.filter((w) => isWheel
 // wheels without a recorded inner tube (Dirk rides tubes; tubeless wheels need none)
 const tubelessOf = (setup: SetupRow[]) => bareOf(setup, 'INNER_TUBE').filter((w) => w.tire_setup !== 'TUBELESS' && w.tire_setup !== 'TUBULAR')
 
-function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplaceGroupset, onInstallTire, onInstallTube }: { setup: SetupRow[]; onSwap: (title: string, rows: SetupRow[]) => void; onRemove: (rows: SetupRow[]) => void; onInstall: () => void; onWheelset: () => void; onReplaceGroupset: () => void; onInstallTire: () => void; onInstallTube: () => void }) {
+function ManageParts({ setup, onSwap, onRotate, onRemove, onInstall, onWheelset, onReplaceGroupset, onInstallTire, onInstallTube }: { setup: SetupRow[]; onSwap: (title: string, rows: SetupRow[], tube?: boolean) => void; onRotate: () => void; onRemove: (rows: SetupRow[]) => void; onInstall: () => void; onWheelset: () => void; onReplaceGroupset: () => void; onInstallTire: () => void; onInstallTube: () => void }) {
   const { meta } = useApp()
   // same grouping as Installed now: drivetrain, brakes, controls and the Di2 / AXS battery
   const groupsetParts = setup.filter((r) => r.component_type === 'BATTERY' || CATEGORY_GROUP[meta.component_types.find((t) => t.code === r.component_type)?.category ?? ''] === 'GROUPSET')
@@ -859,32 +876,39 @@ function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplace
   const looseWheels = setup.filter((r) => r.depth === 0 && isWheel(r))
   const bareWheels = bareOf(setup)
   const noTube = tubelessOf(setup)
-  const swaps: [string, string, SetupRow[], string][] = [
-    [tr('Swap chain'), tr('Swap chain'), of('CHAIN'), tr('No chain installed')],
+  // [key, button, sheet title, parts to pick from, why disabled]; the key (not the translated text) picks the form
+  const swaps: [string, string, string, SetupRow[], string][] = [
+    ['chain', tr('Swap chain'), tr('Swap chain'), of('CHAIN'), tr('No chain installed')],
     wheelsets.length > 0
-      ? [tr('Swap wheelset'), tr('Swap wheelset'), wheelsets, '']
-      : [tr('Swap wheels'), tr('Swap a wheel'), setup.filter(isWheel), tr('No wheels installed')],
-    [tr('Swap tire'), tr('Swap a tire'), of('TIRE'), tr('No tires installed')],
-    [tr('Swap tube'), tr('Swap tube'), [], ''],
-    [tr('Swap another part'), tr('Swap a part'), setup, tr('Nothing installed yet')],
+      ? ['wheelset', tr('Swap wheelset'), tr('Swap wheelset'), wheelsets, '']
+      : ['wheels', tr('Swap wheels'), tr('Swap a wheel'), setup.filter(isWheel), tr('No wheels installed')],
+    ['tire', tr('Swap tire'), tr('Swap a tire'), of('TIRE'), tr('No tires installed')],
+    ['tube', tr('Swap tube'), tr('Swap tube'), [], ''],
+    ['other', tr('Swap another part'), tr('Swap a part'), setup, tr('Nothing installed yet')],
   ]
+  // tires on wheels: front → rear with a new one on the front (or the other way) in one step
+  const tiredWheels = setup.filter((r) => isWheel(r) && setup.some((t) => t.component_type === 'TIRE' && t.parent_component_id === r.component_id))
+  const canRotate = setup.some((r) => r.component_type === 'FRONT_WHEEL') && setup.some((r) => r.component_type === 'REAR_WHEEL') && tiredWheels.length > 0
   return (
     <Card title={tr('Manage parts')} className="span-2">
       <div className="manage-parts">
         <div>
           <h3 className="small muted">{tr('Change parts')}</h3>
           <div className="chips">
-            {swaps.map(([label, title, rows, none]) =>
-              label === 'Swap tire' && rows.length === 0 && bareWheels.length > 0 ? (
-                <button key={label} className="btn" onClick={onInstallTire}>
+            {swaps.map(([key, label, title, rows, none]) =>
+              key === 'tire' && rows.length === 0 && bareWheels.length > 0 ? (
+                <button key={key} className="btn" onClick={onInstallTire}>
                   {tr('Install a tire')}
                 </button>
               ) : (
-                <button key={label} className="btn" disabled={rows.length === 0 && label !== 'Swap tube'} title={rows.length === 0 ? none || undefined : undefined} onClick={() => onSwap(title, rows)}>
+                <button key={key} className="btn" disabled={rows.length === 0 && key !== 'tube'} title={rows.length === 0 ? none || undefined : undefined} onClick={() => onSwap(title, rows, key === 'tube')}>
                   {label}
                 </button>
               ),
             )}
+            <button className="btn" disabled={!canRotate} title={canRotate ? tr('Move a tire to the other wheel, take the tire there off and put a new one on, in one step') : tr('Needs a front and a rear wheel with a tire')} onClick={onRotate}>
+              {tr('Rotate tires')}
+            </button>
           </div>
         </div>
         <div>
