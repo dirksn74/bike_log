@@ -8,6 +8,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Delete a part entered by mistake** (Dirk 2026-11-15). Part page → More… → **Delete (entered by
+  mistake)**, shown only while nothing has happened to the part yet (never installed, no km, no work, no
+  notes, not taken from stock). Everything else is retired as before, so no history is lost.
 - **Part changes in the bike's Journal** (Dirk 2026-11-15). Journal and history → Journal now also lists
   parts put on, taken off, replaced and moved, including tires and tubes on the wheels (badge *part change*,
   read-only, like maintenance entries). Older changes show too. A job with several changes on one day

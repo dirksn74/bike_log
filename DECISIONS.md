@@ -810,6 +810,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     fitted, tires rotated) becomes one line "N part changes: …", so the journal stays readable. A part's own
     journal is unchanged (it has its installation history). No schema change.
 
+148. **Delete a part entered by mistake from its page** (Dirk 2026-11-15: a tire added twice). The API could
+    already delete a part without history; now `inv.can_delete` decides it (never installed, no km, no
+    maintenance, no journal entry or incident, never sent away, no status change after creation, not taken
+    from stock) and the part detail returns it as `deletable`. Part page → More… → "Delete (entered by
+    mistake)" (with a confirmation) only then. Its own rules and snoozes go with it; the change log keeps its
+    CREATED / DELETED rows. Anything with history is retired as before (DB trigger unchanged). No schema
+    change.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

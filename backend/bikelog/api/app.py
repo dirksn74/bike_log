@@ -968,6 +968,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         c = inv.get_component(s, component_id)
         return {**_component_summary(s, c), "ledger": component_ledger(s, c),
                 "history": inv.installation_history(s, c), "service_status": m.component_status(s, c),
+                "deletable": inv.can_delete(s, c),
                 "rules": [{**m.rule_row(r), "applies": m.rule_applies(s, c, r)}
                           for r in m.effective_rules(s, c, include_disabled=True)],
                 "events": m.events_for(s, component_id=c.id),
