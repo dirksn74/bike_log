@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import ChangeLog from '../components/ChangeLog'
@@ -1187,6 +1187,7 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
     const body: Record<string, unknown> = { origin: f.origin, active }
     if (rule.trigger === 'INTERVAL') Object.assign(body, { interval_km: num(f.interval_km), interval_months: num(f.interval_months), interval_hours: num(f.interval_hours), ...(rule.action_code === 'WAX_HOT' ? { after_top_up_km: num(f.after_top_up_km) } : {}) })
     else if (rule.trigger === 'PARENT_COUNT') Object.assign(body, { interval_count: num(f.interval_count) })
+    else if (rule.trigger === 'LIFETIME') Object.assign(body, { interval_km: num(f.interval_km) })
     else Object.assign(body, { window_min_km: num(f.window_min_km), window_max_km: num(f.window_max_km) })
     try {
       if (f.scope === 'type' && rule.component_type) await api.patch(`/rules/${rule.id}`, body)
@@ -1215,6 +1216,12 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
               <input inputMode="decimal" aria-label={tr('Hot wax km after a top-up')} value={f.after_top_up_km} onChange={(e) => setF({ ...f, after_top_up_km: e.target.value })} />
             </Field>
           )}
+        </div>
+      ) : rule.trigger === 'LIFETIME' ? (
+        <div className="row">
+          <Field label={tr('Replace at … km in total')} hint={tr("The part's own km on every wheel and bike, km from before included. Logging work does not reset it; a new part starts at 0.")}>
+            <input inputMode="decimal" value={f.interval_km} onChange={(e) => setF({ ...f, interval_km: e.target.value })} />
+          </Field>
         </div>
       ) : rule.trigger === 'PARENT_COUNT' ? (
         <div className="row">
@@ -1272,6 +1279,14 @@ export function ComponentDetailPage() {
   const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', interval_hours: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  // "Replace…" on a reminder (e.g. a tire at its km limit) opens the Replace dialog right away
+  const [params, setParams] = useSearchParams()
+  const wantReplace = params.get('do') === 'replace' && data?.location.state === 'INSTALLED'
+  useEffect(() => {
+    if (!wantReplace) return
+    setSheet('replace')
+    setParams({}, { replace: true })
+  }, [wantReplace, setParams])
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -1327,7 +1342,7 @@ export function ComponentDetailPage() {
                   {!r.active && <Tag>{tr('off')}</Tag>}
                 </span>
                 <span className="muted small">
-                  {r.trigger === 'CYCLE_WINDOW' ? tr('once at {window_min_km}–{window_max_km} km after {actionName}', { window_min_km: r.window_min_km, window_max_km: r.window_max_km, actionName: actionName(r.cycle_action_code) }) : [r.interval_km && tr('every {interval_km} km', { interval_km: r.interval_km }), r.interval_months && tr('every {interval_months} months', { interval_months: r.interval_months })].filter(Boolean).join(tr(' or ')) + (r.after_top_up_km ? tr(', or {after_top_up_km} km after a liquid wax top-up', { after_top_up_km: r.after_top_up_km }) : '')}
+                  {r.trigger === 'LIFETIME' ? tr('replace at {interval_km} km in total', { interval_km: r.interval_km }) : r.trigger === 'CYCLE_WINDOW' ? tr('once at {window_min_km}–{window_max_km} km after {actionName}', { window_min_km: r.window_min_km, window_max_km: r.window_max_km, actionName: actionName(r.cycle_action_code) }) : [r.interval_km && tr('every {interval_km} km', { interval_km: r.interval_km }), r.interval_months && tr('every {interval_months} months', { interval_months: r.interval_months })].filter(Boolean).join(tr(' or ')) + (r.after_top_up_km ? tr(', or {after_top_up_km} km after a liquid wax top-up', { after_top_up_km: r.after_top_up_km }) : '')}
                   {' · '}
                   {r.component_id ? tr('this part') : tr('type default')} · {r.origin.toLowerCase()}
                   {r.requires_setup && tr(' · only {toLowerCase}', { toLowerCase: lc(setupLabel(meta.tire_setups, r.requires_setup)) })}

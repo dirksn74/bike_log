@@ -170,6 +170,12 @@ function page_rule_edit(): void
                 throw new UserError(t('Give the window as "from" and "to" km (from ≤ to).'));
             }
             $row['interval_km'] = null;
+        } elseif ($rule['trigger_kind'] === 'LIFETIME') {
+            if ($row['interval_km'] === null || $row['interval_km'] <= 0) {
+                throw new UserError(t('Give the total km at which the part is due for replacement.'));
+            }
+            $row['interval_months'] = null;
+            $row['interval_hours'] = null;
         } elseif ($rule['trigger_kind'] === 'PARENT_COUNT') {
             $n = post('interval_count');
             if (!ctype_digit($n) || (int)$n < 1 || (int)$n > 50) {

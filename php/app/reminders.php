@@ -138,6 +138,10 @@ final class Reminders
         if ($rule['trigger_kind'] === 'PARENT_COUNT') {
             return $base + self::parentCount($uid, $rule, $c) + ['snooze' => null];
         }
+        if ($rule['trigger_kind'] === 'LIFETIME') {
+            $r = self::lifetime($uid, $rule, $c);
+            return self::applySnooze($base + $r, self::snooze($uid, 'component_id', (int)$c['id'], $rule['rule_code']), $r['used_km']);
+        }
         if ($rule['trigger_kind'] === 'CYCLE_WINDOW') {
             $r = self::cycleWindow($uid, $rule, $c, $actName);
             return self::applySnooze($base + $r, self::snooze($uid, 'component_id', (int)$c['id'], $rule['rule_code']), $r['used_km'] ?? 0.0);
@@ -459,6 +463,40 @@ final class Reminders
         return Db::all('SELECT p.* FROM components p JOIN (SELECT parent_component_id, MIN(installed_on) first FROM installations
             WHERE user_id = ? AND component_id = ? AND voided_at IS NULL AND parent_component_id IS NOT NULL GROUP BY parent_component_id) x
             ON x.parent_component_id = p.id ORDER BY x.first, p.id', [$uid, $componentId]);
+    }
+
+    /**
+     * Replace at a total distance (a tire at 6,000 km): the part's own total km on every wheel and bike, km from
+     * before included, so it carries over when tires swap front and rear. Nothing logged resets it; a new part
+     * starts at 0. The latest inspection is quoted; the km never say that the part is safe.
+     */
+    private static function lifetime(int $uid, array $rule, array $c): array
+    {
+        $tot = Domain::totals($uid, $c);
+        $used = (float)$tot['total_km'];
+        $iv = (float)$rule['interval_km'];
+        $warn = $rule['warn_km'] !== null ? (float)$rule['warn_km'] : $iv * 0.1;
+        $left = $iv - $used;
+        $status = $used >= $iv ? 'OVERDUE' : ($used >= $iv - $warn ? 'SOON' : 'OK');
+        $prefix = ['at_least' => t('at least') . ' ', 'estimated' => '≈ '][$tot['status']] ?? '';
+        $text = t('{km} km on this part in total, on every wheel and bike (replace at {interval} km)', ['km' => num($used), 'interval' => num($iv)])
+            . ': ' . ($left > 0 ? t('{km} km left', ['km' => num($left)]) : t('{km} km over', ['km' => num(-$left)])) . '.';
+        if ($prefix !== '') {
+            $text = $prefix . $text;
+        }
+        if ($tot['status'] === 'at_least' && $status !== 'OVERDUE') {
+            // km before tracking unknown: it may be further along than it looks, so do not show it as fine
+            $status = 'UNKNOWN';
+            $text = t('Insufficient information: {text}', ['text' => $text]) . ' ' . t('Its km from before are unknown; record them on the part page to start this reminder.');
+        }
+        $insp = self::lastEvent($uid, 'component_id', (int)$c['id'], ['TIRE_INSPECT']);
+        if ($c['component_type'] === 'TIRE') {
+            $text .= ' ' . ($insp ? t('Last inspection {date}: {result}.', ['date' => $insp['performed_on'],
+                'result' => $insp['outcome'] ? lc(str_replace('_', ' ', (string)$insp['outcome'])) : t('no result noted')]) : t('No inspection logged yet.'));
+        }
+        $text .= ' ' . t('Replace it sooner when the tread is worn, cut or the sidewalls crack: the km do not say it is safe.');
+        return ['status' => $status, 'progress' => $iv > 0 ? $used / $iv : 0, 'used_km' => $used, 'due_km' => $iv, 'text' => $text,
+            'forecast' => $status === 'UNKNOWN' ? null : self::forecast($uid, $c, $rule, $used, 0.0, null)];
     }
 
     private static function parentCount(int $uid, array $rule, array $c): array

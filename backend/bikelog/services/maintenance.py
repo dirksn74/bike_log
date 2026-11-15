@@ -29,7 +29,7 @@ from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import (
     get_bike, get_component, location, open_installation, set_disposition, shifting_of, tire_setup_of,
 )
-from bikelog.services.usage import bike_hours_since, bike_km_since, hours_since, usage_since
+from bikelog.services.usage import bike_hours_since, bike_km_since, component_usage, hours_since, usage_since
 from bikelog.timeutil import add_months, local_date_of, parse_when, today_local, utc_now
 from bikelog.i18n import lc, num, tr, trn, unit_word
 
@@ -276,6 +276,8 @@ RULE_FIELDS = ("name", "interval_km", "interval_months", "window_min_km", "windo
 def _validate_rule(r: ServiceRule) -> None:
     if r.trigger == "INTERVAL" and r.interval_km is None and r.interval_months is None and r.interval_hours is None:
         raise DomainError(tr("A rule needs a distance, ride-time or calendar interval (or several)"))
+    if r.trigger == "LIFETIME" and r.interval_km is None:
+        raise DomainError(tr("Give the total km at which the part is due for replacement"))
     if r.trigger == "PARENT_COUNT" and (r.interval_count is None or r.interval_count < 1):
         raise DomainError(tr("Give the number (at least 1), e.g. replace the quick link after 2 chains"))
     if r.interval_hours is not None and r.interval_hours <= 0:
@@ -383,7 +385,8 @@ def rule_row(r: ServiceRule) -> dict:
             "action": ACTIONS[r.action_code].name if r.action_code in ACTIONS else r.action_code,
             "trigger": r.trigger, "interval_km": r.interval_km, "interval_months": r.interval_months,
             "window_min_km": r.window_min_km, "window_max_km": r.window_max_km,
-            "cycle_action_code": r.cycle_action_code, "reset_actions": _reset_actions(r), "warn_km": r.warn_km,
+            "cycle_action_code": r.cycle_action_code,
+            "reset_actions": [] if r.trigger == "LIFETIME" else _reset_actions(r), "warn_km": r.warn_km,
             "warn_days": r.warn_days, "origin": r.origin, "active": r.active, "notes": r.notes,
             "requires_setup": r.requires_setup, "interval_hours": r.interval_hours, "warn_hours": r.warn_hours,
             "interval_count": r.interval_count, "after_top_up_km": r.after_top_up_km}
@@ -503,6 +506,9 @@ def rule_status(session: Session, comp: Component, rule: ServiceRule, today: dat
         res = _parent_count_status(session, comp, rule)
     elif rule.trigger == "ONCE_AFTER_INSTALL":
         res = _once_status(session, comp, rule, act_name)
+    elif rule.trigger == "LIFETIME":
+        res = _lifetime_status(session, comp, rule, today)
+        _add_age(comp, res, today)
     else:
         res = _interval_status(_Subject(session, comp=comp), rule, act_name, today)
         if res["status"] not in ("INSUFFICIENT_INFO",):
@@ -852,6 +858,52 @@ def _once_status(session: Session, comp: Component, rule: ServiceRule, act_name:
                    explanation=tr("Fitted on {installed_on}, {used} km since: taken as done (asked for up to {max_km} km after fitting).", installed_on=inst.installed_at[:10], used=num(used), max_km=num(rule.window_max_km)))
     else:
         out.update(status="DUE", explanation=tr("Fitted on {installed_on} ({used} km since): {act_name} once before riding hard. ", installed_on=inst.installed_at[:10], used=num(used), act_name=act_name) + tr(rule.notes or ""))
+    return out
+
+
+def _lifetime_status(session: Session, comp: Component, rule: ServiceRule, today: date) -> dict:
+    """Replace at a total distance (Dirk 2026-11-15: "a tire lasts 6000km", DECISIONS 150). Counts the part's own
+    total km: km from before, corrections and every ride on any wheel or bike, so it carries over when tires swap
+    front and rear. Nothing logged resets it; only a new part (a new tire) starts at 0. The latest inspection is
+    quoted because the tire's condition can make it due sooner; the km never say that it is safe."""
+    u = component_usage(session, comp)
+    used, interval = u["total_km"], rule.interval_km
+    remaining = interval - used
+    st = _km_status(used, interval, rule.warn_km)
+    out = {"used_km": used, "interval_km": interval, "remaining_km": round(remaining, 3),
+           "uncertain_km": u["uncertain_km"], "last_done": None, "since": None, "km_at_least": u["is_minimum"]}
+    if comp.status != "ACTIVE":
+        out.update(status="DONE_THIS_CYCLE",
+                   explanation=tr("{label} is no longer in use; it ran {used} km.", label=comp.label, used=num(used)))
+        return out
+    what = tr("{x}{used} km on {label} in total, on every wheel and bike", x=tr("at least ") if u["is_minimum"] else (
+        "≈" if u["starting_is_estimate"] else ""), used=num(used), label=comp.label)
+    txt = tr("{what} (replace at {interval} km): ", what=what, interval=num(interval))
+    if remaining > 0:
+        txt += tr("{remaining} km left", remaining=num(remaining))
+    elif remaining < 0:
+        txt += tr("due at {interval} km, {x} km over", interval=num(interval), x=num(-remaining))
+    else:
+        txt += tr("due now at {interval} km", interval=num(interval))
+    if u["starting_km"] is not None:
+        txt += tr(" (includes {x}{km} km from before)", x="≈" if u["starting_is_estimate"] else "", km=num(u["starting_km"]))
+    if u["uncertain_km"]:
+        txt += tr(" (includes {unc} km with uncertain assignment)", unc=num(u["uncertain_km"]))
+    txt += "."
+    if u["is_minimum"] and st in ("OK", "DUE_SOON"):
+        # km before Bike Log unknown: the tire may be further along than it looks, so do not show it as fine
+        st = "INSUFFICIENT_INFO"
+        txt = tr("Insufficient information: ") + txt + tr(" Its km from before Bike Log are unknown; add them on the part page (Add km from before) to start this reminder.")
+    insp = _last_event(session, comp.id, ["TIRE_INSPECT"]) if comp.component_type == "TIRE" else None
+    if insp:
+        res = insp.outcome.replace("_", " ").lower() if insp.outcome else tr("no result noted")
+        txt += tr(" Last inspection {performed_on}: {res}.", performed_on=insp.performed_on, res=res)
+    elif comp.component_type == "TIRE":
+        txt += tr(" No inspection logged yet.")
+    txt += tr(" Replace it sooner when the tread is worn, cut or the sidewalls crack: the km do not say it is safe.")
+    out.update(status=st, explanation=txt)
+    if st != "INSUFFICIENT_INFO":
+        out["forecast"] = _forecast(_Subject(session, comp=comp), out, None, today)
     return out
 
 

@@ -482,12 +482,13 @@ class ServiceRule(Base):
     __table_args__ = (
         CheckConstraint("(component_type IS NOT NULL) + (component_id IS NOT NULL) + (bike_id IS NOT NULL) = 1",
                         name="ck_rule_target"),
-        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW','PARENT_COUNT','ONCE_AFTER_INSTALL')",
+        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW','PARENT_COUNT','ONCE_AFTER_INSTALL','LIFETIME')",
                         name="ck_rule_trigger"),
         CheckConstraint("origin IN ('DEFAULT','MANUFACTURER','PERSONAL')", name="ck_rule_origin"),
         CheckConstraint("trigger <> 'INTERVAL' OR interval_km IS NOT NULL OR interval_months IS NOT NULL "
                         "OR interval_hours IS NOT NULL", name="ck_rule_interval"),
         CheckConstraint("trigger <> 'PARENT_COUNT' OR interval_count >= 1", name="ck_rule_count"),
+        CheckConstraint("trigger <> 'LIFETIME' OR interval_km IS NOT NULL", name="ck_rule_lifetime"),
         CheckConstraint("trigger <> 'CYCLE_WINDOW' OR (window_min_km IS NOT NULL AND window_max_km >= window_min_km "
                         "AND cycle_action_code IS NOT NULL)", name="ck_rule_window"),
         Index("uq_rule_type_code", "component_type", "rule_code", unique=True,

@@ -8,6 +8,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Tires in the service intervals: replace at 6,000 km** (Dirk 2026-11-15: "a tire lasts 6000km"). Every
+  tire now has the reminder **Replace tire** (Reifen ersetzen). It counts that tire's own total km on every
+  wheel and bike, km from before included, so a tire swapped from front to rear keeps its count. It comes up
+  500 km before 6,000 km and says how it was worked out (e.g. "5,700 km on Tire A in total … 300 km left"),
+  with the last tire inspection. Logging an inspection does not reset it; only a new tire starts again at 0.
+  The reminder's **Replace…** button opens the Replace dialog of that tire. A tire whose km from before Bike
+  Log are unknown shows *insufficient information* until you add them. Change the 6,000 km in Settings →
+  Service intervals (all tires) or on a tire's page under Rules (one tire). Your existing tires get it
+  automatically; the database update keeps every rule and record. PHP web version: same reminder.
 - **Brand and model for parts and spares** (Dirk 2026-11-15: "where do i enter product?"). Add part and the
   part's Edit details now have **Brand** (Marke) and **Model** (Modell) boxes with suggestions: your own
   products first, then a list of common road bike products (Continental, Schwalbe, Pirelli, Vittoria, Shimano,

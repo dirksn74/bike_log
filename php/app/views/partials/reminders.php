@@ -20,7 +20,12 @@
     <p class="why"><?= h($r['text']) ?></p>
     <?php if (!empty($r['forecast']) && $r['status'] !== 'SNOOZED'): ?><p class="muted small"><?= h($r['forecast']) ?></p><?php endif; ?>
     <div class="rem-actions">
+      <?php if ($rule && $rule['trigger_kind'] === 'LIFETIME' && $c): ?>
+        <a class="btn small primary" href="<?= h(url('part_replace', ['id' => $c['id']])) ?>"><?= h(t('Replace')) ?></a>
+        <a class="btn small" href="<?= h(url('log', $logParams)) ?>"><?= h(t('Log inspection')) ?></a>
+      <?php else: ?>
       <a class="btn small primary" href="<?= h(url('log', $logParams)) ?>"><?= h(t('Log it')) ?></a>
+      <?php endif; ?>
       <?php if ($rule && $r['status'] !== 'OK'): ?>
         <details class="inline"><summary class="btn small"><?= h(t('Snooze')) ?></summary>
           <form method="post" action="<?= h(url('snooze')) ?>" class="row">

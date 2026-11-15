@@ -841,3 +841,19 @@ you disagree. Dates are 2026-10-24 unless noted.
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
+150. **Tires are replaced by their own total km: 6,000 km** (Dirk 2026-11-15: "we need to add tires to service
+    intervals. a tire lasts 6000km"). New rule kind **LIFETIME**: due when the part's own total km (km from
+    before, corrections and every ride on any wheel and bike, `usage.component_usage`) reach `interval_km`.
+    It is not an INTERVAL rule because nothing logged may reset it (an inspection is not a new tire); it ends
+    only when the tire leaves use (replaced, retired), and the new tire is a new part that starts at 0. A tire
+    that moves front ↔ rear keeps its km. Default rule `TIRE_REPLACE` for every tire: 6,000 km, reminder 500 km
+    before, origin DEFAULT (personal value in its notes), action TIRE_INSPECT (so the reminder offers "Log
+    inspection"; the main button is **Replace…**, which opens the part's Replace dialog). The explanation gives
+    the total, the limit, km left or over, km from before and uncertain km, and quotes the latest tire
+    inspection; it always says to replace sooner when worn, cut or cracked, because the km never mean the tire
+    is safe. Unknown earlier use (no km from before) shows **insufficient information** until it is past the
+    limit even as a minimum. Editable in Settings → Service intervals and per part (Rules). Python: migration
+    0024 rebuilds `service_rule` from its stored definition with only the trigger CHECK widened
+    (+ `ck_rule_lifetime`: interval_km required), every row kept with id/uuid, indexes and triggers put back;
+    the rule row itself is added at start by `ensure_reference_data`. PHP: migration 009 widens the ENUM and adds
+    the rule for every user (INSERT IGNORE), `Reminders::lifetime`.

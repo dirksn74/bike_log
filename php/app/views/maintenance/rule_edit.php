@@ -10,6 +10,12 @@
     <?= field('window_max_km', t('To ... km'), (string)$rule['window_max_km'], 'text', ['inputmode' => 'decimal', 'required' => true]) ?>
     <?= field('warn_km', t('Warn ... km before'), (string)$rule['warn_km'], 'text', ['inputmode' => 'decimal']) ?>
   </div>
+  <?php elseif ($rule['trigger_kind'] === 'LIFETIME'): ?>
+  <p class="muted"><?= h(t("Counts the part's own km on every wheel and bike, km from before included. Logging work does not reset it; a new part starts at 0.")) ?></p>
+  <div class="row">
+    <?= field('interval_km', t('Replace at ... km in total'), (string)$rule['interval_km'], 'text', ['inputmode' => 'decimal', 'required' => true]) ?>
+    <?= field('warn_km', t('Warn ... km before'), (string)$rule['warn_km'], 'text', ['inputmode' => 'decimal']) ?>
+  </div>
   <?php elseif ($rule['trigger_kind'] === 'PARENT_COUNT'): ?>
   <?= field('interval_count', t('Replace after ... {parts}', ['parts' => lc(Catalog::typePlural(Catalog::parentTypes((string)($rule['component_type'] ?? 'QUICK_LINK'))[0] ?? 'CHAIN'))]), (string)$rule['interval_count'], 'number', ['min' => 1, 'max' => 50, 'required' => true]) ?>
   <?php else: ?>
