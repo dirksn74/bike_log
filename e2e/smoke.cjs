@@ -1072,14 +1072,15 @@ async function bikeTab(page, name) {
   await page.locator('.toast').filter({ hasText: 'In use' }).waitFor()
   await page.getByRole('button', { name: 'Stop using' }).waitFor()
   check('shoes can be put in use (they count every ride)', true)
-  // a second identical part: same name is fine, it gets a number to tell them apart
+  // a second identical part: same name is fine, it is its own part (names are not unique, DECISIONS 145)
   await page.goto(BASE + '#/inventory')
   await page.getByRole('button', { name: 'Add part' }).click()
   await page.locator('.sheet').getByLabel('Type').selectOption('SHOES')
   await page.locator('.sheet').getByLabel('Name / label').fill('Test shoes')
   await sheetButton(page, 'Save')
-  const dupToast = await page.locator('.toast').filter({ hasText: 'Test shoes (2) added' }).innerText()
-  check('Add part: a second part with the same name is saved as "(2)"', /already have one with that name/.test(dupToast), dupToast)
+  await page.locator('.toast').filter({ hasText: 'Test shoes added' }).waitFor()
+  const sameName = await page.evaluate(async () => (await (await fetch('api/components')).json()).filter((c) => c.label === 'Test shoes').length)
+  check('Add part: a second part with the same name is saved as its own part', sameName === 2, `${sameName} parts named Test shoes`)
 
   // Cockpit (bar and stem as one part) with its properties (Dirk 2026-11-01)
   {

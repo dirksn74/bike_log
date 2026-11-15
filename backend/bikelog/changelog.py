@@ -275,6 +275,31 @@ def _after_flush(session: Session, _ctx_flush) -> None:
 event.listen(Session, "after_flush", _after_flush)
 
 
+def _nested_rows(session: Session, bike_id: int, limit: int) -> list[ChangeLog]:
+    """Installation rows of parts mounted on a part (a tire on a wheel) belong to the part, not the bike, so
+    they carry no bike id. The bike's log adds them when they happened while that part was on the bike
+    (Dirk 2026-11-15: a tire moved to the rear wheel and a tube replaced were missing). Matched by the
+    installation's own dates in the row text, so nothing stored has to change."""
+    from bikelog.services.inventory import nested_installations
+    by_comp: dict[int, list] = {}
+    for i, on_install, on_removal in nested_installations(session, bike_id):
+        by_comp.setdefault(i.component_id, []).append((i, on_install, on_removal))
+    if not by_comp:
+        return []
+
+    def belongs(c: ChangeLog) -> bool:
+        for i, on_install, on_removal in by_comp[c.component_id]:
+            if c.action == "INSTALLED" and on_install and (c.new_value or "").endswith(f" from {i.installed_at}"):
+                return True
+            if c.action == "REMOVED" and on_removal and i.removed_at and (c.new_value or "").startswith(f"on {i.removed_at}"):
+                return True
+        return c.action == "REINSTATED" or c.field in ("installation", "installed on", "removed on")
+    rows = session.scalars(select(ChangeLog).where(ChangeLog.bike_id.is_(None),
+                                                   ChangeLog.component_id.in_(list(by_comp)))
+                           .order_by(ChangeLog.id.desc()))
+    return [c for c in rows if belongs(c)][:limit]
+
+
 def entries(session: Session, *, bike_id: int | None = None, component_id: int | None = None,
             limit: int = 500) -> list[dict]:
     q = select(ChangeLog)
@@ -283,6 +308,9 @@ def entries(session: Session, *, bike_id: int | None = None, component_id: int |
     if component_id is not None:
         q = q.where(ChangeLog.component_id == component_id)
     q = q.order_by(ChangeLog.id.desc()).limit(limit)
+    found = list(session.scalars(q))
+    if bike_id is not None and component_id is None:
+        found = sorted(found + _nested_rows(session, bike_id, limit), key=lambda c: c.id, reverse=True)[:limit]
     labels = dict(session.execute(select(Component.id, Component.label)).all())
     bike_labels = {LABELS[f] for f in _BIKE_FIELDS}
 
@@ -295,4 +323,4 @@ def entries(session: Session, *, bike_id: int | None = None, component_id: int |
              "old_value": shown(c.field, c.old_value), "new_value": shown(c.field, c.new_value), "source": c.source,
              "who": tr(SOURCES.get(c.source, c.source)), "via": c.via,
              "component_id": c.component_id, "component": labels.get(c.component_id) if bike_id is not None else None}
-            for c in session.scalars(q)]
+            for c in found]

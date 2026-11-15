@@ -25,6 +25,12 @@ def status(session, comp, code, today):
     return next(r for r in m.component_status(session, comp, today) if r["rule_code"] == code)
 
 
+def rule_row(session, comp, code, today):
+    """The rule's own status, also when it is left out of the part's status (a known setup it does not fit)."""
+    rule = next(r for r in m.effective_rules(session, comp, include_disabled=True) if r.rule_code == code)
+    return m.rule_status(session, comp, rule, today)
+
+
 def in_queue(session, comp, code, today):
     return any(r["component_id"] == comp.id and r["rule_code"] == code for r in m.queue(session, today=today))
 
@@ -52,8 +58,10 @@ def test_sealant_reminder_only_for_tubeless_and_setup_moves_with_the_wheel(sessi
     inv.install(session, wheel.id, bike_id=b1.id, at="2026-05-01")
     inv.install(session, tire.id, parent_component_id=wheel.id, at="2026-05-01")
     today = date(2026, 8, 25)
-    st = status(session, tire, "TIRE_SEALANT", today)
+    st = rule_row(session, tire, "TIRE_SEALANT", today)
     assert st["status"] == "NOT_APPLICABLE" and "no setup of its own, so the default (inner tube" in st["explanation"]
+    # inner tube (known): not shown in the part's service status at all (Dirk 2026-11-15)
+    assert not any(r["rule_code"] == "TIRE_SEALANT" for r in m.component_status(session, tire, today))
     assert not in_queue(session, tire, "TIRE_SEALANT", today)
     with pytest.raises(DomainError):
         inv.update_component(session, tire.id, tire_setup="TUBELESS")   # set on the wheel, not the tire
@@ -72,7 +80,8 @@ def test_sealant_reminder_only_for_tubeless_and_setup_moves_with_the_wheel(sessi
     assert inv.tire_setup_of(session, tire)[0] == "TUBELESS"
     assert status(session, tire, "TIRE_SEALANT", today)["status"] == "OK"
     inv.update_component(session, wheel.id, tire_setup="TUBE")
-    assert status(session, tire, "TIRE_SEALANT", today)["status"] == "NOT_APPLICABLE"
+    assert rule_row(session, tire, "TIRE_SEALANT", today)["status"] == "NOT_APPLICABLE"
+    assert not any(r["rule_code"] == "TIRE_SEALANT" for r in m.component_status(session, tire, today))
     # the interval is configurable per part (months), like every rule
     inv.update_component(session, wheel.id, tire_setup="TUBELESS")
     m.set_component_rule(session, tire.id, rule_code="TIRE_SEALANT", interval_months=6)
@@ -232,3 +241,22 @@ def test_chain_rotation_change_shows_the_bike_name_not_its_id(session):
     session.flush()
     assert all(e["new_value"] == "Synapse" for e in entries(session, component_id=ch.id)
                if e["field"] == "chain rotation of bike")
+
+
+def test_sealant_rules_stay_visible_while_the_setup_is_unknown_and_listed_as_not_applying(session):
+    """A tire not on a wheel: setup unknown, so the row stays and says what to set. On an inner-tube wheel the
+    rule is kept (applies=False), so it comes back when the wheel goes tubeless (Dirk 2026-11-15)."""
+    loose = part(session, "TIRE", "Spare tire")
+    rule = next(r for r in m.effective_rules(session, loose) if r.rule_code == "TIRE_SEALANT")
+    row = next(r for r in m.component_status(session, loose) if r["rule_code"] == "TIRE_SEALANT")
+    assert row["status"] == "NOT_APPLICABLE" and "not on a wheel" in row["explanation"]
+    assert m.rule_applies(session, loose, rule)
+    b = bike(session)
+    wheel = part(session, "FRONT_WHEEL", "F")
+    inv.install(session, wheel.id, bike_id=b.id, at="2026-05-01")
+    inv.install(session, loose.id, parent_component_id=wheel.id, at="2026-05-01")
+    inv.update_component(session, wheel.id, tire_setup="TUBE")
+    assert not m.rule_applies(session, loose, rule)
+    inv.update_component(session, wheel.id, tire_setup="TUBELESS")
+    assert m.rule_applies(session, loose, rule)
+    assert any(r["rule_code"] == "TIRE_SEALANT" for r in m.component_status(session, loose))

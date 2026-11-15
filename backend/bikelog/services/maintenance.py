@@ -495,7 +495,8 @@ def rule_status(session: Session, comp: Component, rule: ServiceRule, today: dat
         return {**base, "status": "DISABLED", "explanation": tr("Rule disabled for this part.")}
     why_not = _setup_mismatch(session, rule, comp=comp)
     if why_not:
-        return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup, "explanation": why_not}
+        return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup, "explanation": why_not,
+                "setup_known": _setup_known(session, rule, comp=comp)}
     if rule.trigger == "CYCLE_WINDOW":
         res = _cycle_status(session, comp, rule, act_name)
     elif rule.trigger == "PARENT_COUNT":
@@ -523,7 +524,8 @@ def bike_rule_status(session: Session, bike: Bike, rule: ServiceRule, today: dat
         return {**base, "status": "DISABLED", "explanation": tr("Rule switched off for {name}.", name=bike.name)}
     why_not = _setup_mismatch(session, rule, bike=bike)
     if why_not:
-        return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup, "explanation": why_not}
+        return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup, "explanation": why_not,
+                "setup_known": _setup_known(session, rule, bike=bike)}
     subj = _Subject(session, bike=bike)
     res = _interval_status(subj, rule, act_name, today)
     if rule.action_code == "TORQUE_CHECK":
@@ -531,6 +533,34 @@ def bike_rule_status(session: Session, bike: Bike, rule: ServiceRule, today: dat
     res = {**base, **res}
     _apply_snooze(session, rule, res, today, bike_id=bike.id)
     return res
+
+
+def _setup_known(session: Session, rule: ServiceRule, *, comp: Component | None = None,
+                 bike: Bike | None = None) -> bool:
+    """Whether the setup a rule depends on is known (the wheel is set to inner tube, or the bike's shifting is
+    known). A rule that does not fit a KNOWN setup is left out of the service status (Dirk 2026-11-15: no
+    sealant reminders on inner-tube wheels); with the setup unknown it stays, so the reason says what to set."""
+    if not rule.requires_setup:
+        return True
+    if rule.requires_setup in SHIFTING_TYPES:
+        if bike is None and comp is not None:
+            loc = location(session, comp)
+            bike = session.get(Bike, loc["bike_id"]) if loc.get("bike_id") else None
+        return bike is not None and shifting_of(session, bike) is not None
+    if comp is None:
+        return False
+    setup, wheel = tire_setup_of(session, comp)
+    return wheel is not None and (setup or settings.get(session, "default_tire_setup")) is not None
+
+
+def rule_applies(session: Session, comp: Component, rule: ServiceRule) -> bool:
+    """False for a setup-dependent rule that does not fit the part's known setup (a sealant rule on a tire on
+    an inner-tube wheel). The rule itself is kept: it applies again when the wheel goes tubeless."""
+    return not (_setup_mismatch(session, rule, comp=comp) and _setup_known(session, rule, comp=comp))
+
+
+def _hidden_setup(row: dict) -> bool:
+    return row["status"] == "NOT_APPLICABLE" and bool(row.get("setup_known"))
 
 
 def _setup_mismatch(session: Session, rule: ServiceRule, *, comp: Component | None = None,
@@ -1127,7 +1157,8 @@ def _event_based_items(session: Session, comp: Component) -> list[dict]:
 
 
 def component_status(session: Session, comp: Component, today: date | None = None) -> list[dict]:
-    rows = [rule_status(session, comp, r, today) for r in effective_rules(session, comp, include_disabled=True)]
+    rows = [r for r in (rule_status(session, comp, x, today) for x in effective_rules(session, comp, include_disabled=True))
+            if not _hidden_setup(r)]
     rows += attention_items(session, comp)
     rows += _event_based_items(session, comp)
     return sorted(rows, key=lambda r: SEVERITY[r["status"]])
@@ -1159,7 +1190,8 @@ def bike_attention_items(session: Session, bike: Bike) -> list[dict]:
 
 
 def bike_status(session: Session, bike: Bike, today: date | None = None) -> list[dict]:
-    rows = [bike_rule_status(session, bike, r, today) for r in effective_bike_rules(session, bike, include_disabled=True)]
+    rows = [r for r in (bike_rule_status(session, bike, x, today) for x in effective_bike_rules(session, bike, include_disabled=True))
+            if not _hidden_setup(r)]
     rows += bike_attention_items(session, bike)
     return sorted(rows, key=lambda r: SEVERITY[r["status"]])
 
