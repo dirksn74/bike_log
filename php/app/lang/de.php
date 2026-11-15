@@ -2050,4 +2050,8 @@ return [
     '{n} × {name} added as separate spares.' => '{n} × {name} als einzelne Ersatzteile angelegt.',
     '{n} × {name}' => '{n} × {name}',
     'Show each one' => 'Jedes einzeln zeigen',
+    // brand and model suggestions (DECISIONS 149)
+    'e.g. Continental' => 'z. B. Continental',
+    'e.g. Grand Prix 5000 S TR' => 'z. B. Grand Prix 5000 S TR',
+    'Pick from the list or type your own. Bike Log\'s list of common products is not checked against the maker.' => 'Aus der Liste wählen oder selbst eintippen. Die Bike-Log-Liste gängiger Produkte ist nicht mit dem Hersteller abgeglichen.',
 ];

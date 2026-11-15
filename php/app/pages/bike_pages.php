@@ -281,7 +281,38 @@ function page_part_edit(): void
     }
     $bikes = Db::all("SELECT id, name FROM bikes WHERE user_id = ? AND status = 'ACTIVE' ORDER BY name", [$uid]);
     View::render('parts/edit', ['c' => $c, 'bikes' => $bikes, 'preBike' => get_int('bike'),
-        'parents' => parent_choices($uid, $c['component_type'])], $id ? t('Edit {name}', ['name' => Domain::componentName($c)]) : t('Add a part'), 'parts');
+        'parents' => parent_choices($uid, $c['component_type']), 'brandChoices' => brand_model_choices($uid, $id ? $c['component_type'] : null)], $id ? t('Edit {name}', ['name' => Domain::componentName($c)]) : t('Add a part'), 'parts');
+}
+
+/**
+ * Suggestions for the Maker and Model boxes (DECISIONS 149): what you typed before, then Bike Log's list
+ * of common road bike products (catalog.json "common_products", unverified). Free typing always works.
+ * $type null (new part, type not chosen yet) = every type.
+ */
+function brand_model_choices(int $uid, ?string $type): array
+{
+    $common = Catalog::rawData('common_products');
+    $rows = $type === null ? array_merge([], ...array_values($common)) : ($common[$type] ?? []);
+    $sql = 'SELECT DISTINCT maker, model FROM components WHERE user_id = ? AND (maker IS NOT NULL OR model IS NOT NULL)';
+    $p = [$uid];
+    if ($type !== null) {
+        $sql .= ' AND component_type = ?';
+        $p[] = $type;
+    }
+    $own = Db::all($sql, $p);
+    $makers = [];
+    $models = [];
+    foreach (array_merge($own, $rows) as $r) {
+        if (!empty($r['maker'])) {
+            $makers[mb_strtolower($r['maker'])] ??= $r['maker'];
+        }
+        if (!empty($r['model'])) {
+            $models[mb_strtolower($r['model'])] ??= $r['model'];
+        }
+    }
+    natcasesort($makers);
+    natcasesort($models);
+    return ['makers' => array_values($makers), 'models' => array_values($models)];
 }
 
 /** Parts that this type can hang on (wheels for a tire ...), as id => "Name (on Bike)". */

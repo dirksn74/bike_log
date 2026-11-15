@@ -143,3 +143,12 @@ $o->get('r=changes');
 check(!str_contains($o->body, 'Saddle Fizik'), 'other user does not see my change log');
 $o->post('r=product_import', ['do' => 'import', 'token' => ['0123456789abcdef0123456789abcdef']]);
 check(!str_contains($o->body, 'Something went wrong'), 'unknown token handled');
+
+// ------------------------------------------------------------------ brand + model suggestions (DECISIONS 149)
+Db::insert('components', ['user_id' => $uid, 'component_type' => 'TIRE', 'label' => 'My tire', 'maker' => 'Rene Herse', 'model' => 'Bon Jon Pass',
+    'prior_usage' => 'NEW', 'status' => 'ACTIVE', 'created_at' => now_utc(), 'updated_at' => now_utc()]);
+$bc = brand_model_choices($uid, 'TIRE');
+check(in_array('Continental', $bc['makers'], true) && in_array('Rene Herse', $bc['makers'], true), 'brand list: common brands plus your own');
+check(in_array('Grand Prix 5000 S TR', $bc['models'], true) && in_array('Bon Jon Pass', $bc['models'], true), 'model list: common tire models plus your own');
+check(!in_array('X11 EL', $bc['models'], true), 'model list of a tire leaves out chains');
+check(in_array('X11 EL', brand_model_choices($uid, null)['models'], true), 'a new part (type not chosen) gets every model');

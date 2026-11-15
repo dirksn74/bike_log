@@ -358,6 +358,8 @@ def update_component(session: Session, component_id: int, **fields) -> Component
     if "specs" in fields:
         comp.specs_json = json.dumps(fields["specs"] or {})
     session.flush()      # part names need not be unique (0023), so a rename cannot clash
+    if "product_id" in fields:
+        session.expire(comp, ["product"])     # load the new product, not the one read before
     return comp
 
 

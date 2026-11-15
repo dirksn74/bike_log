@@ -12,6 +12,7 @@ import PartLife from '../components/PartLife'
 import PartTree from '../components/PartTree'
 import { RepairsCard, ReturnForm, SendOutForm, type IncidentPick } from '../components/ServiceOrders'
 import ProductImport from '../components/ProductImport'
+import ProductPicker from '../components/ProductPicker'
 import ShopPicker from '../components/ShopPicker'
 import { PropertiesCard, SpecInputs } from '../components/Properties'
 import { specsFrom } from '../specs'
@@ -53,7 +54,7 @@ const GROUPSET = 'GROUPSET'
 // bike in one step: "Where does it go?" lists only that bike and is required.
 export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeId }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void; bikeId?: number }) {
   const { meta } = useApp()
-  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', mark: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '', qty: '1', price_total: false })
+  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', mark: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '', qty: '1', price_total: false, maker: '', model: '' })
   const [props, setProps] = useState<Record<string, string>>({})
   const [propsOpen, setPropsOpen] = useState(presetType === 'COCKPIT' || presetType === 'WHEELSET')
   const [mount, setMount] = useState<MountTarget | null>(null)
@@ -72,6 +73,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       if (price !== null) body.price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
       if (f.shop.trim()) body.shop = f.shop.trim()
+      if (f.maker.trim() || f.model.trim()) Object.assign(body, { product_maker: f.maker.trim() || null, product_model: f.model.trim() || null })
       if (qty > 1) Object.assign(body, { quantity: qty, price_is_total: f.price_total })
       const specs = specsFrom(specFields, props)
       if (Object.keys(specs).length) body.specs = specs
@@ -99,7 +101,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       <select
         value={f.component_type}
         onChange={(e) => {
-          setF({ ...f, component_type: e.target.value, install_slot: '' })
+          setF({ ...f, component_type: e.target.value, install_slot: '', maker: '', model: '' })
           setProps({})
           setPropsOpen(e.target.value === 'COCKPIT' || e.target.value === 'WHEELSET')
           setMount(null)
@@ -135,6 +137,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
           </Field>}
         </div>
       </div>
+      <ProductPicker componentType={f.component_type} maker={f.maker} model={f.model} name={f.label} onChange={(maker, model) => setF({ ...f, maker, model, label: !f.label.trim() || f.label === [f.maker, f.model].filter(Boolean).join(' ') ? [maker, model].filter(Boolean).join(' ') : f.label })} />
       {canMany && (
         <div className="row">
           <Field label={tr('How many?')} hint={qtyBad ? tr('Enter a whole number from 1 to 50') : qty > 1 ? tr('Adds {n} separate spares; each one keeps its own km and history.', { n: qty }) : tr('Bought several? Enter the number to add them all at once.')}>
@@ -1983,14 +1986,17 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
 }
 
 function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => void }) {
-  const [f, setF] = useState({ label: comp.name ?? comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', warranty_until: comp.warranty_until ?? '', notes: comp.notes ?? '', shop: comp.shop ?? '' })
+  const [f, setF] = useState({ label: comp.name ?? comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', warranty_until: comp.warranty_until ?? '', notes: comp.notes ?? '', shop: comp.shop ?? '', maker: comp.product_maker ?? '', model: comp.product_model ?? '' })
   const [err, setErr] = useState<string | null>(null)
   async function save() {
     setErr(null)
     const price = toCents(f.price)
     if (Number.isNaN(price)) return setErr(tr('Price: enter an amount such as 49,90'))
+    // brand and model only when changed, so saving other details never swaps the product row
+    const changed = f.maker.trim() !== (comp.product_maker ?? '').trim() || f.model.trim() !== (comp.product_model ?? '').trim()
+    const productChange = changed ? { product_maker: f.maker.trim() || null, product_model: f.model.trim() || null } : {}
     try {
-      await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, warranty_until: f.warranty_until || null, notes: f.notes || null, shop: f.shop.trim() || null })
+      await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, warranty_until: f.warranty_until || null, notes: f.notes || null, shop: f.shop.trim() || null, ...productChange })
       onDone()
     } catch (e) {
       setErr((e as Error).message)
@@ -2001,6 +2007,7 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
       <Field label={tr('Name / label')} hint={f.mark.trim() ? tr('Shown as "{trim} [{trim2}]"', { trim: f.label.trim(), trim2: f.mark.trim() }) : undefined}>
         <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
       </Field>
+      <ProductPicker componentType={comp.component_type} maker={f.maker} model={f.model} name={f.label} onChange={(maker, model) => setF({ ...f, maker, model })} />
       <div className="row">
         {comp.bundle ? (
           <Field label={tr('Price paid')} hint={tr('Bought in the bundle "{name}": the bundle carries the price (change it on the bike page under "Bought as a bundle").', { name: comp.bundle.name })}>

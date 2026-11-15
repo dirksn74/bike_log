@@ -221,6 +221,7 @@
  "Enter a name": "Gib einen Namen ein",
  "Enter either one price for the whole bundle or prices per part, not both": "Gib entweder einen Preis für das ganze Paket oder Preise pro Teil ein, nicht beides",
  "Enter the Client Secret": "Gib das Client Secret ein",
+ "Enter the model too (the brand alone is not a product)": "Gib auch das Modell ein (die Marke allein ist kein Produkt)",
  "Every 3 months and once after the first ride on a newly fitted part (personal value). Torque values come from each product's spec (torque_nm) where you entered it.": "Alle 3 Monate und einmal nach der ersten Fahrt mit einem neu montierten Teil (persönlicher Wert). Drehmomente stammen aus den Produktdaten (torque_nm), sofern eingetragen.",
  "Every part on the bike has a 'km from before' value dated after this ride, which already includes it.": "Jedes Teil am Rad hat einen Wert „km von vorher“, der nach dieser Fahrt datiert ist und sie schon enthält.",
  "Favero Assioma PRO RS-1: at least 60 h per charge (up to about 160 h after a firmware update). 80 h is your choice (2026-10-26). Source: retailer listings quoting Favero, not verified.": "Favero Assioma PRO RS-1: mindestens 60 h pro Ladung (bis etwa 160 h nach einem Firmware-Update). 80 h ist deine Wahl (2026-10-26). Quelle: Händlerangaben mit Bezug auf Favero, nicht geprüft.",

@@ -340,6 +340,19 @@ into one line "N × name" with a folded "Show each one" (#1 … #N links): front
 pages/Inventory.tsx (key: type, label, product, state, readiness, place, km, compatibility), PHP
 `group_identical` / `group_name_html` in app/web.php (spares/index.php, parts/list.php). Display only.
 
+**Brand and model of a part** (DECISIONS 149). Stored only on `product` (maker, model); a part points to it
+with `product_id`. `bikelog/common_products.py` = pick list per type (+ aliases for suggestions, MAKER_ALIASES
+such as Conti), unverified, never written until chosen. `services/product_pick.py`: `choices` (own products
+first, then the list), `resolve` (reuse same type+brand+model case-insensitively, else create with
+spec_source COMMON_SOURCE or "manual"; model required), `set_product`, `suggest`/`suggest_for` (score from the
+name), `unlinked`, `link_many`. API: POST/PATCH /api/components accept `product_maker` + `product_model`
+(PATCH: both empty clears; ignored when `product_id` is sent); component summary has `product_maker`,
+`product_model`; GET /api/product-choices, /api/product-suggest, /api/components-without-product, POST
+/api/components-without-product/link. UI: components/ProductPicker.tsx (in ComponentForm and DetailsForm;
+Edit sends it only when changed), components/ProductLinker.tsx (top of Part life). PHP keeps maker/model on
+`components` and offers datalists from catalog.json `common_products` (`brand_model_choices`). To extend the
+list edit common_products.py, then run scripts/export_php_catalog.py.
+
 **Breadcrumbs (`frontend/src/crumbs.ts`, `components/Breadcrumbs.tsx`, DECISIONS 104).** Rendered by
 App above the routes on every non-main page. `nextTrail` keeps the way you came (main item resets, a
 page already in the trail cuts it, direct opens get the page's home trail). A new detail page must call

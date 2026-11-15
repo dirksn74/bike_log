@@ -8,8 +8,10 @@
   <?php endif; ?>
   <?= field('label', t('Name'), old('label', (string)$c['label']), 'text', ['maxlength' => 160, 'data-help' => t('Optional. Empty = maker + model, e.g. "KMC X12".')]) ?>
   <div class="row">
-    <?= field('maker', t('Maker'), old('maker', (string)$c['maker'])) ?>
-    <?= field('model', t('Model'), old('model', (string)$c['model'])) ?>
+    <?= field('maker', t('Maker'), old('maker', (string)$c['maker']), 'text', ['list' => 'maker-choices', 'placeholder' => t('e.g. Continental')]) ?>
+    <?= field('model', t('Model'), old('model', (string)$c['model']), 'text', ['list' => 'model-choices', 'placeholder' => t('e.g. Grand Prix 5000 S TR'), 'data-help' => t('Pick from the list or type your own. Bike Log\'s list of common products is not checked against the maker.')]) ?>
+    <datalist id="maker-choices"><?php foreach ($brandChoices['makers'] ?? [] as $m): ?><option value="<?= h($m) ?>"><?php endforeach; ?></datalist>
+    <datalist id="model-choices"><?php foreach ($brandChoices['models'] ?? [] as $m): ?><option value="<?= h($m) ?>"><?php endforeach; ?></datalist>
     <?= field('mark', t('Mark'), old('mark', (string)$c['mark']), 'text', ['maxlength' => 80, 'data-help' => t('To tell identical parts apart, e.g. "A" or "1 dot".')]) ?>
   </div>
   <?php if ($isNew): ?>

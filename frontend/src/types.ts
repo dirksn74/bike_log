@@ -159,6 +159,8 @@ export interface ComponentSummary {
   category: string | null
   product: string | null
   product_id: number | null
+  product_maker?: string | null
+  product_model?: string | null
   prior_usage: string
   status: string
   purchase_date: string | null

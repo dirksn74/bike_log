@@ -12497,5 +12497,1043 @@
     "example": null
    }
   ]
+ },
+ "common_products": {
+  "TIRE": [
+   {
+    "maker": "Continental",
+    "model": "Grand Prix 5000 S TR"
+   },
+   {
+    "maker": "Continental",
+    "model": "Grand Prix 5000"
+   },
+   {
+    "maker": "Continental",
+    "model": "Grand Prix 5000 AS TR"
+   },
+   {
+    "maker": "Continental",
+    "model": "Grand Prix 4 Season"
+   },
+   {
+    "maker": "Continental",
+    "model": "Grand Prix 4000 S II"
+   },
+   {
+    "maker": "Continental",
+    "model": "Aero 111"
+   },
+   {
+    "maker": "Continental",
+    "model": "Ultra Sport III"
+   },
+   {
+    "maker": "Continental",
+    "model": "Gatorskin"
+   },
+   {
+    "maker": "Schwalbe",
+    "model": "Pro One TLE"
+   },
+   {
+    "maker": "Schwalbe",
+    "model": "One"
+   },
+   {
+    "maker": "Schwalbe",
+    "model": "Durano Plus"
+   },
+   {
+    "maker": "Schwalbe",
+    "model": "Lugano II"
+   },
+   {
+    "maker": "Pirelli",
+    "model": "P Zero Race"
+   },
+   {
+    "maker": "Pirelli",
+    "model": "P Zero Race TLR"
+   },
+   {
+    "maker": "Pirelli",
+    "model": "P Zero Road"
+   },
+   {
+    "maker": "Pirelli",
+    "model": "Cinturato Velo"
+   },
+   {
+    "maker": "Vittoria",
+    "model": "Corsa Pro"
+   },
+   {
+    "maker": "Vittoria",
+    "model": "Corsa N.EXT"
+   },
+   {
+    "maker": "Vittoria",
+    "model": "Rubino Pro"
+   },
+   {
+    "maker": "Vittoria",
+    "model": "Zaffiro Pro"
+   },
+   {
+    "maker": "Michelin",
+    "model": "Power Cup"
+   },
+   {
+    "maker": "Michelin",
+    "model": "Power Road"
+   },
+   {
+    "maker": "Michelin",
+    "model": "Pro4"
+   },
+   {
+    "maker": "Specialized",
+    "model": "S-Works Turbo"
+   },
+   {
+    "maker": "Specialized",
+    "model": "S-Works Mondo"
+   },
+   {
+    "maker": "Goodyear",
+    "model": "Eagle F1"
+   },
+   {
+    "maker": "Panaracer",
+    "model": "Agilest"
+   },
+   {
+    "maker": "Panaracer",
+    "model": "Gravelking"
+   }
+  ],
+  "INNER_TUBE": [
+   {
+    "maker": "Continental",
+    "model": "Race 28"
+   },
+   {
+    "maker": "Continental",
+    "model": "Race 28 Supersonic"
+   },
+   {
+    "maker": "Schwalbe",
+    "model": "SV15"
+   },
+   {
+    "maker": "Schwalbe",
+    "model": "Aerothan"
+   },
+   {
+    "maker": "Michelin",
+    "model": "Air Comp Latex"
+   },
+   {
+    "maker": "Michelin",
+    "model": "Air Stop"
+   },
+   {
+    "maker": "Vittoria",
+    "model": "Competition Latex"
+   },
+   {
+    "maker": "Pirelli",
+    "model": "P Zero SmarTUBE"
+   },
+   {
+    "maker": "Tubolito",
+    "model": "Tubo Road"
+   },
+   {
+    "maker": "Revoloop",
+    "model": "Race Ultra"
+   },
+   {
+    "maker": "Specialized",
+    "model": "Turbo Ultralight TPU"
+   },
+   {
+    "maker": "Decathlon",
+    "model": "Van Rysel TPU"
+   }
+  ],
+  "CHAIN": [
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace CN-M9100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace CN-HG901-11"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra CN-M8100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra CN-HG701-11"
+   },
+   {
+    "maker": "Shimano",
+    "model": "105 CN-M7100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "105 CN-HG601-11"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Red Flattop"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Force Flattop"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Rival Flattop"
+   },
+   {
+    "maker": "SRAM",
+    "model": "PC-1170"
+   },
+   {
+    "maker": "Campagnolo",
+    "model": "Record 12"
+   },
+   {
+    "maker": "Campagnolo",
+    "model": "Chorus 12"
+   },
+   {
+    "maker": "KMC",
+    "model": "X12"
+   },
+   {
+    "maker": "KMC",
+    "model": "X11"
+   },
+   {
+    "maker": "KMC",
+    "model": "X11 EL"
+   },
+   {
+    "maker": "YBN",
+    "model": "SLA-H12"
+   },
+   {
+    "maker": "Wippermann",
+    "model": "Connex 11SX"
+   },
+   {
+    "maker": "Wippermann",
+    "model": "Connex 12SX"
+   }
+  ],
+  "QUICK_LINK": [
+   {
+    "maker": "Wippermann",
+    "model": "Connex Link 11s"
+   },
+   {
+    "maker": "Wippermann",
+    "model": "Connex Link 12s"
+   },
+   {
+    "maker": "Shimano",
+    "model": "SM-CN910-12 Quick Link"
+   },
+   {
+    "maker": "Shimano",
+    "model": "SM-CN900-11 Quick Link"
+   },
+   {
+    "maker": "SRAM",
+    "model": "PowerLock 11"
+   },
+   {
+    "maker": "SRAM",
+    "model": "PowerLock Flattop"
+   },
+   {
+    "maker": "KMC",
+    "model": "MissingLink 11"
+   },
+   {
+    "maker": "KMC",
+    "model": "MissingLink 12"
+   }
+  ],
+  "CASSETTE": [
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace CS-R9200"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace CS-R9100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra CS-R8100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra CS-R8000"
+   },
+   {
+    "maker": "Shimano",
+    "model": "105 CS-R7100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "105 CS-R7000"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Red XG-1290"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Force XG-1270"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Rival XG-1250"
+   },
+   {
+    "maker": "Campagnolo",
+    "model": "Record 12"
+   },
+   {
+    "maker": "Campagnolo",
+    "model": "Chorus 12"
+   }
+  ],
+  "BRAKE_PADS": [
+   {
+    "maker": "Shimano",
+    "model": "L05A-RF Resin"
+   },
+   {
+    "maker": "Shimano",
+    "model": "L04C-MF Metal"
+   },
+   {
+    "maker": "Shimano",
+    "model": "L03A Resin"
+   },
+   {
+    "maker": "Shimano",
+    "model": "K05S-RX Resin"
+   },
+   {
+    "maker": "Shimano",
+    "model": "K04Ti-MX Metal"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Road Organic"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Road Sintered"
+   },
+   {
+    "maker": "SwissStop",
+    "model": "Disc 34 RS"
+   },
+   {
+    "maker": "SwissStop",
+    "model": "Disc 34 E"
+   },
+   {
+    "maker": "Kool-Stop",
+    "model": "D635 Organic"
+   },
+   {
+    "maker": "Galfer",
+    "model": "FD502 Road"
+   },
+   {
+    "maker": "Campagnolo",
+    "model": "DB-310"
+   }
+  ],
+  "BRAKE_ROTOR": [
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace RT-CL900"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra RT-CL800"
+   },
+   {
+    "maker": "Shimano",
+    "model": "RT-MT800"
+   },
+   {
+    "maker": "Shimano",
+    "model": "RT-MT900"
+   },
+   {
+    "maker": "Shimano",
+    "model": "RT-CL700"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Paceline"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Centerline XR"
+   },
+   {
+    "maker": "SwissStop",
+    "model": "Catalyst Pro"
+   },
+   {
+    "maker": "Campagnolo",
+    "model": "Disc Brake Rotor AFS"
+   }
+  ],
+  "BAR_TAPE": [
+   {
+    "maker": "Supacaz",
+    "model": "Super Sticky Kush"
+   },
+   {
+    "maker": "Lizard Skins",
+    "model": "DSP 2.5"
+   },
+   {
+    "maker": "Lizard Skins",
+    "model": "DSP 3.2"
+   },
+   {
+    "maker": "Fizik",
+    "model": "Vento Microtex Tacky"
+   },
+   {
+    "maker": "Fizik",
+    "model": "Tempo Microtex"
+   },
+   {
+    "maker": "Specialized",
+    "model": "S-Wrap"
+   },
+   {
+    "maker": "PRO",
+    "model": "Sport Control"
+   },
+   {
+    "maker": "Zipp",
+    "model": "Service Course CX"
+   }
+  ],
+  "CLEATS": [
+   {
+    "maker": "Look",
+    "model": "Keo Grip Red"
+   },
+   {
+    "maker": "Look",
+    "model": "Keo Grip Grey"
+   },
+   {
+    "maker": "Look",
+    "model": "Keo Grip Black"
+   },
+   {
+    "maker": "Shimano",
+    "model": "SM-SH12 Yellow"
+   },
+   {
+    "maker": "Shimano",
+    "model": "SM-SH11 Red"
+   },
+   {
+    "maker": "Shimano",
+    "model": "SM-SH10 Red fixed"
+   },
+   {
+    "maker": "Favero",
+    "model": "Assioma cleats (Look Keo)"
+   },
+   {
+    "maker": "Time",
+    "model": "Iclic"
+   },
+   {
+    "maker": "Speedplay",
+    "model": "Zero Aero walkable"
+   }
+  ],
+  "PEDALS": [
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace PD-R9100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra PD-R8000"
+   },
+   {
+    "maker": "Shimano",
+    "model": "105 PD-R7000"
+   },
+   {
+    "maker": "Look",
+    "model": "Keo Blade Carbon"
+   },
+   {
+    "maker": "Look",
+    "model": "Keo 2 Max"
+   },
+   {
+    "maker": "Time",
+    "model": "XPro 12"
+   },
+   {
+    "maker": "Wahoo",
+    "model": "Speedplay Zero"
+   }
+  ],
+  "POWER_METER_PEDALS": [
+   {
+    "maker": "Favero",
+    "model": "Assioma Pro RS-1"
+   },
+   {
+    "maker": "Favero",
+    "model": "Assioma Pro RS-2"
+   },
+   {
+    "maker": "Favero",
+    "model": "Assioma Duo"
+   },
+   {
+    "maker": "Favero",
+    "model": "Assioma Uno"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Rally RS200"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Rally RS100"
+   },
+   {
+    "maker": "Look",
+    "model": "Keo Blade Power"
+   },
+   {
+    "maker": "Wahoo",
+    "model": "Powrlink Zero"
+   },
+   {
+    "maker": "SRM",
+    "model": "X-Power"
+   }
+  ],
+  "SENSOR": [
+   {
+    "maker": "Magene",
+    "model": "S3+ speed/cadence"
+   },
+   {
+    "maker": "Wahoo",
+    "model": "RPM Speed"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Speed Sensor 2"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Cadence Sensor 2"
+   },
+   {
+    "maker": "Garmin",
+    "model": "HRM-Pro Plus"
+   }
+  ],
+  "BIKE_COMPUTER": [
+   {
+    "maker": "Garmin",
+    "model": "Edge 1050"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Edge 1040"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Edge 840"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Edge 540"
+   },
+   {
+    "maker": "Wahoo",
+    "model": "Elemnt Roam"
+   },
+   {
+    "maker": "Wahoo",
+    "model": "Elemnt Bolt"
+   },
+   {
+    "maker": "Hammerhead",
+    "model": "Karoo"
+   }
+  ],
+  "RADAR": [
+   {
+    "maker": "Garmin",
+    "model": "Varia RTL515"
+   },
+   {
+    "maker": "Garmin",
+    "model": "Varia RCT715"
+   },
+   {
+    "maker": "Magene",
+    "model": "L508"
+   }
+  ],
+  "BATTERY": [
+   {
+    "maker": "Shimano",
+    "model": "BT-DN300"
+   },
+   {
+    "maker": "Shimano",
+    "model": "BT-DN110"
+   },
+   {
+    "maker": "SRAM",
+    "model": "AXS battery"
+   }
+  ],
+  "BOTTOM_BRACKET": [
+   {
+    "maker": "Shimano",
+    "model": "SM-BBR60"
+   },
+   {
+    "maker": "Shimano",
+    "model": "BB-RS500"
+   },
+   {
+    "maker": "Shimano",
+    "model": "BB72-41B"
+   },
+   {
+    "maker": "Shimano",
+    "model": "BB92-41B"
+   },
+   {
+    "maker": "CeramicSpeed",
+    "model": "BB"
+   },
+   {
+    "maker": "CEMA",
+    "model": "Interlock"
+   },
+   {
+    "maker": "Wheels Manufacturing",
+    "model": "BB86 to Shimano"
+   },
+   {
+    "maker": "SRAM",
+    "model": "DUB BB"
+   }
+  ],
+  "PULLEY_WHEEL": [
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace RD-R9250 pulley set"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra RD-R8150 pulley set"
+   },
+   {
+    "maker": "CeramicSpeed",
+    "model": "OSPW"
+   },
+   {
+    "maker": "Kogel",
+    "model": "Kolossos"
+   }
+  ],
+  "DERAILLEUR_HANGER": [
+   {
+    "maker": "Pilo",
+    "model": "Replacement hanger"
+   },
+   {
+    "maker": "Wheels Manufacturing",
+    "model": "Replacement hanger"
+   },
+   {
+    "maker": "SRAM",
+    "model": "UDH"
+   }
+  ],
+  "HEADSET": [
+   {
+    "maker": "Cane Creek",
+    "model": "40 series"
+   },
+   {
+    "maker": "Cane Creek",
+    "model": "110 series"
+   },
+   {
+    "maker": "FSA",
+    "model": "Orbit"
+   },
+   {
+    "maker": "Chris King",
+    "model": "InSet"
+   }
+  ],
+  "SADDLE": [
+   {
+    "maker": "Fizik",
+    "model": "Antares Versus Evo"
+   },
+   {
+    "maker": "Fizik",
+    "model": "Argo Vento"
+   },
+   {
+    "maker": "Specialized",
+    "model": "Power"
+   },
+   {
+    "maker": "Specialized",
+    "model": "Romin Evo"
+   },
+   {
+    "maker": "Prologo",
+    "model": "Scratch M5"
+   },
+   {
+    "maker": "Selle Italia",
+    "model": "SLR Boost"
+   },
+   {
+    "maker": "Selle Italia",
+    "model": "Flite"
+   },
+   {
+    "maker": "SMP",
+    "model": "Dynamic"
+   },
+   {
+    "maker": "Ergon",
+    "model": "SR Pro"
+   }
+  ],
+  "HANDLEBAR": [
+   {
+    "maker": "Zipp",
+    "model": "Service Course SL-70"
+   },
+   {
+    "maker": "Ritchey",
+    "model": "WCS Streem"
+   },
+   {
+    "maker": "PRO",
+    "model": "Vibe"
+   },
+   {
+    "maker": "Deda",
+    "model": "Zero100"
+   }
+  ],
+  "STEM": [
+   {
+    "maker": "Zipp",
+    "model": "Service Course SL"
+   },
+   {
+    "maker": "Ritchey",
+    "model": "WCS C220"
+   },
+   {
+    "maker": "PRO",
+    "model": "Vibe"
+   }
+  ],
+  "SEATPOST": [
+   {
+    "maker": "Ritchey",
+    "model": "WCS Carbon"
+   },
+   {
+    "maker": "Zipp",
+    "model": "Service Course SL"
+   },
+   {
+    "maker": "PRO",
+    "model": "Discover"
+   }
+  ],
+  "WHEELSET": [
+   {
+    "maker": "DT Swiss",
+    "model": "ARC 1400 Dicut"
+   },
+   {
+    "maker": "DT Swiss",
+    "model": "ERC 1400 Dicut"
+   },
+   {
+    "maker": "DT Swiss",
+    "model": "PR 1600 Spline"
+   },
+   {
+    "maker": "Zipp",
+    "model": "303 Firecrest"
+   },
+   {
+    "maker": "Zipp",
+    "model": "404 Firecrest"
+   },
+   {
+    "maker": "Mavic",
+    "model": "Ksyrium SL Disc"
+   },
+   {
+    "maker": "Fulcrum",
+    "model": "Racing 3 DB"
+   },
+   {
+    "maker": "Fulcrum",
+    "model": "Racing Zero"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace WH-R9270"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra WH-R8170"
+   },
+   {
+    "maker": "Hunt",
+    "model": "Aerodynamicist"
+   },
+   {
+    "maker": "Roval",
+    "model": "Rapide CLX"
+   },
+   {
+    "maker": "Roval",
+    "model": "Alpinist CLX"
+   }
+  ],
+  "FRONT_WHEEL": [
+   {
+    "maker": "DT Swiss",
+    "model": "ARC 1400 Dicut"
+   },
+   {
+    "maker": "DT Swiss",
+    "model": "ERC 1400 Dicut"
+   },
+   {
+    "maker": "DT Swiss",
+    "model": "PR 1600 Spline"
+   },
+   {
+    "maker": "Zipp",
+    "model": "303 Firecrest"
+   },
+   {
+    "maker": "Zipp",
+    "model": "404 Firecrest"
+   },
+   {
+    "maker": "Mavic",
+    "model": "Ksyrium SL Disc"
+   },
+   {
+    "maker": "Fulcrum",
+    "model": "Racing 3 DB"
+   },
+   {
+    "maker": "Fulcrum",
+    "model": "Racing Zero"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace WH-R9270"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra WH-R8170"
+   },
+   {
+    "maker": "Hunt",
+    "model": "Aerodynamicist"
+   },
+   {
+    "maker": "Roval",
+    "model": "Rapide CLX"
+   },
+   {
+    "maker": "Roval",
+    "model": "Alpinist CLX"
+   }
+  ],
+  "REAR_WHEEL": [
+   {
+    "maker": "DT Swiss",
+    "model": "ARC 1400 Dicut"
+   },
+   {
+    "maker": "DT Swiss",
+    "model": "ERC 1400 Dicut"
+   },
+   {
+    "maker": "DT Swiss",
+    "model": "PR 1600 Spline"
+   },
+   {
+    "maker": "Zipp",
+    "model": "303 Firecrest"
+   },
+   {
+    "maker": "Zipp",
+    "model": "404 Firecrest"
+   },
+   {
+    "maker": "Mavic",
+    "model": "Ksyrium SL Disc"
+   },
+   {
+    "maker": "Fulcrum",
+    "model": "Racing 3 DB"
+   },
+   {
+    "maker": "Fulcrum",
+    "model": "Racing Zero"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace WH-R9270"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra WH-R8170"
+   },
+   {
+    "maker": "Hunt",
+    "model": "Aerodynamicist"
+   },
+   {
+    "maker": "Roval",
+    "model": "Rapide CLX"
+   },
+   {
+    "maker": "Roval",
+    "model": "Alpinist CLX"
+   }
+  ],
+  "RIM_TAPE": [
+   {
+    "maker": "Schwalbe",
+    "model": "High Pressure rim tape"
+   },
+   {
+    "maker": "Velox",
+    "model": "Rim tape"
+   },
+   {
+    "maker": "Stan's",
+    "model": "Rim tape"
+   }
+  ],
+  "CRANKSET": [
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace FC-R9200"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra FC-R8100"
+   },
+   {
+    "maker": "Shimano",
+    "model": "105 FC-R7100"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Force AXS crankset"
+   },
+   {
+    "maker": "SRAM",
+    "model": "Rival AXS crankset"
+   }
+  ],
+  "CHAINRING": [
+   {
+    "maker": "Shimano",
+    "model": "Dura-Ace R9200 chainring"
+   },
+   {
+    "maker": "Shimano",
+    "model": "Ultegra R8100 chainring"
+   },
+   {
+    "maker": "Absolute Black",
+    "model": "Oval road"
+   }
+  ],
+  "SHOES": [
+   {
+    "maker": "Shimano",
+    "model": "S-Phyre RC903"
+   },
+   {
+    "maker": "Shimano",
+    "model": "RC702"
+   },
+   {
+    "maker": "Specialized",
+    "model": "S-Works Ares"
+   },
+   {
+    "maker": "Specialized",
+    "model": "Torch"
+   },
+   {
+    "maker": "Fizik",
+    "model": "Vento Infinito"
+   },
+   {
+    "maker": "Sidi",
+    "model": "Wire 2"
+   },
+   {
+    "maker": "Giro",
+    "model": "Imperial"
+   }
+  ]
  }
 }
