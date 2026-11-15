@@ -54,6 +54,22 @@ async function setupItem(page, text) {
   throw new Error('not installed: ' + text)
 }
 
+// click a button on a part row in "Installed now"; a late re-render folds the groups again, so unfold and
+// retry until the button is visible
+async function clickInSetup(page, text, name) {
+  for (let i = 0; i < 20; i++) {
+    const row = await setupItem(page, text)
+    const btn = row.getByRole('button', { name, exact: true })
+    try {
+      await btn.click({ timeout: 1000 })
+      return
+    } catch (e) {
+      await page.waitForTimeout(200)
+    }
+  }
+  throw new Error(`no ${name} button on ${text}`)
+}
+
 // bike page: unfold "Need a first entry" and "Up to date" in Service status
 async function openTaskGroups(page) {
   await page.locator('details.task-group').first().waitFor({ state: 'attached' })
@@ -927,8 +943,7 @@ async function bikeTab(page, name) {
     await page.goto(BASE + '#/bikes')
     await page.getByRole('link', { name: /TIME NXR/ }).click()
     // spokes on each wheel: add them, then the wheel shows type, count, length and broken spokes
-    const wheelRow = await setupItem(page, 'Zipp 303 front')
-    await wheelRow.getByRole('button', { name: 'Add spokes' }).click()
+    await clickInSetup(page, 'Zipp 303 front', 'Add spokes')
     await page.locator('.sheet').getByLabel('Spoke model').fill('Sapim CX-Ray')
     await page.locator('.sheet').getByLabel('Number of spokes').fill('24')
     await page.locator('.sheet').getByLabel('Length (mm)').fill('286')

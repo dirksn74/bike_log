@@ -917,6 +917,7 @@ interface ComponentDetail extends ComponentSummary {
   ledger: { kind: string; date: string; km: number; ride_id?: number; ride_name?: string | null; bike?: string; slot?: string; basis?: string; counted: boolean; certain: boolean; is_estimate?: boolean; detail: string | null; running_km: number; state?: string }[]
   history: { id: number; where: string; slot: string; installed_at: string; removed_at: string | null; removal_reason: string | null; removal_outcome: string | null; voided: boolean; void_reason: string | null; km: number | null; note: string | null }[]
   service_status: Task[]
+  deletable?: boolean // nothing happened to it yet (never installed, no km, no work): can be deleted for good
   rules: Rule[]
   events: EventRow[]
   actions: { code: string; name: string }[]
@@ -1259,6 +1260,7 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
 
 export function ComponentDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { toast, meta } = useApp()
   const actionName = (code: string | null) => lc(meta.actions.find((a) => a.code === code)?.name ?? code ?? '')
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
@@ -1411,6 +1413,24 @@ export function ComponentDetailPage() {
                   <button className="btn" onClick={() => setSheet('retire')}>
                     {tr('Retire')}
                   </button>
+                  {data.deletable && (
+                    <button
+                      className="btn btn-danger"
+                      title={tr('Only while nothing happened to it yet: never installed, no km, no work, no notes')}
+                      onClick={async () => {
+                        if (!window.confirm(tr('Delete {label} for good? Use this only for a part entered by mistake.', { label: data.label }))) return
+                        try {
+                          await api.del(`/components/${data.id}`)
+                          toast(tr('{label} deleted.', { label: data.label }))
+                          navigate('/inventory')
+                        } catch (e) {
+                          toast((e as Error).message)
+                        }
+                      }}
+                    >
+                      {tr('Delete (entered by mistake)')}
+                    </button>
+                  )}
                 </div>
               </details>
             </>

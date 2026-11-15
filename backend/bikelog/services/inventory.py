@@ -459,17 +459,26 @@ def retire_component(session: Session, component_id: int, *, on: str, reason: st
     return set_disposition(session, component_id, disposition, on=on, note=reason, work_session_id=work_session_id)
 
 
+def can_delete(session: Session, comp: Component) -> bool:
+    """A part entered by mistake may be deleted for good while nothing happened to it yet: never installed,
+    no km, no maintenance, no journal entry or incident, never sent away, not taken from stock. Anything
+    with history is retired instead (no hard delete of history)."""
+    from bikelog.models import ComponentDisposition, JournalEntry, MaintenanceEvent, RideEquipment, ServiceOrder
+    for model in (Installation, UsageContribution, MaintenanceEvent, JournalEntry, ServiceOrder, RideEquipment,
+                  ComponentDisposition):
+        if session.scalar(select(func.count()).select_from(model).where(model.component_id == comp.id)):
+            return False
+    return comp.from_stock_txn_id is None
+
+
 def delete_component(session: Session, component_id: int) -> None:
     comp = get_component(session, component_id)
-    has_history = session.scalar(select(func.count()).select_from(Installation).where(
-        Installation.component_id == component_id)) or session.scalar(select(func.count()).select_from(
-        UsageContribution).where(UsageContribution.component_id == component_id))
-    from bikelog.models import MaintenanceEvent
-    has_history = has_history or session.scalar(select(func.count()).select_from(MaintenanceEvent).where(
-        MaintenanceEvent.component_id == component_id))
-    if has_history:
+    if not can_delete(session, comp):
         raise Protected(tr("This component has history. Retire it instead of deleting it."))
+    from bikelog.models import ReminderSnooze, ServiceRule
     session.query(UsageAdjustment).filter(UsageAdjustment.component_id == component_id).delete()
+    session.query(ReminderSnooze).filter(ReminderSnooze.component_id == component_id).delete()
+    session.query(ServiceRule).filter(ServiceRule.component_id == component_id).delete()
     session.delete(comp)
     session.flush()
 
