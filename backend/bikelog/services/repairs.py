@@ -189,6 +189,8 @@ def replace_at_position(session: Session, *, bike_id: int | None, wheel: str, da
         comp = inv.create_component(session, component_type=ctype,
                                     label=(source.get("label") or "").strip()
                                     or f"{COMPONENT_TYPES[ctype].name} {WHEEL_NAMES[wheel]} (new)",
+                                    product_id=source.get("product_id") or None,
+                                    price_cents=source.get("price_cents"),
                                     prior_usage="NEW", purchase_date=at[:10], work_session_id=work_session_id)
         inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                     work_session_id=work_session_id)
@@ -196,6 +198,45 @@ def replace_at_position(session: Session, *, bike_id: int | None, wheel: str, da
     if kind in ("new", "untracked"):
         return tr("replaced with a new {what} (not tracked)", what=what)
     raise DomainError(tr("Pick where the new part came from: stock, a spare or a new one"))
+
+
+def rotate_tires(session: Session, *, bike_id: int, move_from: str, at: str, source: dict,
+                 old_outcome: str | None, work_session_id: int, reason: str | None = None) -> str:
+    """Rotate tires in one step (Dirk 2026-11-15): the tire on ``move_from`` goes to the other wheel, the
+    tire that was there comes off (``old_outcome``, e.g. discarded), and a tire from ``source`` (stock, a
+    stored spare or a new one) goes on ``move_from``. Every tire keeps its own identity and km. All three
+    steps share one moment and one work session, so Undo takes them back together. A day alone means after
+    that day's rides, so the day's rides stay on the old setup."""
+    if move_from not in WHEEL_NAMES:
+        raise DomainError(tr("wheel must be FRONT_WHEEL or REAR_WHEEL, damage TUBE or TIRE"))
+    to = "REAR_WHEEL" if move_from == "FRONT_WHEEL" else "FRONT_WHEEL"
+    w_from, w_to = wheel_on_bike(session, bike_id, move_from), wheel_on_bike(session, bike_id, to)
+    if w_from is None or w_to is None:
+        raise DomainError(tr("Rotating tires needs a front and a rear wheel recorded on this bike."))
+    mover = _part_on_wheel(session, w_from, "TIRE")
+    if mover is None:
+        raise DomainError(tr("There is no tire on the front wheel to move.") if move_from == "FRONT_WHEEL"
+                          else tr("There is no tire on the rear wheel to move."))
+    old = _part_on_wheel(session, w_to, "TIRE")
+    if source.get("kind") not in ("stock", "spare", "new"):
+        raise DomainError(tr("Pick where the new tire comes from: stock, a spare or a new one"))
+    moment = f"{at}T23:59" if len(at) == 10 else at
+    parts = []
+    if old is not None:
+        outcome = old_outcome or COMPONENT_TYPES["TIRE"].removed_default
+        inv.remove(session, old.id, at=moment, reason=reason or "tires rotated", outcome=outcome,
+                   reallocate=False, work_session_id=work_session_id)
+        parts.append(tr("{label} taken off ({outcome})", label=old.label,
+                        outcome=tr(inv.DISPOSITIONS.get(outcome, outcome))))
+    inv.move(session, mover.id, at=moment, parent_component_id=w_to.id, slot=SLOT_OF["TIRE"],
+             reason=reason, work_session_id=work_session_id)
+    parts.append(tr("{label} moved to the rear wheel", label=mover.label) if to == "REAR_WHEEL"
+                 else tr("{label} moved to the front wheel", label=mover.label))
+    text = replace_at_position(session, bike_id=bike_id, wheel=move_from, damage="TIRE", at=moment,
+                               source=source, work_session_id=work_session_id, reason=reason or "tires rotated")
+    parts.append(tr("New front tire: {text}", text=text) if move_from == "FRONT_WHEEL"
+                 else tr("New rear tire: {text}", text=text))
+    return "; ".join(parts)
 
 
 def _replace_part(session: Session, comp: Component, *, at: str, source: dict, outcome: str | None,

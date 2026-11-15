@@ -6,8 +6,8 @@ import { api, newOpId } from '../api'
 import { useApp } from '../context'
 import { today, when } from '../format'
 import { useApi } from '../hooks'
-import type { FixOptions, FixPartOption, FixSourceOptions } from '../types'
-import { ReplaceForm } from './PartChange'
+import type { FixOptions, FixPartOption, FixSourceOptions, SetupRow } from '../types'
+import { OutcomeChoice, ReplaceForm } from './PartChange'
 import { Empty, ErrorBox, Field, FormError, Loading } from './ui'
 import { tr, unitWord } from '../i18n'
 
@@ -247,6 +247,117 @@ export function SwapTube({ bikeId, onDone }: { bikeId: number; onDone: (text: st
           </>
         )
       )}
+    </div>
+  )
+}
+
+// Manage parts → Rotate tires (Dirk 2026-11-15): one tire moves to the other wheel, the tire there comes off
+// (discarded, stored ...) and a new one goes on, in one step and one work session (Undo takes all of it
+// back). Each tire keeps its own record and km.
+export function RotateTires({ bikeId, setup, onDone }: { bikeId: number; setup: SetupRow[]; onDone: (text: string) => void }) {
+  const { meta } = useApp()
+  const tireOn = (type: string) => {
+    const w = setup.find((r) => r.component_type === type)
+    return w ? setup.find((t) => t.component_type === 'TIRE' && t.parent_component_id === w.component_id) : undefined
+  }
+  const front = tireOn('FRONT_WHEEL')
+  const rear = tireOn('REAR_WHEEL')
+  const [from, setFrom] = useState<'FRONT_WHEEL' | 'REAR_WHEEL'>(front ? 'FRONT_WHEEL' : 'REAR_WHEEL')
+  const opts = useApi<FixSourceOptions>(`/bikes/${bikeId}/position-options?wheel=${from}&damage=TIRE`)
+  const [source, setSource] = useState<Source | null>(null)
+  const [outcome, setOutcome] = useState('DISCARDED')
+  const [label, setLabel] = useState('')
+  const [price, setPrice] = useState('')
+  const [at, setAt] = useState(today())
+  const [err, setErr] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [opId] = useState(newOpId)
+  useEffect(() => {
+    if (opts.data) setSource(defaultSource({ ...opts.data, replace: true }))
+  }, [opts.data])
+  const mover = from === 'FRONT_WHEEL' ? front : rear
+  const old = from === 'FRONT_WHEEL' ? rear : front
+  async function save() {
+    if (!source) return
+    setErr(null)
+    setBusy(true)
+    try {
+      const p = price.trim() ? Math.round(Number(price.replace(',', '.')) * 100) : null
+      if (p !== null && Number.isNaN(p)) throw new Error(tr('Price: enter an amount such as 49,90'))
+      const src = source.kind === 'new' ? { kind: 'new', label: label.trim() || null, price_cents: p } : source
+      // today means now (today's rides stay on the old setup); another day means after that day's rides
+      const when_ = at === today() ? new Date().toISOString() : at
+      const r = await api.post<{ text: string }>(`/bikes/${bikeId}/rotate-tires`, { move_from: from, at: when_, source: src, old_outcome: old ? outcome : null }, opId)
+      onDone(r.text)
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="form">
+      <fieldset className="field">
+        <legend className="field-label">{tr('Which tire moves?')}</legend>
+        <div className="pick-list">
+          {(
+            [
+              ['FRONT_WHEEL', front, tr('Front tire to the rear wheel, new tire on the front')],
+              ['REAR_WHEEL', rear, tr('Rear tire to the front wheel, new tire on the rear')],
+            ] as const
+          ).map(([k, t, text]) => (
+            <label key={k} className={`pick ${from === k ? 'pick-on' : ''} ${t ? '' : 'muted'}`}>
+              <input type="radio" name="rotate-from" disabled={!t} checked={from === k} onChange={() => setFrom(k)} />
+              <span>
+                <strong>{text}</strong>
+                {t && <span className="small muted"> · {t.label}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {old ? (
+        <>
+          <p className="small">
+            {tr('Comes off:')} <strong>{old.label}</strong>
+          </p>
+          <OutcomeChoice name="rotate-outcome" outcomes={meta.dispositions} value={outcome} suggested="DISCARDED" onChange={setOutcome} />
+        </>
+      ) : (
+        <p className="small muted">{tr('The other wheel has no tire, so nothing comes off.')}</p>
+      )}
+      {opts.loading && !opts.data ? (
+        <Loading />
+      ) : opts.error ? (
+        <ErrorBox error={opts.error} onRetry={opts.reload} />
+      ) : (
+        opts.data && (
+          <fieldset className="field">
+            <legend className="field-label">{from === 'FRONT_WHEEL' ? tr('New tire on the front') : tr('New tire on the rear')}</legend>
+            <SourcePick name="rotate-src" options={{ ...opts.data, replace: true }} isPart={false} value={source} onChange={setSource} />
+          </fieldset>
+        )
+      )}
+      {source?.kind === 'new' && (
+        <div className="row">
+          <Field label={tr('Name / label (optional)')}>
+            <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={tr('e.g. GP5000 front')} />
+          </Field>
+          <Field label={tr('Price € (optional)')}>
+            <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
+          </Field>
+        </div>
+      )}
+      <Field label={tr('Done on')} hint={tr('Today: from now on. A past day: after that day\'s rides.')}>
+        <input type="date" value={at} max={today()} onChange={(e) => setAt(e.target.value)} />
+      </Field>
+      <p className="small muted">{tr('Each tire keeps its own km. Undo under Inventory → History takes the whole step back.')}</p>
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={busy || !source || !mover} onClick={save}>
+          {busy ? tr('Saving…') : tr('Rotate tires')}
+        </button>
+      </div>
     </div>
   )
 }
