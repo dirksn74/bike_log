@@ -61,7 +61,7 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
     setFixes((f) => {
       if (Object.keys(f).length) return f
       const init: Record<number, PartFix> = {}
-      for (const p of d.parts) if (!p.repair) init[p.entry_id] = { action: 'NONE', source: defaultSource(p.options), old_outcome: p.options?.suggested_outcome ?? '' }
+      for (const p of d.parts) if (!p.repair) init[p.entry_id] = { action: p.damage === 'TUBE' && p.options?.replace ? 'REPLACED' : 'NONE', source: defaultSource(p.options), old_outcome: p.options?.suggested_outcome ?? '' }
       return init
     })
   }, [opts.data])
