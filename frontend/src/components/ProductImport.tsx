@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, newOpId } from '../api'
 import { useApp } from '../context'
 import { Field, FormError, Tag } from './ui'
+import { tr, trn } from '../i18n'
 
 interface Report {
   ok: boolean
@@ -40,7 +41,7 @@ export default function ProductImport({ onDone }: { onDone: (msg: string) => voi
         const report = await api.post<Report>(`/imports/products${dry ? '?dry_run=true' : ''}`, JSON.parse(text), dry ? undefined : newOpId())
         out.push({ name: f.name, report })
       } catch (e) {
-        out.push({ name: f.name, error: e instanceof SyntaxError ? `Not valid JSON: ${e.message}` : (e as Error).message })
+        out.push({ name: f.name, error: e instanceof SyntaxError ? tr('Not valid JSON: {message}', { message: e.message }) : (e as Error).message })
       }
     }
     setResults(out)
@@ -49,22 +50,21 @@ export default function ProductImport({ onDone }: { onDone: (msg: string) => voi
     else {
       const ok = out.filter((r) => r.report?.ok)
       const c = (k: keyof Report['counts']) => ok.reduce((s, r) => s + (r.report?.counts[k] ?? 0), 0)
-      onDone(`${ok.length} of ${out.length} file${out.length === 1 ? '' : 's'} imported: ${c('CREATED')} new, ${c('UPDATED')} updated products, ${c('ITEMS_CREATED')} new parts.`)
+      onDone(trn('{length} of {n} file imported: {c} new, {c2} updated products, {c3} new parts.', '{length} of {n} files imported: {c} new, {c2} updated products, {c3} new parts.', out.length, { length: ok.length, c: c('CREATED'), c2: c('UPDATED'), c3: c('ITEMS_CREATED') }))
     }
   }
   const good = results?.filter((r) => r.report?.ok).length ?? 0
   return (
     <div className="form">
       <p className="small muted">
-        Import product data made by a script, for example a scraper. One file can hold one product or a list. Importing the same file again changes nothing; changed data updates the
-        product. Parts listed under <code>items</code> are added as spares.
+        {tr('Import product data made by a script, for example a scraper. One file can hold one product or a list. Importing the same file again changes nothing; changed data updates the product. Parts listed under')} <code>{tr('items')}</code> {tr('are added as spares.')}
       </p>
-      <Field label="JSON files">
+      <Field label={tr('JSON files')}>
         <input
           type="file"
           accept=".json,application/json"
           multiple
-          aria-label="JSON files"
+          aria-label={tr('JSON files')}
           onChange={(e) => {
             setFiles(Array.from(e.target.files ?? []))
             setResults(null)
@@ -79,14 +79,14 @@ export default function ProductImport({ onDone }: { onDone: (msg: string) => voi
               <span>
                 <strong>{r.name}</strong>{' '}
                 {r.error ? (
-                  <Tag tone="bad">not readable</Tag>
+                  <Tag tone="bad">{tr('not readable')}</Tag>
                 ) : r.report?.ok ? (
                   <Tag tone="good">
-                    {r.report.dry_run ? 'ready' : 'imported'}: {r.report.counts.CREATED} new · {r.report.counts.UPDATED} updated · {r.report.counts.UNCHANGED} unchanged
-                    {r.report.counts.ITEMS_CREATED ? ` · ${r.report.counts.ITEMS_CREATED} new parts` : ''}
+                    {tr(r.report.dry_run ? 'ready: {created} new · {updated} updated · {unchanged} unchanged' : 'imported: {created} new · {updated} updated · {unchanged} unchanged', { created: r.report.counts.CREATED, updated: r.report.counts.UPDATED, unchanged: r.report.counts.UNCHANGED })}
+                    {r.report.counts.ITEMS_CREATED ? tr(' · {ITEMS_CREATED} new parts', { ITEMS_CREATED: r.report.counts.ITEMS_CREATED }) : ''}
                   </Tag>
                 ) : (
-                  <Tag tone="bad">{r.report?.errors.length} error{r.report?.errors.length === 1 ? '' : 's'}, nothing will be imported</Tag>
+                  <Tag tone="bad">{trn('{n} error, nothing will be imported', '{n} errors, nothing will be imported', r.report?.errors.length ?? 0)}</Tag>
                 )}
                 {r.error && <span className="small"> {r.error}</span>}
                 {r.report && (
@@ -101,7 +101,7 @@ export default function ProductImport({ onDone }: { onDone: (msg: string) => voi
                         <span key={p.at}>
                           {p.maker} {p.model}: {p.status.toLowerCase()}
                           {p.changed.length ? ` (${p.changed.join(', ')})` : ''}
-                          {p.items.length ? ` · parts: ${p.items.map((i) => `${i.label} ${i.status === 'EXISTS' ? '(exists)' : '(new)'}`).join(', ')}` : ''}
+                          {p.items.length ? tr(' · parts: {join}', { join: p.items.map((i) => `${i.label} ${i.status === 'EXISTS' ? tr('(exists)') : tr('(new)')}`).join(', ') }) : ''}
                         </span>
                       ))}
                     {r.report.warnings.map((w) => (
@@ -119,16 +119,16 @@ export default function ProductImport({ onDone }: { onDone: (msg: string) => voi
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn" disabled={busy || files.length === 0} onClick={() => run(true)}>
-          {busy && !checked ? 'Checking…' : 'Check files'}
+          {busy && !checked ? tr('Checking…') : tr('Check files')}
         </button>
         <button className="btn btn-primary" disabled={busy || !checked || good === 0} onClick={() => run(false)}>
-          Import {good > 0 && good < (results?.length ?? 0) ? `${good} valid files` : ''}
+          {tr('Import')} {good > 0 && good < (results?.length ?? 0) ? tr('{good} valid files', { good }) : ''}
         </button>
       </div>
       <fieldset className="field">
-        <legend className="field-label">Templates for scripts</legend>
+        <legend className="field-label">{tr('Templates for scripts')}</legend>
         <div className="row">
-          <select aria-label="Template type" value={type} onChange={(e) => setType(e.target.value)}>
+          <select aria-label={tr('Template type')} value={type} onChange={(e) => setType(e.target.value)}>
             {meta.component_types.map((t) => (
               <option key={t.code} value={t.code}>
                 {t.name}
@@ -136,14 +136,14 @@ export default function ProductImport({ onDone }: { onDone: (msg: string) => voi
             ))}
           </select>
           <a className="btn btn-small" href={`./api/product-templates/${type}/schema`} download>
-            Schema
+            {tr('Schema')}
           </a>
           <a className="btn btn-small" href={`./api/product-templates/${type}/example`} download>
-            Example
+            {tr('Example')}
           </a>
         </div>
         <p className="small muted">
-          Writing a script with an AI agent? Give it the <a href="./api/product-templates/instructions.md" download>instructions for script authors</a>; they cover every part type.
+          {tr('Writing a script with an AI agent? Give it the')} <a href="./api/product-templates/instructions.md" download>{tr('instructions for script authors')}</a>{tr('; they cover every part type.')}
         </p>
       </fieldset>
     </div>

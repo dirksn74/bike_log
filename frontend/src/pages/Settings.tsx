@@ -11,6 +11,7 @@ import { useApp } from '../context'
 import { when } from '../format'
 import { useApi } from '../hooks'
 import ServiceIntervals from '../components/ServiceIntervals'
+import { tr, codeText, lang, LANGS, switchLanguage, type Lang } from '../i18n'
 
 interface ImportResult {
   batch_id: number
@@ -54,7 +55,7 @@ export default function SettingsPage() {
     try {
       await api.patch('/settings', f)
       reloadMeta()
-      toast('Settings saved.')
+      toast(tr('Settings saved.'))
     } catch (e) {
       setErr((e as Error).message)
     } finally {
@@ -63,7 +64,7 @@ export default function SettingsPage() {
   }
   async function upload() {
     const file = fileRef.current?.files?.[0]
-    if (!file) return setImportErr('Choose a CSV file first.')
+    if (!file) return setImportErr(tr('Choose a CSV file first.'))
     setImporting(true)
     setImportErr(null)
     setResult(null)
@@ -78,10 +79,10 @@ export default function SettingsPage() {
     }
   }
   async function restore(name: string) {
-    if (!window.confirm(`Replace all current data with the backup ${name}? A backup of the current data is made first, so this can be undone.`)) return
+    if (!window.confirm(tr('Replace all current data with the backup {name}? A backup of the current data is made first, so this can be undone.', { name }))) return
     try {
       await api.post(`/backups/${encodeURIComponent(name)}/restore`)
-      toast(`Restored ${name}.`)
+      toast(tr('Restored {name}.', { name }))
       reloadMeta()
       backups.reload()
     } catch (e) {
@@ -96,7 +97,7 @@ export default function SettingsPage() {
     setUploading(true)
     try {
       const r = await api.upload<{ name: string }>(`/backups/upload?file_name=${encodeURIComponent(file.name)}`, file, 'application/octet-stream')
-      toast(`Uploaded as ${r.name}. Click Restore next to it to use it.`)
+      toast(tr('Uploaded as {name}. Click Restore next to it to use it.', { name: r.name }))
       if (backupFileRef.current) backupFileRef.current.value = ''
       backups.reload()
     } catch (e) {
@@ -108,7 +109,7 @@ export default function SettingsPage() {
   async function backupNow(kind: 'backups' | 'exports') {
     try {
       const r = await api.post<{ name: string }>(`/${kind}`)
-      toast(`${kind === 'backups' ? 'Backup' : 'Export'} written: ${r.name}`)
+      toast(tr('{x} written: {name}', { x: kind === 'backups' ? tr('Backup') : tr('Export'), name: r.name }))
       if (kind === 'exports') window.location.assign(`./api/exports/${encodeURIComponent(r.name)}`) // straight to Downloads
       backups.reload()
     } catch (e) {
@@ -117,16 +118,17 @@ export default function SettingsPage() {
   }
   return (
     <div className="grid">
-      <Card title="Settings">
+      <LanguageCard />
+      <Card title={tr('Settings')}>
         <div className="form">
-          <Field label="Timezone" hint="Dates are shown in this timezone. Changing it recomputes date-only boundaries.">
+          <Field label={tr('Timezone')} hint={tr('Dates are shown in this timezone. Changing it recomputes date-only boundaries.')}>
             <input value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} />
           </Field>
-          <Field label="Import start date" hint="Imported rides before this local date are skipped. Empty = import everything.">
+          <Field label={tr('Import start date')} hint={tr('Imported rides before this local date are skipped. Empty = import everything.')}>
             <input type="date" value={f.import_start_date} onChange={(e) => setF({ ...f, import_start_date: e.target.value })} />
           </Field>
-          <Field label="Default tire setup" hint="Used for wheels where tube or tubeless is not set, so tubeless reminders (sealant, valves) stay off for tubes.">
-            <select aria-label="Default tire setup" value={f.default_tire_setup} onChange={(e) => setF({ ...f, default_tire_setup: e.target.value })}>
+          <Field label={tr('Default tire setup')} hint={tr('Used for wheels where tube or tubeless is not set, so tubeless reminders (sealant, valves) stay off for tubes.')}>
+            <select aria-label={tr('Default tire setup')} value={f.default_tire_setup} onChange={(e) => setF({ ...f, default_tire_setup: e.target.value })}>
               {meta.tire_setups.map((t) => (
                 <option key={t.code} value={t.code}>
                   {t.label}
@@ -134,12 +136,12 @@ export default function SettingsPage() {
               ))}
             </select>
           </Field>
-          <Field label="Replace or re-lace a wheel after this many broken spokes" hint="Broken spokes on one wheel since it was laced. A new wheel, a re-lace or a new spoke set starts again.">
-            <input inputMode="numeric" aria-label="Re-lace after broken spokes" value={f.spoke_relace_after} onChange={(e) => setF({ ...f, spoke_relace_after: e.target.value })} />
+          <Field label={tr('Replace or re-lace a wheel after this many broken spokes')} hint={tr('Broken spokes on one wheel since it was laced. A new wheel, a re-lace or a new spoke set starts again.')}>
+            <input inputMode="numeric" aria-label={tr('Re-lace after broken spokes')} value={f.spoke_relace_after} onChange={(e) => setF({ ...f, spoke_relace_after: e.target.value })} />
           </Field>
-          <Field label="Setup for indoor (Virtual) rides">
+          <Field label={tr('Setup for indoor (Virtual) rides')}>
             <select value={f.trainer_profile_for_virtual} onChange={(e) => setF({ ...f, trainer_profile_for_virtual: e.target.value })}>
-              <option value="">Treat like outdoor</option>
+              <option value="">{tr('Treat like outdoor')}</option>
               {meta.profiles
                 .filter((p) => p.kind === 'TRAINER')
                 .map((p) => (
@@ -153,13 +155,13 @@ export default function SettingsPage() {
             .filter((p) => p.kind === 'TRAINER')
             .map((p) => (
               <p key={p.code} className="small muted">
-                {p.name}: excludes {[...p.excluded_slots, ...p.excluded_types].map((s) => s.replace(/_/g, ' ').toLowerCase()).join(', ')}. {p.notes}
+                {p.name}{tr(': excludes')} {[...p.excluded_slots, ...p.excluded_types].map((s) => codeText(s)).join(', ')}. {p.notes}
               </p>
             ))}
           <FormError error={err} />
           <div className="form-actions">
             <button className="btn btn-primary" disabled={saving} onClick={save}>
-              Save settings
+              {tr('Save settings')}
             </button>
           </div>
         </div>
@@ -167,28 +169,27 @@ export default function SettingsPage() {
       <ServiceIntervals />
       <SpareMinimums />
       <PickLists />
-      <Card title="Import rides (CSV)">
+      <Card title={tr('Import rides (CSV)')}>
         <p className="small">
-          Bike Log CSV: columns <code>source_id, date, distance_km</code> (or <code>distance_mi</code>), optional <code>duration_min, name, bike, sport_type, trainer</code>.{' '}
-          <a href="./api/imports/template">Download a template</a>. Strava's own export (<em>Download your data → activities.csv</em>) is recognised too. Re-importing a file never duplicates rides; your corrections and removals are kept.
+          {tr('Bike Log CSV: columns')} <code>{tr('source_id, date, distance_km')}</code> {tr('(or')} <code>{tr('distance_mi')}</code>{tr('), optional')} <code>{tr('duration_min, name, bike, sport_type, trainer')}</code>.{' '}
+          <a href="./api/imports/template">{tr('Download a template')}</a>{tr('. Strava\'s own export (')}<em>{tr('Download your data → activities.csv')}</em>{tr(') is recognised too. Re-importing a file never duplicates rides; your corrections and removals are kept.')}
         </p>
         <div className="row">
-          <input ref={fileRef} type="file" accept=".csv,text/csv" aria-label="CSV file" />
+          <input ref={fileRef} type="file" accept=".csv,text/csv" aria-label={tr('CSV file')} />
           <button className="btn btn-primary" disabled={importing} onClick={upload}>
-            {importing ? 'Importing…' : 'Import'}
+            {importing ? tr('Importing…') : tr('Import')}
           </button>
         </div>
         <FormError error={importErr} />
         {result && (
           <div className="notice">
-            {result.resumed && 'Resumed an interrupted import. '}
+            {result.resumed && tr('Resumed an interrupted import. ')}
             {Object.entries(result.counts)
-              .map(([k, v]) => `${v} ${k.replace(/_/g, ' ').toLowerCase()}`)
-              .join(', ') || 'Nothing to import.'}
+              .map(([k, v]) => `${v} ${codeText(k)}`)
+              .join(', ') || tr('Nothing to import.')}
             {Object.keys(result.unknown_bikes ?? {}).length > 0 && (
               <p>
-                No bike with this name, so these rides have no bike yet (the name is kept on each ride; add the
-                bike or assign the rides on the Rides page):{' '}
+                {tr('No bike with this name, so these rides have no bike yet (the name is kept on each ride; add the bike or assign the rides on the Rides page):')}{' '}
                 {Object.entries(result.unknown_bikes ?? {})
                   .map(([name, n]) => `${name} (${n} ${n === 1 ? 'ride' : 'rides'})`)
                   .join(', ')}
@@ -198,7 +199,7 @@ export default function SettingsPage() {
               <ul>
                 {result.errors.slice(0, 10).map((e) => (
                   <li key={e.row}>
-                    Row {e.row}: {e.error}
+                    {tr('Row')} {e.row}: {e.error}
                   </li>
                 ))}
               </ul>
@@ -213,7 +214,7 @@ export default function SettingsPage() {
                 <span>{b.file_name ?? b.source_kind}</span>
                 <Tag tone={b.status === 'COMPLETED' ? 'good' : b.status === 'FAILED' ? 'bad' : 'warn'}>{b.status.toLowerCase()}</Tag>
                 <span className="small muted">
-                  {b.cursor_row}/{b.rows_total ?? '?'} rows
+                  {b.cursor_row}/{b.rows_total ?? '?'} {tr('rows')}
                 </span>
               </li>
             ))}
@@ -222,65 +223,64 @@ export default function SettingsPage() {
       </Card>
       <StravaSettings />
       {meta.server && (
-        <Card title="Account">
+        <Card title={tr('Account')}>
           <p>
-            Signed in with Google as <strong>{meta.server.user}</strong>.{' '}
-            <a href="/auth/logout">Sign out</a>
+            {tr('Signed in with Google as')} <strong>{meta.server.user}</strong>.{' '}
+            <a href="/auth/logout">{tr('Sign out')}</a>
           </p>
         </Card>
       )}
-      <Card title="Backups and export">
+      <Card title={tr('Backups and export')}>
         {backups.data && (
           <>
             <p className="small">
               {meta.server ? (
-                <>Your data is stored on your Bike Log server in <code>{backups.data.directory}</code>. A backup is made automatically before every upgrade and once a day; download one now and then to keep a copy at home.</>
+                <>{tr('Your data is stored on your Bike Log server in')} <code>{backups.data.directory}</code>{tr('. A backup is made automatically before every upgrade and once a day; download one now and then to keep a copy at home.')}</>
               ) : (
-                <>Your data is stored in <code>{backups.data.directory}</code>, outside the program folder. A backup is made automatically before every upgrade and once a day.</>
+                <>{tr('Your data is stored in')} <code>{backups.data.directory}</code>{tr(', outside the program folder. A backup is made automatically before every upgrade and once a day.')}</>
               )}
             </p>
             <div className="form-actions">
               <button className="btn" onClick={() => backupNow('backups')}>
-                Back up now
+                {tr('Back up now')}
               </button>
               <button className="btn" onClick={() => backupNow('exports')}>
-                Full export (zip)
+                {tr('Full export (zip)')}
               </button>
             </div>
             <p className="small muted">
-              A full export holds all your data and attachments, with the database version, so you can import it here or on another computer. Keep it private: it includes prices, serial numbers and receipts (no Strava login).
+              {tr('A full export holds all your data and attachments, with the database version, so you can import it here or on another computer. Keep it private: it includes prices, serial numbers and receipts (no Strava login).')}
             </p>
             <ul className="list small">
               {backups.data.exports.slice(0, 3).map((e) => (
                 <li key={e.name}>
-                  <a href={`./api/exports/${encodeURIComponent(e.name)}`}>{e.name}</a> <span className="muted">({Math.round(e.size / 1024)} KB{e.uploaded ? ', imported file' : ''})</span>
+                  <a href={`./api/exports/${encodeURIComponent(e.name)}`}>{e.name}</a> <span className="muted">({Math.round(e.size / 1024)} KB{e.uploaded ? tr(', imported file') : ''})</span>
                 </li>
               ))}
               {backups.data.backups
                 .filter((b, i) => i < 5 || b.kept)
                 .map((b) => (
                   <li key={b.name}>
-                    {b.name} <span className="muted">({Math.round(b.size / 1024)} KB{b.kept ? ', kept' : ''})</span>{' '}
+                    {b.name} <span className="muted">({Math.round(b.size / 1024)} KB{b.kept ? tr(', kept') : ''})</span>{' '}
                     <a className="small" href={`./api/backups/${encodeURIComponent(b.name)}/download`} download>
-                      Download
+                      {tr('Download')}
                     </a>{' '}
-                    <button className="btn btn-small" aria-label={`Restore ${b.name}`} onClick={() => restore(b.name)}>
-                      Restore
+                    <button className="btn btn-small" aria-label={tr('Restore {name}', { name: b.name })} onClick={() => restore(b.name)}>
+                      {tr('Restore')}
                     </button>
                   </li>
                 ))}
             </ul>
             <ImportExport onChanged={backups.reload} />
             <details>
-              <summary>Bring data from another computer</summary>
+              <summary>{tr('Bring data from another computer')}</summary>
               <p className="small">
-                On the other Bike Log, click <em>Back up now</em> and then <em>Download</em> next to the new backup. Upload that file here; it appears in the list above. Then click <em>Restore</em> next to it. The data here
-                is backed up first, so this can be undone.
+                {tr('On the other Bike Log, click')} <em>{tr('Back up now')}</em> {tr('and then')} <em>{tr('Download')}</em> {tr('next to the new backup. Upload that file here; it appears in the list above. Then click')} <em>{tr('Restore')}</em> {tr('next to it. The data here is backed up first, so this can be undone.')}
               </p>
               <div className="form-actions">
-                <input ref={backupFileRef} type="file" accept=".db" aria-label="Backup file" />
+                <input ref={backupFileRef} type="file" accept=".db" aria-label={tr('Backup file')} />
                 <button className="btn" disabled={uploading} onClick={uploadBackup}>
-                  {uploading ? 'Uploading…' : 'Upload backup'}
+                  {uploading ? tr('Uploading…') : tr('Upload backup')}
                 </button>
               </div>
             </details>
@@ -296,6 +296,41 @@ export default function SettingsPage() {
 
 // How many spares of a part type to keep at home (default 2 tubes, 1 tire). Below that the type goes on
 // the shopping list (Overview and Inventory). Counted stock and stored individual spares both count.
+// Language of the screens and messages (Settings → Language). Saved in the database, so it survives a restart;
+// the page is drawn again in the new language right away.
+function LanguageCard() {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  async function change(to: Lang) {
+    if (to === lang) return
+    setBusy(true)
+    setErr(null)
+    try {
+      await api.patch('/settings', { language: to })
+      switchLanguage(to)
+    } catch (e) {
+      setErr((e as Error).message)
+      setBusy(false)
+    }
+  }
+  return (
+    <Card title={tr('Language')}>
+      <div className="form">
+        <Field label={tr('Language of the app')} hint={tr('Screens, reminders and messages. What you typed yourself (names, notes) stays as it is.')}>
+          <select aria-label="Language / Sprache" value={lang} disabled={busy} onChange={(e) => change(e.target.value as Lang)}>
+            {LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <FormError error={err} />
+      </div>
+    </Card>
+  )
+}
+
 function SpareMinimums() {
   const { meta, reloadMeta, toast } = useApp()
   const parse = (): [string, string][] => {
@@ -314,32 +349,32 @@ function SpareMinimums() {
     const data: Record<string, number> = {}
     for (const [k, v] of rows) {
       const n = Number(v || '0')
-      if (!Number.isInteger(n) || n < 0) return setErr(`Enter a whole number for ${name(k)}.`)
+      if (!Number.isInteger(n) || n < 0) return setErr(tr('Enter a whole number for {name}.', { name: name(k) }))
       data[k] = n
     }
     try {
       await api.patch('/settings', { spare_minimums: JSON.stringify(data) })
       reloadMeta()
-      toast('Spares to keep saved.')
+      toast(tr('Spares to keep saved.'))
     } catch (e) {
       setErr((e as Error).message)
     }
   }
   return (
-    <Card title="Spares to keep">
-      <p className="small muted">When you have fewer spares than this, the part goes on the shopping list. 0 turns the check off.</p>
+    <Card title={tr('Spares to keep')}>
+      <p className="small muted">{tr('When you have fewer spares than this, the part goes on the shopping list. 0 turns the check off.')}</p>
       <div className="form">
         {rows.map(([k, v], i) => (
           <Field key={k} label={name(k)}>
             <input
               inputMode="numeric"
-              aria-label={`Spares to keep: ${name(k)}`}
+              aria-label={tr('Spares to keep: {name}', { name: name(k) })}
               value={v}
               onChange={(e) => setRows(rows.map((r, j) => (j === i ? [k, e.target.value] : r)))}
             />
           </Field>
         ))}
-        <Field label="Add a part type">
+        <Field label={tr('Add a part type')}>
           <select
             value={add}
             onChange={(e) => {
@@ -347,7 +382,7 @@ function SpareMinimums() {
               setAdd('')
             }}
           >
-            <option value="">Choose…</option>
+            <option value="">{tr('Choose…')}</option>
             {meta.component_types
               .filter((t) => !rows.some(([k]) => k === t.code))
               .map((t) => (
@@ -360,7 +395,7 @@ function SpareMinimums() {
         <FormError error={err} />
         <div className="form-actions">
           <button className="btn btn-primary" onClick={save}>
-            Save spares to keep
+            {tr('Save spares to keep')}
           </button>
         </div>
       </div>

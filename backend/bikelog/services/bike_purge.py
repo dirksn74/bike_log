@@ -29,6 +29,7 @@ from bikelog.services import inventory as inv
 from bikelog.services import settings
 from bikelog.services.errors import DomainError
 from bikelog.timeutil import today_local, utc_now
+from bikelog.i18n import tr
 
 
 def deleted_ids(session: Session) -> set[int]:
@@ -66,9 +67,9 @@ def _parts(session: Session, bike_id: int) -> list[tuple[Component, float]]:
 def purge(session: Session, bike_id: int, *, confirm_name: str, retire_parts: bool = False) -> dict:
     bike = inv.get_bike(session, bike_id)
     if bike.deleted_at:
-        raise DomainError(f"{bike.name} is already deleted")
+        raise DomainError(tr("{name} is already deleted", name=bike.name))
     if (confirm_name or "").strip().lower() != bike.name.strip().lower():
-        raise DomainError(f'Type the bike\'s name "{bike.name}" to delete it for good.')
+        raise DomainError(tr('Type the bike\'s name "{name}" to delete it for good.', name=bike.name))
     name, today = bike.name, today_local(settings.tz(session)).isoformat()
     parts = _parts(session, bike.id)
     if bike.strava_gear_id:

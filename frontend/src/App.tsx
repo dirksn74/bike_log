@@ -14,14 +14,15 @@ import OverviewPage from './pages/Overview'
 import RidesPage from './pages/Rides'
 import SettingsPage from './pages/Settings'
 import type { Meta } from './types'
+import { tr, checkLanguage } from './i18n'
 
 const NAV = [
-  ['/', 'Overview', '◎'],
-  ['/bikes', 'Bikes', '🚲'],
-  ['/maintenance', 'Maintenance', '🔧'],
-  ['/rides', 'Rides', '↗'],
-  ['/inventory', 'Inventory', '▤'],
-  ['/settings', 'Settings', '⚙'],
+  ['/', tr('Overview'), '◎'],
+  ['/bikes', tr('Bikes'), '🚲'],
+  ['/maintenance', tr('Maintenance'), '🔧'],
+  ['/rides', tr('Rides'), '↗'],
+  ['/inventory', tr('Inventory'), '▤'],
+  ['/settings', tr('Settings'), '⚙'],
 ] as const
 
 export default function App() {
@@ -35,18 +36,19 @@ export default function App() {
   }, [toastMsg])
   useEffect(() => {
     if (meta.data) setTimezone(meta.data.settings.timezone)
+    if (meta.data) checkLanguage(meta.data.settings.language)
   }, [meta.data])
 
   if (meta.loading && !meta.data)
     return (
       <div className="boot">
-        <Loading what="Starting Bike Log" />
+        <Loading what={tr('Starting Bike Log')} />
       </div>
     )
   if (!meta.data)
     return (
       <div className="boot">
-        <ErrorBox error={meta.error ?? 'No data'} onRetry={meta.reload} />
+        <ErrorBox error={meta.error ?? tr('No data')} onRetry={meta.reload} />
       </div>
     )
   return (
@@ -55,11 +57,11 @@ export default function App() {
         <div className="shell">
           <header className="topbar">
             <div className="topbar-inner">
-              <Link to="/" className="brand" aria-label="Bike Log, overview">
+              <Link to="/" className="brand" aria-label={tr('Bike Log, overview')}>
                 <img src="./logo.svg" alt="" width={32} height={32} />
-                <span>Bike Log</span>
+                <span>{tr('Bike Log')}</span>
               </Link>
-              <nav aria-label="Main">
+              <nav aria-label={tr('Main')}>
                 {NAV.map(([to, label, icon]) => (
                   <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `navlink ${isActive ? 'active' : ''}`}>
                     <span className="navicon" aria-hidden>
@@ -69,7 +71,7 @@ export default function App() {
                   </NavLink>
                 ))}
               </nav>
-              <span className="brand-version" title={`Bike Log ${meta.data.full_version}`}>
+              <span className="brand-version" title={tr('Bike Log {full_version}', { full_version: meta.data.full_version })}>
                 v{meta.data.full_version}
               </span>
             </div>
@@ -80,11 +82,11 @@ export default function App() {
                 {versionProblem(meta.data)}
               </div>
             )}
-            {meta.data.demo && <div className="demo-banner">Demo mode: sample data in a separate demo database. Your own data is not touched.</div>}
+            {meta.data.demo && <div className="demo-banner">{tr('Demo mode: sample data in a separate demo database. Your own data is not touched.')}</div>}
             {meta.data.sample && !meta.data.demo && (
               <div className="demo-banner" role="status">
-                <strong>Sample data.</strong> These two bikes, their rides and incidents are made up so you can look around. Ready for your own bikes?{' '}
-                <Link to="/settings?section=fresh-start">Settings → Fresh start</Link> removes all of it.
+                <strong>{tr('Sample data.')}</strong> {tr('These two bikes, their rides and incidents are made up so you can look around. Ready for your own bikes?')}{' '}
+                <Link to="/settings?section=fresh-start">{tr('Settings → Fresh start')}</Link> {tr('removes all of it.')}
               </div>
             )}
             <Breadcrumbs />
@@ -98,7 +100,7 @@ export default function App() {
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/inventory/:id" element={<ComponentDetailPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<p>Page not found.</p>} />
+              <Route path="*" element={<p>{tr('Page not found.')}</p>} />
             </Routes>
           </main>
         </div>

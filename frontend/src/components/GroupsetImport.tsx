@@ -5,6 +5,7 @@ import { euro, toCents, today } from '../format'
 import type { Bike, GroupsetPlan, GroupsetTemplate, OpResult } from '../types'
 import { Empty, ErrorBox, Field, FormError, Loading, Tag } from './ui'
 import ShopPicker from './ShopPicker'
+import { tr, trn } from '../i18n'
 
 const ACTION_TEXT: Record<string, string> = { INSTALL: 'install', REPLACE: 'replace', SPARE: 'spare' }
 
@@ -77,12 +78,12 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
       if (priceMode === 'PARTS') {
         for (const key of body().include) {
           const c = toCents(prices[key] ?? '')
-          if (Number.isNaN(c)) throw new Error('Prices: enter amounts such as 49,90')
+          if (Number.isNaN(c)) throw new Error(tr('Prices: enter amounts such as 49,90'))
           if (c !== null) paid[key] = c
         }
       } else {
         const c = toCents(bundle.price)
-        if (Number.isNaN(c)) throw new Error('Bundle price: enter an amount such as 1899,00')
+        if (Number.isNaN(c)) throw new Error(tr('Bundle price: enter an amount such as 1899,00'))
         bundleBody = { price_cents: c, merchant: bundle.merchant || null, purchased_on: bundle.purchased_on || null }
       }
       const r = await api.post<OpResult<GroupsetPlan & { created: { label: string }[]; bundle: { name: string } | null }>>(
@@ -91,7 +92,7 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
         opId,
       )
       onDone(
-        `${r.result.created.length} parts added (${r.result.counts.INSTALL + r.result.counts.REPLACE} installed)${r.result.bundle ? `, recorded as the bundle "${r.result.bundle.name}"` : ''}. Undo is under Inventory → History.`,
+        tr('{length} parts added ({x} installed){x2}. Undo is under Inventory → History.', { length: r.result.created.length, x: r.result.counts.INSTALL + r.result.counts.REPLACE, x2: r.result.bundle ? tr(', recorded as the bundle "{name}"', { name: r.result.bundle.name }) : '' }),
       )
     } catch (e) {
       setError((e as Error).message)
@@ -102,7 +103,7 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
 
   if (templates.loading && !templates.data) return <Loading />
   if (templates.error) return <ErrorBox error={templates.error} onRetry={templates.reload} />
-  if (!t) return <Empty title="No groupset templates" />
+  if (!t) return <Empty title={tr('No groupset templates')} />
   const paidTotal = offered.filter((i) => include.has(i.key)).reduce((sum, i) => sum + (toCents(prices[i.key] ?? '') || 0), 0)
   const toggleSpare = (key: string) => {
     const next = new Set(spares)
@@ -119,7 +120,7 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
   return (
     <div className="form">
       {(templates.data?.length ?? 0) > 1 && (
-        <Field label="Groupset">
+        <Field label={tr('Groupset')}>
           <select value={code} onChange={(e) => setCode(e.target.value)}>
             {[...new Set(templates.data?.map((x) => x.maker))].map((maker) => (
               <optgroup key={maker} label={maker}>
@@ -136,14 +137,14 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
         </Field>
       )}
       <p className="small">
-        <strong>{t.name}</strong> {!t.verified && <Tag tone="warn" title={t.source}>specs not verified with {t.maker} yet</Tag>}
+        <strong>{t.name}</strong> {!t.verified && <Tag tone="warn" title={t.source}>{tr('specs not verified with {maker} yet', { maker: t.maker })}</Tag>}
         <br />
         <span className="muted">{t.notes}</span>
       </p>
       <div className="row">
-        <Field label="Bike">
+        <Field label={tr('Bike')}>
           <select value={bike} onChange={(e) => setBike(e.target.value)}>
-            <option value="">No bike: add everything as spares</option>
+            <option value="">{tr('No bike: add everything as spares')}</option>
             {bikes.data
               ?.filter((b) => b.status === 'ACTIVE')
               .map((b) => (
@@ -153,7 +154,7 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
               ))}
           </select>
         </Field>
-        <Field label="Installed on" hint="Rides from this date count on the new parts.">
+        <Field label={tr('Installed on')} hint={tr('Rides from this date count on the new parts.')}>
           <input type="date" value={at} onChange={(e) => setAt(e.target.value)} />
         </Field>
       </div>
@@ -169,23 +170,23 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
             </select>
           </Field>
         ))}
-        <Field label="Condition">
+        <Field label={tr('Condition')}>
           <select value={priorUsage} onChange={(e) => setPriorUsage(e.target.value)}>
-            <option value="NEW">New</option>
-            <option value="UNKNOWN">Used, mileage unknown</option>
+            <option value="NEW">{tr('New')}</option>
+            <option value="UNKNOWN">{tr('Used, mileage unknown')}</option>
           </select>
         </Field>
       </div>
       {bike && (
         <fieldset className="field">
-          <legend className="field-label">If a position already has a part</legend>
+          <legend className="field-label">{tr('If a position already has a part')}</legend>
           <div className="pick-list">
             {t.occupied_modes.map((m) => (
               <label key={m.code} className={`pick ${occupied === m.code ? 'pick-on' : ''}`}>
                 <input type="radio" name="occupied" checked={occupied === m.code} onChange={() => setOccupied(m.code)} />
                 <span>
                   {m.label}
-                  {m.code === 'REPLACE' && <span className="small muted"> (old parts keep their history; worn ones are marked discarded, others go to spares)</span>}
+                  {m.code === 'REPLACE' && <span className="small muted"> {tr('(old parts keep their history; worn ones are marked discarded, others go to spares)')}</span>}
                 </span>
               </label>
             ))}
@@ -193,27 +194,27 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
         </fieldset>
       )}
       <fieldset className="field">
-        <legend className="field-label">How was it bought?</legend>
+        <legend className="field-label">{tr('How was it bought?')}</legend>
         <div className="pick-list">
           <label className={`pick ${priceMode === 'BUNDLE' ? 'pick-on' : ''}`}>
             <input type="radio" name="priceMode" checked={priceMode === 'BUNDLE'} onChange={() => setPriceMode('BUNDLE')} />
             <span>
-              As one bundle (one price for the whole set)
-              <span className="small muted"> The price counts once. Parts replaced later get their own price; the originals stay in the bundle.</span>
+              {tr('As one bundle (one price for the whole set)')}
+              <span className="small muted"> {tr('The price counts once. Parts replaced later get their own price; the originals stay in the bundle.')}</span>
             </span>
           </label>
           <label className={`pick ${priceMode === 'PARTS' ? 'pick-on' : ''}`}>
             <input type="radio" name="priceMode" checked={priceMode === 'PARTS'} onChange={() => setPriceMode('PARTS')} />
-            <span>Part by part (a price per part)</span>
+            <span>{tr('Part by part (a price per part)')}</span>
           </label>
         </div>
         {priceMode === 'BUNDLE' && (
           <div className="row">
-            <Field label="Bundle price" hint="Optional; can be added later.">
+            <Field label={tr('Bundle price')} hint={tr('Optional; can be added later.')}>
               <input inputMode="decimal" placeholder="€" value={bundle.price} onChange={(e) => setBundle({ ...bundle, price: e.target.value })} />
             </Field>
-            <ShopPicker label="Shop" value={bundle.merchant} onChange={(v) => setBundle({ ...bundle, merchant: v })} />
-            <Field label="Bought on">
+            <ShopPicker label={tr('Shop')} value={bundle.merchant} onChange={(v) => setBundle({ ...bundle, merchant: v })} />
+            <Field label={tr('Bought on')}>
               <input type="date" value={bundle.purchased_on} onChange={(e) => setBundle({ ...bundle, purchased_on: e.target.value })} />
             </Field>
           </div>
@@ -221,9 +222,9 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
       </fieldset>
       <fieldset className="field">
         <legend className="field-label">
-          Parts ({offered.filter((i) => include.has(i.key)).length} of {offered.length})
-          {priceMode === 'PARTS' ? ` · prices are optional${paidTotal > 0 ? `, ${euro(paidTotal)} entered` : ''}` : ''}
-          {bike ? ' · tick "spare" for parts that go into storage instead of onto the bike' : ''}
+          {tr('Parts ({n} of {total})', { n: offered.filter((i) => include.has(i.key)).length, total: offered.length })}
+          {priceMode === 'PARTS' ? tr(' · prices are optional{x}', { x: paidTotal > 0 ? tr(', {paidTotal} entered', { paidTotal: euro(paidTotal) }) : '' }) : ''}
+          {bike ? tr(' · tick "spare" for parts that go into storage instead of onto the bike') : ''}
         </legend>
         <ul className="list groupset-items">
           {offered.map((i) => {
@@ -239,14 +240,14 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
                 </label>
                 {row && <Tag tone={row.action === 'SPARE' ? 'neutral' : row.action === 'REPLACE' ? 'warn' : 'good'}>{ACTION_TEXT[row.action]}</Tag>}
                 {bike && include.has(i.key) && (
-                  <label className="check small" title="Keep this part in storage instead of installing it">
-                    <input type="checkbox" aria-label={`Keep ${i.name} as spare`} checked={spares.has(i.key)} onChange={() => toggleSpare(i.key)} /> spare
+                  <label className="check small" title={tr('Keep this part in storage instead of installing it')}>
+                    <input type="checkbox" aria-label={tr('Keep {name} as spare', { name: i.name })} checked={spares.has(i.key)} onChange={() => toggleSpare(i.key)} /> {tr('spare')}
                   </label>
                 )}
                 {priceMode === 'PARTS' && include.has(i.key) && (
                   <input
                     className="price-input"
-                    aria-label={`Price ${i.name}`}
+                    aria-label={tr('Price {name}', { name: i.name })}
                     inputMode="decimal"
                     value={prices[i.key] ?? ''}
                     placeholder={row?.list_price_cents ? euro(row.list_price_cents) : '€'}
@@ -260,15 +261,14 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
       </fieldset>
       {plan && (
         <div className="notice notice-preview">
-          {plan.counts.INSTALL} to install, {plan.counts.REPLACE} to replace, {plan.counts.SPARE} as spares
-          {plan.new_products ? `; ${plan.new_products} new product${plan.new_products === 1 ? '' : 's'} with Shimano specs` : ''}. Nothing is saved
-          until you press Add.
+          {tr('{install} to install, {replace} to replace, {spare} as spares', { install: plan.counts.INSTALL, replace: plan.counts.REPLACE, spare: plan.counts.SPARE })}
+          {plan.new_products ? trn('; {n} new product with Shimano specs', '; {n} new products with Shimano specs', plan.new_products) : ''}{tr('. Nothing is saved until you press Add.')}
         </div>
       )}
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={!plan || busy} onClick={add}>
-          {busy ? 'Adding…' : `Add ${plan?.items.length ?? ''} parts`}
+          {busy ? tr('Adding…') : tr('Add {x} parts', { x: plan?.items.length ?? '' })}
         </button>
       </div>
     </div>

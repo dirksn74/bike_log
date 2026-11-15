@@ -81,6 +81,7 @@ except Exception as e:  # never let file properties break a build; the app itsel
 datas = [
     (str(DIST), "bikelog/static"),                                   # resource_root()/static
     (str(BACKEND / "bikelog" / "migrations"), "bikelog/migrations"),  # resource_root()/migrations
+    (str(BACKEND / "bikelog" / "locales"), "bikelog/locales"),        # resource_root()/locales (German texts)
     (str(BUILD_INFO), "bikelog"),                                    # resource_root()/build_commit.txt
     (str(BUILD_VERSION), "bikelog"),                                 # resource_root()/build_version.txt
 ]

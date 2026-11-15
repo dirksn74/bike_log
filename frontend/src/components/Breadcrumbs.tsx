@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { MAIN, isMain, loadTrail, nextTrail, saveTrail, tabLabel, useLabels } from '../crumbs'
+import { tr } from '../i18n'
 
 // shown until the page has loaded its name
 function fallback(path: string): string {
-  if (/\/groupset$/.test(path)) return 'Groupset'
-  if (path.startsWith('/bikes/')) return 'Bike'
-  if (path.startsWith('/inventory/')) return 'Part'
+  if (/\/groupset$/.test(path)) return tr('Groupset')
+  if (path.startsWith('/bikes/')) return tr('Bike')
+  if (path.startsWith('/inventory/')) return tr('Part')
   return '…'
 }
 
@@ -32,7 +33,7 @@ export default function Breadcrumbs() {
     if (tab) crumbs.push({ to: path + q, label: tab })
   }
   return (
-    <nav className="breadcrumbs" aria-label="Breadcrumb">
+    <nav className="breadcrumbs" aria-label={tr('Breadcrumb')}>
       <ol>
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1

@@ -29,6 +29,7 @@ from bikelog.models import (
     UsageContribution, UsageProfile,
 )
 from bikelog.timeutil import FAR_FUTURE, local_date_of, parse_when
+from bikelog.i18n import tr
 
 
 @dataclass
@@ -134,7 +135,7 @@ WHEEL_SLOTS = ("WHEELSET", "FRONT_WHEEL", "REAR_WHEEL")
 def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -> tuple[list[_Use], list[tuple[str, str | None, str]]]:
     flags: list[tuple[str, str | None, str]] = []
     if ride.bike_id is None:
-        flags.append(("NO_BIKE", None, "No bike assigned: this ride gives no component usage until you pick a bike."))
+        flags.append(("NO_BIKE", None, tr("No bike assigned: this ride gives no component usage until you pick a bike.")))
         return [], flags
     t = ride.sort_utc
     ride_date_only = ride.start_time_utc is None
@@ -148,8 +149,7 @@ def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -
         if ride.ride_date in days and (days[ride.ride_date] or ride_date_only):
             ambiguous_slots.add(slot)
             flags.append(("AMBIGUOUS_CHANGE_DATE", slot,
-                          f"{slot.replace('_', ' ').title()} changed on {ride.ride_date} without a clock time; "
-                          "this ride was allocated to the part installed that day. Confirm the equipment to resolve."))
+                          tr("{x} changed on {ride_date} without a clock time; this ride was allocated to the part installed that day. Confirm the equipment to resolve.", x=slot.replace('_', ' ').title(), ride_date=ride.ride_date)))
     for inst in index._active(bike_insts, t):
         if inst.slot in explicit:
             continue
@@ -171,12 +171,10 @@ def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -
     on_trainer = ride.usage_profile_id is not None or ride.sport_type == "VirtualRide"
     if bike_insts and not on_trainer and not any(u.slot in WHEEL_SLOTS for u in uses):
         flags.append(("NO_WHEELS", None,
-                      "No wheels on this bike on the ride day, so no wheel, tire or rotor gets these km. "
-                      "Install the wheels with the day they were fitted, or set them on this ride."))
+                      tr("No wheels on this bike on the ride day, so no wheel, tire or rotor gets these km. Install the wheels with the day they were fitted, or set them on this ride.")))
     if any(i.slot == "FRAME" for i in bike_insts) and not any(u.slot == "FRAME" for u in uses):
         flags.append(("NO_FRAME", "FRAME",
-                      "No frame on this bike on the ride day (away for repair?). Check the date or the bike, "
-                      "or put the frame back on from the day it returned."))
+                      tr("No frame on this bike on the ride day (away for repair?). Check the date or the bike, or put the frame back on from the day it returned.")))
     if ride.usage_profile_id and ride.usage_profile_id in index.profiles:
         ex_slots, ex_types = index.profiles[ride.usage_profile_id]
         uses = [u for u in uses if u.root_slot not in ex_slots and u.slot not in ex_slots
@@ -199,14 +197,14 @@ def allocate_ride(session: Session, ride: Ride, index: AllocationIndex) -> None:
         select(RideEquipment).where(RideEquipment.ride_id == ride.id))}
     uses, flags = _plan(index, ride, explicit)
     if ride.distance_km is None:
-        flags.append(("MISSING_DISTANCE", None, "Distance is missing: 0 km counted; time still counts."))
+        flags.append(("MISSING_DISTANCE", None, tr("Distance is missing: 0 km counted; time still counts.")))
     b = session.get(Bike, ride.bike_id) if ride.bike_id else None
     if b and b.purchase_date and ride.ride_date < b.purchase_date:
         flags.append(("BEFORE_PURCHASE", None,
-                      f"This ride is dated before {b.name} was bought ({b.purchase_date}). Check the date or the bike."))
+                      tr("This ride is dated before {name} was bought ({purchase_date}). Check the date or the bike.", name=b.name, purchase_date=b.purchase_date)))
     if ride.assignment_uncertain:
         flags.append(("UNCERTAIN_ASSIGNMENT", None,
-                      ride.uncertainty_note or "Marked as uncertain: bike or equipment may be wrong."))
+                      ride.uncertainty_note or tr("Marked as uncertain: bike or equipment may be wrong.")))
     km = ride.distance_km or 0.0
     for u in uses:
         base = index.baseline.get(u.component_id)

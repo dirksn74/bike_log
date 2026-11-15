@@ -4,18 +4,19 @@ import { when } from '../format'
 import { useApi } from '../hooks'
 import type { ChangeRow } from '../types'
 import { Card, Empty, ErrorBox, Loading, Tag } from './ui'
+import { tr } from '../i18n'
 
 const ACTION_LABEL: Record<string, string> = {
-  CREATED: 'added',
-  CHANGED: 'changed',
-  INSTALLED: 'installed',
-  REMOVED: 'removed',
-  REINSTATED: 'removal undone',
-  VOIDED: 'entry voided',
-  DELETED: 'deleted',
-  ENTRY_CHANGED: 'log entry changed',
-  ENTRY_DELETED: 'log entry deleted',
-  ENTRY_RESTORED: 'log entry restored',
+  CREATED: tr('added'),
+  CHANGED: tr('changed'),
+  INSTALLED: tr('installed'),
+  REMOVED: tr('removed'),
+  REINSTATED: tr('removal undone'),
+  VOIDED: tr('entry voided'),
+  DELETED: tr('deleted'),
+  ENTRY_CHANGED: tr('log entry changed'),
+  ENTRY_DELETED: tr('log entry deleted'),
+  ENTRY_RESTORED: tr('log entry restored'),
 }
 const via = (v: string | null) => (v ? v.replace(/[._]/g, ' ') : null)
 
@@ -30,26 +31,26 @@ export default function ChangeLog({ bikeId, componentId, refresh, className = ''
   }, [refresh])
   const rows = data ? (all ? data : data.slice(0, 12)) : []
   return (
-    <Card title="Change log" className={className}>
-      {loading && !data && <Loading what="Loading changes" />}
+    <Card title={tr('Change log')} className={className}>
+      {loading && !data && <Loading what={tr('Loading changes')} />}
       {error && <ErrorBox error={error} onRetry={reload} />}
-      {data && data.length === 0 && <Empty title="No changes recorded yet">Changes are recorded from this version on.</Empty>}
+      {data && data.length === 0 && <Empty title={tr('No changes recorded yet')}>{tr('Changes are recorded from this version on.')}</Empty>}
       {rows.length > 0 && (
         <table className="table changelog">
           <thead>
             <tr>
-              <th>When</th>
-              {bikeId !== undefined && <th>Part</th>}
-              <th>What</th>
-              <th>Change</th>
-              <th>By</th>
+              <th>{tr('When')}</th>
+              {bikeId !== undefined && <th>{tr('Part')}</th>}
+              <th>{tr('What')}</th>
+              <th>{tr('Change')}</th>
+              <th>{tr('By')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="nowrap">{when(r.changed_at)}</td>
-                {bikeId !== undefined && <td>{r.component_id ? <Link to={`/inventory/${r.component_id}`}>{r.component}</Link> : <span className="muted">bike</span>}</td>}
+                {bikeId !== undefined && <td>{r.component_id ? <Link to={`/inventory/${r.component_id}`}>{r.component}</Link> : <span className="muted">{tr('bike')}</span>}</td>}
                 <td>
                   <Tag>{ACTION_LABEL[r.action] ?? r.action.toLowerCase()}</Tag> {r.field}
                 </td>
@@ -74,7 +75,7 @@ export default function ChangeLog({ bikeId, componentId, refresh, className = ''
       {data && data.length > 12 && (
         <div className="form-actions">
           <button className="btn btn-small" onClick={() => setAll(!all)}>
-            {all ? 'Show recent only' : `Show all ${data.length}`}
+            {all ? tr('Show recent only') : tr('Show all {length}', { length: data.length })}
           </button>
         </div>
       )}

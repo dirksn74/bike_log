@@ -17,6 +17,7 @@ from bikelog.models import (
 from bikelog.services import allocation, settings
 from bikelog.services.errors import Conflict, DomainError, NotFound, Protected
 from bikelog.timeutil import FAR_FUTURE, parse_when, utc_now
+from bikelog.i18n import code_text, tr
 
 
 # ---------------------------------------------------------------- lookups
@@ -24,14 +25,14 @@ from bikelog.timeutil import FAR_FUTURE, parse_when, utc_now
 def get_bike(session: Session, bike_id: int) -> Bike:
     b = session.get(Bike, bike_id)
     if not b:
-        raise NotFound(f"Bike {bike_id} not found")
+        raise NotFound(tr("Bike {bike_id} not found", bike_id=bike_id))
     return b
 
 
 def get_component(session: Session, component_id: int) -> Component:
     c = session.get(Component, component_id)
     if not c:
-        raise NotFound(f"Component {component_id} not found")
+        raise NotFound(tr("Component {component_id} not found", component_id=component_id))
     return c
 
 
@@ -48,12 +49,12 @@ def create_bike(session: Session, *, name: str, maker: str | None = None, model:
                 purchase_date: str | None = None, shifting: str | None = None, shop: str | None = None) -> Bike:
     name = (name or "").strip()
     if not name:
-        raise DomainError("A bike needs a name")
+        raise DomainError(tr("A bike needs a name"))
     if session.scalar(select(Bike).where(func.lower(Bike.name) == name.lower())):
-        raise Conflict(f"A bike called {name!r} already exists")
+        raise Conflict(tr("A bike called {name} already exists", name=repr(name)))
     _check_price(purchase_price_cents)
     if shifting and shifting not in SHIFTING_TYPES:
-        raise DomainError(f"Shifting must be one of {', '.join(SHIFTING_TYPES)} (or not set)")
+        raise DomainError(tr("Shifting must be one of {items} (or not set)", items=', '.join(SHIFTING_TYPES)))
     bike = Bike(name=name, maker=maker, model=model, year=year, strava_gear_id=strava_gear_id or None, notes=notes,
                 purchase_price_cents=purchase_price_cents, purchase_date=purchase_date or None,
                 shifting=shifting or None, shop=shop or None)
@@ -71,7 +72,7 @@ def update_bike(session: Session, bike_id: int, **fields) -> Bike:
     bike = get_bike(session, bike_id)
     _check_price(fields.get("purchase_price_cents"))
     if fields.get("shifting") and fields["shifting"] not in SHIFTING_TYPES:
-        raise DomainError(f"Shifting must be one of {', '.join(SHIFTING_TYPES)} (or not set)")
+        raise DomainError(tr("Shifting must be one of {items} (or not set)", items=', '.join(SHIFTING_TYPES)))
     old_purchase = bike.purchase_date
     for k in ("name", "maker", "model", "year", "strava_gear_id", "notes", "purchase_price_cents", "purchase_date",
               "shifting", "shop"):
@@ -81,7 +82,7 @@ def update_bike(session: Session, bike_id: int, **fields) -> Bike:
     try:
         session.flush()
     except IntegrityError as e:
-        raise Conflict("Name or Strava gear id already used by another bike") from e
+        raise Conflict(tr("Name or Strava gear id already used by another bike")) from e
     if bike.purchase_date != old_purchase:   # rides dated before it are flagged
         allocation.allocate_rides(session, list(session.scalars(select(Ride).where(Ride.bike_id == bike.id))),
                                   settings.tz(session))
@@ -90,7 +91,7 @@ def update_bike(session: Session, bike_id: int, **fields) -> Bike:
 
 def _check_price(cents: int | None) -> None:
     if cents is not None and cents < 0:
-        raise DomainError("A price cannot be negative")
+        raise DomainError(tr("A price cannot be negative"))
 
 
 def retire_bike(session: Session, bike_id: int, *, parts_off_at: str | None = None,
@@ -142,8 +143,7 @@ def delete_bike(session: Session, bike_id: int) -> str:
     counts = bike_history_counts(session, bike_id)
     if any(counts.values()):
         what = ", ".join(f"{v} {k}" for k, v in counts.items() if v)
-        raise Protected(f"{bike.name} has history ({what}). Retire it instead: it is hidden, keeps its rides "
-                        "and can be restored.")
+        raise Protected(tr("{name} has history ({what}). Retire it instead: it is hidden, keeps its rides and can be restored.", name=bike.name, what=what))
     if bike.strava_gear_id:
         ignored = set(json.loads(settings.get(session, "strava_ignored_gear") or "[]"))
         ignored.add(bike.strava_gear_id)
@@ -182,7 +182,7 @@ def create_product(session: Session, *, component_type: str, model: str, maker: 
 
 def _check_type(code: str) -> None:
     if code not in COMPONENT_TYPES:
-        raise DomainError(f"Unknown component type {code!r}")
+        raise DomainError(tr("Unknown component type {code}", code=repr(code)))
 
 
 def create_component(session: Session, *, component_type: str, label: str, product_id: int | None = None,
@@ -199,15 +199,15 @@ def create_component(session: Session, *, component_type: str, label: str, produ
     _check_tire_setup(component_type, tire_setup)
     label = (label or "").strip()
     if not label:
-        raise DomainError("A component needs a name/label, e.g. 'Chain A'")
+        raise DomainError(tr("A component needs a name/label, e.g. 'Chain A'"))
     if prior_usage not in ("NEW", "UNKNOWN", "RECORDED"):
-        raise DomainError("prior_usage must be NEW, UNKNOWN or RECORDED")
+        raise DomainError(tr("prior_usage must be NEW, UNKNOWN or RECORDED"))
     if product_id is not None:
         prod = session.get(Product, product_id)
         if not prod:
-            raise NotFound(f"Product {product_id} not found")
+            raise NotFound(tr("Product {product_id} not found", product_id=product_id))
         if prod.component_type != component_type:
-            raise DomainError(f"Product {prod.model!r} is a {prod.component_type}, not a {component_type}")
+            raise DomainError(tr("Product {model} is a {component_type}, not a {component_type2}", model=repr(prod.model), component_type=prod.component_type, component_type2=component_type))
     # A mark is part of the name: "Shimano XT CN-M8100 [A]" (DECISIONS 132). A second chain of the same name
     # gets the next free letter as its mark; another identical part keeps the name with a number: "BB (2)"
     # (DECISIONS 105); tires and tubes may share a name.
@@ -233,7 +233,7 @@ def create_component(session: Session, *, component_type: str, label: str, produ
 def update_product(session: Session, product_id: int, **fields) -> Product:
     p = session.get(Product, product_id)
     if not p:
-        raise NotFound(f"Product {product_id} not found")
+        raise NotFound(tr("Product {product_id} not found", product_id=product_id))
     _check_price(fields.get("list_price_cents"))
     for k in ("maker", "model", "notes", "list_price_cents", "spec_source", "spec_version"):
         if k in fields:
@@ -248,9 +248,9 @@ def _check_tire_setup(component_type: str, setup: str | None) -> None:
     if setup is None:
         return
     if component_type not in WHEEL_TYPES:
-        raise DomainError("Tube or tubeless is set on the wheel; the tire and tube on it follow the wheel")
+        raise DomainError(tr("Tube or tubeless is set on the wheel; the tire and tube on it follow the wheel"))
     if setup not in TIRE_SETUPS:
-        raise DomainError(f"Tire setup must be one of {', '.join(TIRE_SETUPS)}")
+        raise DomainError(tr("Tire setup must be one of {items}", items=', '.join(TIRE_SETUPS)))
 
 
 def tire_setup_of(session: Session, comp: Component) -> tuple[str | None, Component | None]:
@@ -283,15 +283,15 @@ def update_component(session: Session, component_id: int, **fields) -> Component
         from bikelog.models import PurchaseBundle
         b = session.get(PurchaseBundle, comp.bundle_id)
         if b is not None and b.voided_at is None:
-            raise DomainError(f"{comp.label} was bought in the bundle '{b.name}'; the bundle carries the price")
+            raise DomainError(tr("{label} was bought in the bundle '{name}'; the bundle carries the price", label=comp.label, name=b.name))
     if "tire_setup" in fields:
         _check_tire_setup(comp.component_type, fields["tire_setup"])
     if "pressure_note" in fields:
         fields["pressure_note"] = (fields["pressure_note"] or "").strip() or None
         if fields["pressure_note"] and comp.component_type != "TIRE":
-            raise DomainError("A tire pressure note goes on a tire")
+            raise DomainError(tr("A tire pressure note goes on a tire"))
         if fields["pressure_note"] and len(fields["pressure_note"]) > 80:
-            raise DomainError("Keep the tire pressure note short (80 characters at most)")
+            raise DomainError(tr("Keep the tire pressure note short (80 characters at most)"))
     if "mark" in fields:
         fields["mark"] = (fields["mark"] or "").strip() or None
         if fields["mark"] != comp.mark:
@@ -302,7 +302,7 @@ def update_component(session: Session, component_id: int, **fields) -> Component
         name = (fields["label"] or "").strip() if "label" in fields else name_of(comp)
         name = strip_mark(strip_mark(name, comp.mark), mark)
         if not name:
-            raise DomainError("A part needs a name")
+            raise DomainError(tr("A part needs a name"))
         fields["label"] = with_mark(name, mark)
     if "warranty_until" in fields:
         fields["warranty_until"] = (fields["warranty_until"] or "").strip()[:10] or None
@@ -310,10 +310,10 @@ def update_component(session: Session, component_id: int, **fields) -> Component
             try:
                 date.fromisoformat(fields["warranty_until"])
             except ValueError as e:
-                raise DomainError("Warranty until must be a date (YYYY-MM-DD)") from e
+                raise DomainError(tr("Warranty until must be a date (YYYY-MM-DD)")) from e
     if fields.get("rotation_bike_id") is not None:
         if comp.component_type != "CHAIN":
-            raise DomainError("Only chains go in a chain rotation")
+            raise DomainError(tr("Only chains go in a chain rotation"))
         get_bike(session, fields["rotation_bike_id"])
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
               "storage_location", "tire_setup", "pressure_note", "mark", "rotation_bike_id", "warranty_until", "shop"):
@@ -324,10 +324,9 @@ def update_component(session: Session, component_id: int, **fields) -> Component
     try:
         session.flush()
     except IntegrityError as e:
-        hint = ("Give it a different mark, e.g. B." if comp.component_type in LETTER_TYPES
-                else "Add something to tell them apart, e.g. a mark or where it is kept.")
-        raise Conflict(f"Another {COMPONENT_TYPES[comp.component_type].name.lower()} is already called "
-                       f"\"{comp.label}\". {hint}") from e
+        hint = (tr("Give it a different mark, e.g. B.") if comp.component_type in LETTER_TYPES
+                else tr("Add something to tell them apart, e.g. a mark or where it is kept."))
+        raise Conflict(tr('Another {name} is already called "{label}". {hint}', name=COMPONENT_TYPES[comp.component_type].name.lower(), label=comp.label, hint=hint)) from e
     return comp
 
 
@@ -336,7 +335,7 @@ def set_starting_usage(session: Session, *, km: float, effective: str | None, is
                        ) -> UsageAdjustment:
     """Starting mileage as of an effective date. Rides before that date are inside this value."""
     if km < 0:
-        raise DomainError("Starting mileage cannot be negative")
+        raise DomainError(tr("Starting mileage cannot be negative"))
     tz = settings.tz(session)
     w = parse_when(effective or utc_now(), tz)
     q = select(UsageAdjustment).where(UsageAdjustment.kind == "STARTING", UsageAdjustment.voided_at.is_(None))
@@ -356,7 +355,7 @@ def set_starting_usage(session: Session, *, km: float, effective: str | None, is
 
 def add_correction(session: Session, component_id: int, km: float, effective: str, note: str) -> UsageAdjustment:
     if not note:
-        raise DomainError("A mileage correction needs a reason")
+        raise DomainError(tr("A mileage correction needs a reason"))
     w = parse_when(effective, settings.tz(session))
     adj = UsageAdjustment(component_id=component_id, kind="CORRECTION", effective_at=w.raw, effective_utc=w.utc,
                           km=km, is_estimate=False, note=note)
@@ -370,11 +369,11 @@ def set_disposition(session: Session, component_id: int, disposition: str, *, on
     """Record what happened to a part that is off the bike. Removes it first if it is still installed.
     RETIRED, DISCARDED and SOLD take it out of use; the record and its history always stay."""
     if disposition not in DISPOSITIONS:
-        raise DomainError(f"Choose one of: {', '.join(DISPOSITIONS)}")
+        raise DomainError(tr("Choose one of: {items}", items=', '.join(DISPOSITIONS)))
     comp = get_component(session, component_id)
     rider = COMPONENT_TYPES[comp.component_type].rider_gear
     if disposition == "IN_USE" and not rider:
-        raise DomainError("Only shoes and other rider gear are put in use this way; parts are installed on a bike")
+        raise DomainError(tr("Only shoes and other rider gear are put in use this way; parts are installed on a bike"))
     on_date = parse_when(on, settings.tz(session)).local_date
     if open_installation(session, component_id):
         remove(session, component_id, at=on, reason=note or DISPOSITIONS[disposition].lower(), outcome=disposition,
@@ -425,7 +424,7 @@ def disposition_history(session: Session, comp: Component) -> list[dict]:
 def retire_component(session: Session, component_id: int, *, on: str, reason: str | None = None,
                      disposition: str = "RETIRED", work_session_id: int | None = None) -> Component:
     if disposition not in OUT_OF_USE:
-        raise DomainError(f"Retiring means one of {', '.join(OUT_OF_USE)}")
+        raise DomainError(tr("Retiring means one of {items}", items=', '.join(OUT_OF_USE)))
     return set_disposition(session, component_id, disposition, on=on, note=reason, work_session_id=work_session_id)
 
 
@@ -438,7 +437,7 @@ def delete_component(session: Session, component_id: int) -> None:
     has_history = has_history or session.scalar(select(func.count()).select_from(MaintenanceEvent).where(
         MaintenanceEvent.component_id == component_id))
     if has_history:
-        raise Protected("This component has history. Retire it instead of deleting it.")
+        raise Protected(tr("This component has history. Retire it instead of deleting it."))
     session.query(UsageAdjustment).filter(UsageAdjustment.component_id == component_id).delete()
     session.delete(comp)
     session.flush()
@@ -460,16 +459,15 @@ def _validate_slot(comp: Component, slot: str | None, bike_id: int | None, paren
     ctype = COMPONENT_TYPES[comp.component_type]
     if parent is not None:
         if parent.component_type not in ctype.parent_types:
-            raise DomainError(f"A {ctype.name.lower()} cannot be mounted on a "
-                              f"{COMPONENT_TYPES[parent.component_type].name.lower()}")
+            raise DomainError(tr("A {name} cannot be mounted on a {name2}", name=ctype.name.lower(), name2=COMPONENT_TYPES[parent.component_type].name.lower()))
     if slot is None:
         if not ctype.slots:
-            raise DomainError("Choose a slot name for this part")
+            raise DomainError(tr("Choose a slot name for this part"))
         if len(ctype.slots) > 1 and parent is None:
-            raise DomainError(f"Choose a slot: {', '.join(ctype.slots)}")
+            raise DomainError(tr("Choose a slot: {items}", items=', '.join(ctype.slots)))
         slot = ctype.slots[0]
     elif ctype.slots and slot not in ctype.slots:
-        raise DomainError(f"A {ctype.name.lower()} goes in slot {', '.join(ctype.slots)}, not {slot}")
+        raise DomainError(tr("A {name} goes in slot {items}, not {slot}", name=ctype.name.lower(), items=', '.join(ctype.slots), slot=slot))
     return slot
 
 
@@ -487,11 +485,9 @@ def check_conflicts(session: Session, *, component_id: int, bike_id: int | None,
         where = session.get(Bike, i.bike_id).name if i.bike_id else session.get(Component, i.parent_component_id).label
         period = f"{i.installed_at[:10]} → {i.removed_at[:10] if i.removed_at else 'now'}"
         if i.component_id == component_id:
-            raise Conflict(f"{other.label} is already installed on {where} ({i.slot}, {period}) in that period. "
-                           "Remove it there first, or move it with an effective date.",
+            raise Conflict(tr("{label} is already installed on {where} ({slot}, {period}) in that period. Remove it there first, or move it with an effective date.", label=other.label, where=where, slot=i.slot, period=period),
                            installation_id=i.id)
-        raise Conflict(f"Slot {slot} on {where} is occupied by {other.label} ({period}). "
-                       "Use replace, or remove that part first.", installation_id=i.id)
+        raise Conflict(tr("Slot {slot} on {where} is occupied by {label} ({period}). Use replace, or remove that part first.", slot=slot, where=where, label=other.label, period=period), installation_id=i.id)
 
 
 def _bike_slot_periods(session: Session, bike_id: int, slots: tuple[str, ...], start: str, end: str | None):
@@ -503,10 +499,9 @@ def _bike_slot_periods(session: Session, bike_id: int, slots: tuple[str, ...], s
 def _check_wheels_and_wheelset(session: Session, comp: Component, bike_id: int, start: str, end: str | None) -> None:
     """A bike carries its wheels either directly or in a wheelset, never both (km would count twice)."""
     if comp.component_type in WHEEL_TYPES and _bike_slot_periods(session, bike_id, ("WHEELSET",), start, end):
-        raise DomainError(f"This bike has a wheelset then; mount {comp.label} on the wheelset instead")
+        raise DomainError(tr("This bike has a wheelset then; mount {label} on the wheelset instead", label=comp.label))
     if comp.component_type == "WHEELSET" and _bike_slot_periods(session, bike_id, WHEEL_TYPES, start, end):
-        raise DomainError("This bike has its wheels mounted directly then. Use 'Group wheels into a wheelset' "
-                          "on the bike page to put them into this wheelset.")
+        raise DomainError(tr("This bike has its wheels mounted directly then. Use 'Group wheels into a wheelset' on the bike page to put them into this wheelset."))
 
 
 def wheel_on_bike(session: Session, bike_id: int, slot: str) -> Installation | None:
@@ -535,11 +530,11 @@ def group_wheels(session: Session, bike_id: int, *, at: str, label: str | None =
         Installation.bike_id == bike.id, Installation.slot.in_(WHEEL_TYPES), Installation.removed_utc.is_(None),
         Installation.voided_at.is_(None)))]
     if not wheels:
-        raise DomainError(f"{bike.name} has no wheels mounted directly")
+        raise DomainError(tr("{name} has no wheels mounted directly", name=bike.name))
     if wheelset_id is not None:
         ws = get_component(session, wheelset_id)
         if ws.component_type != "WHEELSET":
-            raise DomainError(f"{ws.label} is not a wheelset")
+            raise DomainError(tr("{label} is not a wheelset", label=ws.label))
     else:
         ws = create_component(session, component_type="WHEELSET",
                               label=(label or "").strip() or f"Wheelset ({bike.name})", prior_usage="NEW",
@@ -561,28 +556,26 @@ def install(session: Session, component_id: int, *, at: str, bike_id: int | None
     comp = get_component(session, component_id)
     if comp.status == "RETIRED":
         word = DISPOSITIONS.get(comp.disposition, "Retired").split(" ")[0].lower()
-        raise DomainError(f"{comp.label} is {word if comp.disposition in OUT_OF_USE else 'retired'} and cannot be "
-                          "installed. If that was a mistake, put it back in stock first.")
+        raise DomainError(tr("{label} is {x} and cannot be installed. If that was a mistake, put it back in stock first.", label=comp.label, x=word if comp.disposition in OUT_OF_USE else 'retired'))
     if comp.disposition == "AWAITING_SERVICE" and until is None:
-        raise DomainError(f"{comp.label} is awaiting inspection or repair. Log the repair (or mark it as a usable "
-                          "spare) before installing it.")
+        raise DomainError(tr("{label} is awaiting inspection or repair. Log the repair (or mark it as a usable spare) before installing it.", label=comp.label))
     if (bike_id is None) == (parent_component_id is None):
-        raise DomainError("Install on exactly one bike or one parent component")
+        raise DomainError(tr("Install on exactly one bike or one parent component"))
     parent = None
     if bike_id is not None:
         bike = get_bike(session, bike_id)
         if bike.status == "RETIRED":
-            raise DomainError(f"{bike.name} is retired")
+            raise DomainError(tr("{name} is retired", name=bike.name))
     else:
         parent = get_component(session, parent_component_id)
         if parent.id == comp.id:
-            raise DomainError("A part cannot be mounted on itself")
+            raise DomainError(tr("A part cannot be mounted on itself"))
     slot = _validate_slot(comp, slot, bike_id, parent)
     tz = settings.tz(session)
     w = parse_when(at, tz)
     wu = parse_when(until, tz) if until else None
     if wu and wu.utc <= w.utc:
-        raise DomainError("Removal must be after installation")
+        raise DomainError(tr("Removal must be after installation"))
     check_conflicts(session, component_id=comp.id, bike_id=bike_id, parent_id=parent_component_id, slot=slot,
                     start=w.utc, end=wu.utc if wu else None)
     if bike_id is not None:
@@ -594,7 +587,7 @@ def install(session: Session, component_id: int, *, at: str, bike_id: int | None
     try:
         session.flush()
     except IntegrityError as e:  # DB-level guard (partial unique index / overlap trigger)
-        raise Conflict(f"Conflicting installation: {e.orig}") from e
+        raise Conflict(tr("Conflicting installation: {orig}", orig=e.orig)) from e
     if comp.component_type == "CHAIN" and bike_id is not None and comp.rotation_bike_id is None and wu is None:
         comp.rotation_bike_id = bike_id      # a chain joins the rotation of the bike it first goes on
     if reallocate:
@@ -609,14 +602,13 @@ def remove(session: Session, component_id: int, *, at: str, reason: str | None =
     comp = get_component(session, component_id)
     inst = open_installation(session, component_id)
     if not inst:
-        raise DomainError(f"{comp.label} is not installed")
+        raise DomainError(tr("{label} is not installed", label=comp.label))
     w = parse_when(at, settings.tz(session))
     if w.utc <= inst.installed_utc:
-        raise DomainError(f"{comp.label} was installed on {inst.installed_at[:10]}; removal must be later. "
-                          "If the installation itself was wrong, correct (void) it instead.")
+        raise DomainError(tr("{label} was installed on {installed_at}; removal must be later. If the installation itself was wrong, correct (void) it instead.", label=comp.label, installed_at=inst.installed_at[:10]))
     outcome = outcome or "STORED"
     if outcome != "MOVED" and outcome not in DISPOSITIONS:
-        raise DomainError(f"What happened to {comp.label}? Choose one of: {', '.join(DISPOSITIONS)}")
+        raise DomainError(tr("What happened to {label}? Choose one of: {items}", label=comp.label, items=', '.join(DISPOSITIONS)))
     inst.removed_at, inst.removed_utc, inst.removal_reason = w.raw, w.utc, reason
     inst.removal_outcome, inst.removal_session_id = outcome, work_session_id
     session.flush()
@@ -644,24 +636,23 @@ def replace(session: Session, old_component_id: int, *, at: str, new_component_i
     old = get_component(session, old_component_id)
     inst = open_installation(session, old_component_id)
     if not inst:
-        raise DomainError(f"{old.label} is not installed, nothing to replace")
+        raise DomainError(tr("{label} is not installed, nothing to replace", label=old.label))
     ctype = COMPONENT_TYPES[old.component_type]
     outcome = old_outcome or ctype.removed_default
     if new_component_id is not None:
         new_comp = get_component(session, new_component_id)
         if new_comp.id == old.id:
-            raise DomainError("Pick a different part; to service the same item, use “Record work done” on it instead")
+            raise DomainError(tr("Pick a different part; to service the same item, use “Record work done” on it instead"))
         if new_comp.component_type != old.component_type:
-            raise DomainError(f"{new_comp.label} is a {new_comp.component_type}, not a {old.component_type}")
+            raise DomainError(tr("{label} is a {component_type}, not a {component_type2}", label=new_comp.label, component_type=new_comp.component_type, component_type2=old.component_type))
         other = open_installation(session, new_comp.id)
         if other:
-            raise DomainError(f"{new_comp.label} is installed elsewhere ({location(session, new_comp)['text']}). "
-                              "Use 'move' to change its position.")
+            raise DomainError(tr("{label} is installed elsewhere ({x}). Use 'move' to change its position.", label=new_comp.label, x=location(session, new_comp)['text']))
     elif from_stock_id is not None:
         from bikelog.services import stock
         line = stock.get(session, from_stock_id)
         if line.component_type != old.component_type:
-            raise DomainError(f"{line.name} is not stock of {ctype.name.lower()}s")
+            raise DomainError(tr("{name} is not stock of {name2}s", name=line.name, name2=ctype.name.lower()))
         new_comp = stock.draw_component(session, line.id, on=at, label=new_label, work_session_id=work_session_id)
     elif same_product or new is not None:
         spec = dict(new or {})
@@ -675,15 +666,15 @@ def replace(session: Session, old_component_id: int, *, at: str, new_component_i
                                     purchase_date=spec.pop("purchase_date", None) or at[:10],
                                     notes=spec.pop("notes", None), work_session_id=work_session_id)
         if spec:
-            raise DomainError(f"Unknown fields for the new item: {', '.join(spec)}")
+            raise DomainError(tr("Unknown fields for the new item: {items}", items=', '.join(spec)))
     else:
-        raise DomainError("Pick a spare, 'replace with the same product', or describe the new item")
+        raise DomainError(tr("Pick a spare, 'replace with the same product', or describe the new item"))
     children = {c.component_id: c for c in session.scalars(select(Installation).where(
         Installation.parent_component_id == old.id, Installation.removed_utc.is_(None),
         Installation.voided_at.is_(None)))}
     unknown = set(carry_over or []) - set(children)
     if unknown:
-        raise DomainError("Only parts mounted on the old part can be moved to the new one")
+        raise DomainError(tr("Only parts mounted on the old part can be moved to the new one"))
     if carry_over and new_component_id is not None:
         taken = {i.slot: i for i in session.scalars(select(Installation).where(
             Installation.parent_component_id == new_comp.id, Installation.removed_utc.is_(None),
@@ -691,9 +682,7 @@ def replace(session: Session, old_component_id: int, *, at: str, new_component_i
         for cid in carry_over:
             if children[cid].slot in taken:
                 there = get_component(session, taken[children[cid].slot].component_id)
-                raise DomainError(f"{new_comp.label} already has {there.label} in that position. Leave "
-                                  f"{get_component(session, cid).label} on {old.label} (untick it), or take "
-                                  f"{there.label} off {new_comp.label} first")
+                raise DomainError(tr("{label} already has {label2} in that position. Leave {label3} on {label4} (untick it), or take {label5} off {label6} first", label=new_comp.label, label2=there.label, label3=get_component(session, cid).label, label4=old.label, label5=there.label, label6=new_comp.label))
     for cid in carry_over or []:
         remove(session, cid, at=at, reason=f"moved from {old.label} to {new_comp.label}", outcome="MOVED",
                reallocate=False, work_session_id=work_session_id)
@@ -719,16 +708,16 @@ def move(session: Session, component_id: int, *, at: str, bike_id: int | None = 
     target_slot = _validate_slot(comp, slot, bike_id,
                                  get_component(session, parent_component_id) if parent_component_id else None)
     if cur and cur.bike_id == bike_id and cur.parent_component_id == parent_component_id and cur.slot == target_slot:
-        raise DomainError(f"{comp.label} is already in that position")
+        raise DomainError(tr("{label} is already in that position", label=comp.label))
     occupant = session.scalar(select(Installation).where(
         Installation.voided_at.is_(None), Installation.removed_utc.is_(None), Installation.slot == target_slot,
         (Installation.bike_id == bike_id) if bike_id is not None
         else (Installation.parent_component_id == parent_component_id)))
     if occupant and not swap:
         other = get_component(session, occupant.component_id)
-        raise Conflict(f"That position is occupied by {other.label}. Swap them, or replace/remove it first.")
+        raise Conflict(tr("That position is occupied by {label}. Swap them, or replace/remove it first.", label=other.label))
     if occupant and not cur:
-        raise DomainError("Swapping needs both parts installed")
+        raise DomainError(tr("Swapping needs both parts installed"))
     where = (get_bike(session, bike_id).name if bike_id else get_component(session, parent_component_id).label)
     note = reason or f"moved to {where} ({target_slot.replace('_', ' ').lower()})"
     if cur:
@@ -796,9 +785,9 @@ def name_of(comp: Component) -> str:
 def _check_mark(mark: str | None) -> str | None:
     mark = (mark or "").strip() or None
     if mark and len(mark) > MARK_MAX:
-        raise DomainError(f"Keep the mark short ({MARK_MAX} characters at most), e.g. A or 2 dots")
+        raise DomainError(tr("Keep the mark short ({MARK_MAX} characters at most), e.g. A or 2 dots", MARK_MAX=MARK_MAX))
     if mark and ("[" in mark or "]" in mark):
-        raise DomainError("A mark cannot contain [ or ]")
+        raise DomainError(tr("A mark cannot contain [ or ]"))
     return mark
 
 
@@ -838,9 +827,9 @@ def void_installation(session: Session, installation_id: int, reason: str) -> In
     """Correction: the installation record was wrong. It stays in history, marked void."""
     inst = session.get(Installation, installation_id)
     if not inst:
-        raise NotFound("Installation not found")
+        raise NotFound(tr("Installation not found"))
     if not reason:
-        raise DomainError("Say why this installation record is wrong")
+        raise DomainError(tr("Say why this installation record is wrong"))
     inst.voided_at, inst.void_reason = utc_now(), reason
     session.flush()
     _reallocate(session)
@@ -852,16 +841,16 @@ def correct_installation(session: Session, installation_id: int, *, installed_at
     """Correction of dates (not a replacement). Use with dry_run first to preview mileage impact."""
     inst = session.get(Installation, installation_id)
     if not inst or inst.voided_at:
-        raise NotFound("Installation not found")
+        raise NotFound(tr("Installation not found"))
     if not reason:
-        raise DomainError("Say why the dates are corrected")
+        raise DomainError(tr("Say why the dates are corrected"))
     tz = settings.tz(session)
     start = parse_when(installed_at, tz) if installed_at else None
     end = parse_when(removed_at, tz) if removed_at else None
     new_start = start.utc if start else inst.installed_utc
     new_end = None if clear_removed else (end.utc if end else inst.removed_utc)
     if new_end and new_end <= new_start:
-        raise DomainError("Removal must be after installation")
+        raise DomainError(tr("Removal must be after installation"))
     check_conflicts(session, component_id=inst.component_id, bike_id=inst.bike_id, parent_id=inst.parent_component_id,
                     slot=inst.slot, start=new_start, end=new_end, ignore_id=inst.id)
     if start:
@@ -888,14 +877,14 @@ def location(session: Session, comp: Component) -> dict:
     if not inst:
         if comp.disposition == "IN_USE":
             return {"state": "IN_USE", "disposition": comp.disposition, "bike_id": None, "bike": None,
-                    "text": f"In use since {comp.disposition_on} (counts every ride)"}
+                    "text": tr("In use since {disposition_on} (counts every ride)", disposition_on=comp.disposition_on)}
         if comp.disposition == "AWAITING_SERVICE":
             from bikelog.services.service_orders import open_order
             o = open_order(session, comp.id)
-            text = (f"Away for repair{' at ' + o.shop if o.shop else ''} since {o.sent_on}" if o
-                    else "Awaiting inspection or repair")
+            text = (tr("Away for repair{x} since {sent_on}", x=' at ' + o.shop if o.shop else '', sent_on=o.sent_on) if o
+                    else tr("Awaiting inspection or repair"))
             return {"state": "AWAITING_SERVICE", "disposition": comp.disposition, "text": text}
-        return {"state": "STORED", "disposition": comp.disposition, "text": "In storage (spare)"}
+        return {"state": "STORED", "disposition": comp.disposition, "text": tr("In storage (spare)")}
     path = []
     cur, top = inst, None
     while cur is not None and cur.parent_component_id is not None:
@@ -907,12 +896,12 @@ def location(session: Session, comp: Component) -> dict:
     if bike:
         text = bike.name + (" → " + chain if chain else "")
     elif top is not None and top.disposition == "IN_USE" and top.status == "ACTIVE":
-        text = f"worn → {chain}"          # cleats on shoes that are in use
+        text = tr("worn → {chain}", chain=chain)          # cleats on shoes that are in use
     else:
-        text = f"on {chain} (not on a bike)"
+        text = tr("on {chain} (not on a bike)", chain=chain)
     return {"state": "INSTALLED", "bike_id": bike.id if bike else None, "bike": bike.name if bike else None,
             "slot": inst.slot, "parent_component_id": inst.parent_component_id, "since": inst.installed_at,
-            "installation_id": inst.id, "text": f"{text} ({inst.slot.replace('_', ' ').lower()})"}
+            "installation_id": inst.id, "text": f"{text} ({code_text(inst.slot)})"}
 
 
 def installation_history(session: Session, comp: Component) -> list[dict]:

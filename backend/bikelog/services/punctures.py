@@ -27,6 +27,7 @@ from bikelog.services import journal, settings
 from bikelog.services.incidents import parts_on_ride
 from bikelog.services.usage import component_usage
 from bikelog.timeutil import today_local
+from bikelog.i18n import tr
 
 WHEEL_NAME = {"FRONT_WHEEL": "Front", "REAR_WHEEL": "Rear"}
 NOT_RECORDED = "Not recorded in Bike Log"
@@ -141,8 +142,8 @@ def _collect(session: Session) -> list[dict]:
                 "group": group, "on": day, "ride_id": ride.id if ride else None,
                 "ride": journal._ride_label(ride), "bike_id": bike_id, "bike": bikes.get(bike_id),
                 "wheel": WHEEL_NAME.get(w, "Unknown wheel"),
-                "damage": "Tube and tire" if r["tube_hit"] and r["tire_hit"] else "Tire" if r["tire_hit"]
-                else "Tube",
+                "damage": tr("Tube and tire") if r["tube_hit"] and r["tire_hit"] else tr("Tire") if r["tire_hit"]
+                else tr("Tube"),
                 "tube_id": tube.id if tube else None, "tube": tube.label if tube else None,
                 "tube_model": model_of(tube) if tube or r["tube_hit"] else None, "tube_inferred": False,
                 "tire_id": tire.id if tire else None, "tire": tire.label if tire else None,
@@ -215,12 +216,12 @@ def _by_model(session: Session, rows: list[dict], ctype: str, field: str, id_fie
             "in_use": inv.open_installation(session, c.id) is not None})
     for m, n in loose.items():
         k = round((extra_km or {}).get(m, 0)) or None
-        models[m].append({"component_id": None, "label": "From stock (no record of its own)" if m != NOT_RECORDED
-                          else "Not recorded", "km": k, "punctures": n,
+        models[m].append({"component_id": None, "label": tr("From stock (no record of its own)") if m != NOT_RECORDED
+                          else tr("Not recorded"), "km": k, "punctures": n,
                           "km_per_puncture": round(k / n) if n and k else None, "in_use": False})
     for m, k in (extra_km or {}).items():             # a stock tube that is still in and has not flatted
         if m not in loose and round(k):
-            models[m].append({"component_id": None, "label": "From stock (no record of its own)", "km": round(k),
+            models[m].append({"component_id": None, "label": tr("From stock (no record of its own)"), "km": round(k),
                               "punctures": 0, "km_per_puncture": None, "in_use": True})
     out = []
     for m, items in models.items():
@@ -234,7 +235,7 @@ def _count(rows: list[dict], field: str, names: dict | None = None) -> list[dict
     c: dict[str, int] = defaultdict(int)
     for r in rows:
         v = r[field]
-        c[(names or {}).get(v, v) or "Not known"] += 1
+        c[(names or {}).get(v, v) or tr("Not known")] += 1
     return [{"name": k, "punctures": v} for k, v in sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 

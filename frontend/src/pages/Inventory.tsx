@@ -26,8 +26,9 @@ import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, to
 import { INVENTORY_TABS, useCrumb } from '../crumbs'
 import { useApi } from '../hooks'
 import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, PartNode, Rule, ServiceOrder, ShoppingItem, SpokeInfo, Task } from '../types'
+import { tr, locale, codeText, trn, lc, unitWord } from '../i18n'
 
-const SUPPLY_KINDS: Record<string, string> = { WAX: 'Chain wax', LUBE: 'Chain lube', SEALANT: 'Tubeless sealant', BRAKE_FLUID: 'Brake fluid', GREASE: 'Grease', OTHER: 'Other' }
+const SUPPLY_KINDS: Record<string, string> = { WAX: tr('Chain wax'), LUBE: tr('Chain lube'), SEALANT: tr('Tubeless sealant'), BRAKE_FLUID: tr('Brake fluid'), GREASE: tr('Grease'), OTHER: tr('Other') }
 // "g" and "ml" stay as they are; "tube" becomes "tubes"
 const unitPlural = (u: string) => (u.length <= 2 || u.endsWith('s') ? u : `${u}s`)
 
@@ -42,7 +43,7 @@ const CHAIN_TONE: Record<string, 'good' | 'warn' | 'info' | 'bad' | 'neutral'> =
 }
 
 export function ChainStateTag({ state }: { state: string }) {
-  return <Tag tone={CHAIN_TONE[state] ?? 'neutral'}>{state.replace(/_/g, ' ').toLowerCase()}</Tag>
+  return <Tag tone={CHAIN_TONE[state] ?? 'neutral'}>{codeText(state)}</Tag>
 }
 
 // "Groupset" in the type list: several parts at once, through the same dialog as on the bike page
@@ -66,7 +67,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       const body: Record<string, unknown> = { component_type: f.component_type, label: f.label, mark: f.mark.trim() || null, prior_usage: f.history === 'KNOWN' ? 'UNKNOWN' : f.history }
       if (f.notes) body.notes = f.notes
       const price = toCents(f.price)
-      if (Number.isNaN(price)) throw new Error('Price: enter an amount such as 49,90')
+      if (Number.isNaN(price)) throw new Error(tr('Price: enter an amount such as 49,90'))
       if (price !== null) body.price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
       if (f.shop.trim()) body.shop = f.shop.trim()
@@ -75,7 +76,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       if (f.history === 'KNOWN') Object.assign(body, { starting_km: Number(f.start_km || 0), starting_date: f.start_date, starting_is_estimate: f.start_estimate })
       if (mount) {
         const slot = mount.slot ?? f.install_slot.trim().toUpperCase().replace(/\s+/g, '_')
-        if (!slot) throw new Error('Name the position on the bike, e.g. bottle cage 1')
+        if (!slot) throw new Error(tr('Name the position on the bike, e.g. bottle cage 1'))
         body.install = { at: f.install_at, slot, ...(mount.parent_component_id ? { parent_component_id: mount.parent_component_id } : { bike_id: mount.bike_id }) }
       }
       onSaved(await api.post<ComponentSummary>('/components', body, opId), f.label.trim())
@@ -87,7 +88,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
   }
   const specFields = meta.component_types.find((t) => t.code === f.component_type)?.specs ?? []
   const typeField = (
-    <Field label="Type">
+    <Field label={tr('Type')}>
       <select
         value={f.component_type}
         onChange={(e) => {
@@ -97,7 +98,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
           setMount(null)
         }}
       >
-        {onGroupset && <option value={GROUPSET}>Groupset (all its parts at once)</option>}
+        {onGroupset && <option value={GROUPSET}>{tr('Groupset (all its parts at once)')}</option>}
         {[...meta.component_types].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
           <option key={t.code} value={t.code}>
             {t.name}
@@ -119,19 +120,19 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       <div className="row">
         {typeField}
         <div className="row">
-          <Field label="Name / label" hint="e.g. the product name. Properties can be added later.">
+          <Field label={tr('Name / label')} hint={tr('e.g. the product name. Properties can be added later.')}>
             <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
           </Field>
-          <Field label="Mark (optional)" hint={f.mark.trim() ? `Shown as "${f.label.trim() || 'Name'} [${f.mark.trim()}]"` : f.component_type === 'CHAIN' ? 'A, B …; a second chain of the same name gets the next letter by itself' : 'A short tag to tell identical parts apart'}>
+          <Field label={tr('Mark (optional)')} hint={f.mark.trim() ? tr('Shown as "{x} [{trim}]"', { x: f.label.trim() || tr('Name'), trim: f.mark.trim() }) : f.component_type === 'CHAIN' ? tr('A, B …; a second chain of the same name gets the next letter by itself') : tr('A short tag to tell identical parts apart')}>
             <input value={f.mark} maxLength={20} onChange={(e) => setF({ ...f, mark: e.target.value })} />
           </Field>
         </div>
       </div>
       <div className="row">
-        <Field label="Price paid (optional)" hint="Counts as running cost of the bike it is first installed on.">
+        <Field label={tr('Price paid (optional)')} hint={tr('Counts as running cost of the bike it is first installed on.')}>
           <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
         </Field>
-        <Field label="Bought on (optional)">
+        <Field label={tr('Bought on (optional)')}>
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
       </div>
@@ -141,45 +142,45 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       {specFields.length > 0 && (
         <details className="add-props" open={propsOpen} onToggle={(e) => setPropsOpen((e.target as HTMLDetailsElement).open)}>
           <summary>
-            Properties <span className="muted small">(optional)</span>
+            {tr('Properties')} <span className="muted small">{tr('(optional)')}</span>
           </summary>
           <SpecInputs fields={specFields} raw={props} onChange={setProps} />
         </details>
       )}
-      <Field label="Notes (optional)">
-        <textarea rows={2} aria-label="Notes (optional)" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+      <Field label={tr('Notes (optional)')}>
+        <textarea rows={2} aria-label={tr('Notes (optional)')} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       </Field>
-      <Field label="Usage before tracking">
+      <Field label={tr('Usage before tracking')}>
         <select value={f.history} onChange={(e) => setF({ ...f, history: e.target.value })}>
-          <option value="NEW">New part (0 km)</option>
-          <option value="KNOWN">I know (or can estimate) its km</option>
-          <option value="UNKNOWN">Unknown</option>
+          <option value="NEW">{tr('New part (0 km)')}</option>
+          <option value="KNOWN">{tr('I know (or can estimate) its km')}</option>
+          <option value="UNKNOWN">{tr('Unknown')}</option>
         </select>
       </Field>
       {f.history === 'KNOWN' && (
         <>
           <div className="row">
-            <Field label="km at that date">
+            <Field label={tr('km at that date')}>
               <input inputMode="decimal" value={f.start_km} onChange={(e) => setF({ ...f, start_km: e.target.value })} />
             </Field>
-            <Field label="As of">
+            <Field label={tr('As of')}>
               <input type="date" value={f.start_date} onChange={(e) => setF({ ...f, start_date: e.target.value })} />
             </Field>
           </div>
           <label className="check">
-            <input type="checkbox" checked={f.start_estimate} onChange={(e) => setF({ ...f, start_estimate: e.target.checked })} /> This is an estimate
+            <input type="checkbox" checked={f.start_estimate} onChange={(e) => setF({ ...f, start_estimate: e.target.checked })} /> {tr('This is an estimate')}
           </label>
         </>
       )}
       <MountPicker key={f.component_type} componentType={f.component_type} bikeId={bikeId} value={mount} onChange={setMount} allowSpare={!bikeId} />
       <div className="row">
         {mount && mount.slot === null && (
-          <Field label="Position name">
-            <input value={f.install_slot} onChange={(e) => setF({ ...f, install_slot: e.target.value })} placeholder="e.g. bottle cage 1" />
+          <Field label={tr('Position name')}>
+            <input value={f.install_slot} onChange={(e) => setF({ ...f, install_slot: e.target.value })} placeholder={tr('e.g. bottle cage 1')} />
           </Field>
         )}
         {mount && (
-          <Field label={bikeId ? 'Installed on' : 'Since'}>
+          <Field label={bikeId ? tr('Installed on') : tr('Since')}>
             <input type="date" value={f.install_at} onChange={(e) => setF({ ...f, install_at: e.target.value })} />
           </Field>
         )}
@@ -187,11 +188,11 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={busy || !f.label.trim() || (!!bikeId && !mount)} onClick={save}>
-          {busy ? 'Saving…' : bikeId ? 'Save and install' : 'Save'}
+          {busy ? tr('Saving…') : bikeId ? tr('Save and install') : tr('Save')}
         </button>
         {onCancel && (
           <button className="btn" onClick={onCancel}>
-            Cancel
+            {tr('Cancel')}
           </button>
         )}
       </div>
@@ -263,21 +264,18 @@ interface InventoryView {
 
 const TABS = INVENTORY_TABS
 
-const plural = (n: number, unit: string) => {
-  if (n === 1 || /s$/.test(unit)) return `${n.toLocaleString()} ${unit}`
-  return `${n.toLocaleString()} ${unit}${/(ch|sh|x)$/.test(unit) ? 'es' : 's'}`
-}
+const plural = (n: number, unit: string) => `${n.toLocaleString(locale)} ${unitWord(unit, n)}`
 
 function Compat({ rows }: { rows: { bike: string | null; verified: boolean }[] }) {
   if (!rows.length) return null
   return (
     <span className="small">
-      {' · fits '}
+      {tr(' · fits ')}
       {rows.map((r, i) => (
         <span key={i}>
           {i > 0 && ', '}
           {r.bike}
-          {!r.verified && <span className="muted"> (unverified)</span>}
+          {!r.verified && <span className="muted"> {tr('(unverified)')}</span>}
         </span>
       ))}
     </span>
@@ -293,13 +291,13 @@ function ItemList({ rows, empty }: { rows: ItemRow[]; empty: string }) {
   return (
     <>
       <div className="filters">
-        <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type">
-          <option value="">All types</option>
+        <select value={type} onChange={(e) => setType(e.target.value)} aria-label={tr('Type')}>
+          <option value="">{tr('All types')}</option>
           {types.map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, model, location" aria-label="Search" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Search name, model, location')} aria-label={tr('Search')} />
       </div>
       <ul className="list rows">
         {shown.map((r) => (
@@ -313,14 +311,14 @@ function ItemList({ rows, empty }: { rows: ItemRow[]; empty: string }) {
               <span className="small">
                 {r.state === 'INSTALLED' ? r.location.text : r.state_text}
                 {r.readiness_text && r.state !== 'INSTALLED' && ` · ${r.readiness_text}`}
-                {` · ${usageText(r.usage)} lifetime`}
+                {tr(' · {usage} lifetime', { usage: usageText(r.usage) })}
                 {r.storage_location && ` · ${r.storage_location}`}
               </span>
               <Compat rows={r.compatibility} />
             </span>
-            {r.readiness === 'READY' && <Tag tone="good">ready</Tag>}
+            {r.readiness === 'READY' && <Tag tone="good">{tr('ready')}</Tag>}
             {(r.readiness === 'NEEDS_PREPARATION' || r.readiness === 'NEEDS_REPAIR') && <Tag tone="warn">{r.readiness === 'NEEDS_REPAIR' ? 'repair' : 'prepare'}</Tag>}
-            {r.readiness === 'WORN' && <Tag tone="bad">worn</Tag>}
+            {r.readiness === 'WORN' && <Tag tone="bad">{tr('worn')}</Tag>}
           </li>
         ))}
       </ul>
@@ -338,7 +336,7 @@ function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string)
       const qty = f.qty === '' ? null : Number(f.qty.replace(',', '.'))
       await api.post(`/consumables/${line.id}/txn`, { kind: f.kind, qty, on: f.on, note: f.note || null, packages: f.packages ? Number(f.packages) : null, cost_cents: f.price ? Math.round(Number(f.price.replace(',', '.')) * 100) : null, shop: ['PURCHASE', 'RETURN'].includes(f.kind) ? f.shop.trim() || null : null }, opId)
       setOpId(newOpId())
-      onDone({ PURCHASE: 'Purchase recorded.', RETURN: 'Return recorded.', ADJUST: 'Stock corrected.', USE: 'Use recorded.' }[f.kind] ?? 'Saved.')
+      onDone({ PURCHASE: tr('Purchase recorded.'), RETURN: tr('Return recorded.'), ADJUST: tr('Stock corrected.'), USE: tr('Use recorded.') }[f.kind] ?? tr('Saved.'))
     } catch (e) {
       setErr((e as Error).message)
     }
@@ -347,10 +345,10 @@ function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string)
     <div className="form">
       <div className="chips">
         {[
-          ['PURCHASE', 'Bought'],
-          ['RETURN', 'Returned to shop'],
-          ['ADJUST', 'Correct the count'],
-          ...(line.tracking_mode === 'BULK' ? [['USE', 'Used']] : []),
+          ['PURCHASE', tr('Bought')],
+          ['RETURN', tr('Returned to shop')],
+          ['ADJUST', tr('Correct the count')],
+          ...(line.tracking_mode === 'BULK' ? [['USE', tr('Used')]] : []),
         ].map(([k, l]) => (
           <button key={k} className={`chip ${f.kind === k ? 'chip-on' : ''}`} onClick={() => setF({ ...f, kind: k })}>
             {l}
@@ -358,37 +356,37 @@ function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string)
         ))}
       </div>
       <div className="row">
-        <Field label={f.kind === 'ADJUST' ? `Change (+/− ${unitPlural(line.unit)})` : `Quantity (${unitPlural(line.unit)})`} hint={line.unit_note ?? undefined}>
+        <Field label={f.kind === 'ADJUST' ? tr('Change (+/− {unitPlural})', { unitPlural: unitPlural(line.unit) }) : tr('Quantity ({unitPlural})', { unitPlural: unitPlural(line.unit) })} hint={line.unit_note ?? undefined}>
           <input inputMode="decimal" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder={line.tracking_mode === 'BULK' ? 'optional' : ''} />
         </Field>
         {f.kind === 'PURCHASE' && line.tracking_mode === 'COUNTED' && (
-          <Field label="Packages (optional)" hint="A pack of 2 links = 1 package, 2 links.">
+          <Field label={tr('Packages (optional)')} hint={tr('A pack of 2 links = 1 package, 2 links.')}>
             <input inputMode="numeric" value={f.packages} onChange={(e) => setF({ ...f, packages: e.target.value })} />
           </Field>
         )}
         {(f.kind === 'PURCHASE' || f.kind === 'RETURN') && (
-          <Field label="Total € (optional)">
+          <Field label={tr('Total € (optional)')}>
             <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
           </Field>
         )}
       </div>
       <div className="row">
-        <Field label="On">
+        <Field label={tr('On')}>
           <input type="date" value={f.on} onChange={(e) => setF({ ...f, on: e.target.value })} />
         </Field>
-        <Field label={f.kind === 'ADJUST' ? 'Why (required)' : 'Note (optional)'}>
-          <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder={f.kind === 'ADJUST' ? 'counted the drawer' : ''} />
+        <Field label={f.kind === 'ADJUST' ? tr('Why (required)') : tr('Note (optional)')}>
+          <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder={f.kind === 'ADJUST' ? tr('counted the drawer') : ''} />
         </Field>
       </div>
       {(f.kind === 'PURCHASE' || f.kind === 'RETURN') && (
         <div className="row">
-          <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label={f.kind === 'RETURN' ? 'Returned to (optional)' : 'Bought from (optional)'} />
+          <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label={f.kind === 'RETURN' ? tr('Returned to (optional)') : tr('Bought from (optional)')} />
         </div>
       )}
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={save}>
-          Save
+          {tr('Save')}
         </button>
       </div>
     </div>
@@ -407,18 +405,18 @@ function InstallFromStock({ line, onDone }: { line: StockLine; onDone: (msg: str
     setErr(null)
     try {
       const r = await api.post<OpResult<{ label: string }>>(`/consumables/${line.id}/install`, { at: f.at, bike_id: f.parent ? null : Number(f.bike), parent_component_id: f.parent ? Number(f.parent) : null, slot: f.slot || null }, opId)
-      onDone(`${r.result.label} installed from stock. ${r.change.notice}`)
+      onDone(tr('{label} installed from stock. {notice}', { label: r.result.label, notice: r.change.notice }))
     } catch (e) {
       setErr((e as Error).message)
     }
   }
   return (
     <div className="form">
-      <p className="small muted">One {line.unit} leaves the stock count and becomes an individual part with its own history.</p>
+      <p className="small muted">{tr('One {unit} leaves the stock count and becomes an individual part with its own history.', { unit: unitWord(line.unit, 1) })}</p>
       <div className="row">
-        <Field label="Bike">
+        <Field label={tr('Bike')}>
           <select value={f.bike} onChange={(e) => setF({ ...f, bike: e.target.value, parent: '' })}>
-            <option value="">Pick…</option>
+            <option value="">{tr('Pick…')}</option>
             {bikes.data?.filter((b) => b.status === 'ACTIVE').map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -427,9 +425,9 @@ function InstallFromStock({ line, onDone }: { line: StockLine; onDone: (msg: str
           </select>
         </Field>
         {ctype && ctype.parent_types.length > 0 && (
-          <Field label="Mounted on">
+          <Field label={tr('Mounted on')}>
             <select value={f.parent} onChange={(e) => setF({ ...f, parent: e.target.value })}>
-              <option value="">Pick…</option>
+              <option value="">{tr('Pick…')}</option>
               {setup.data?.setup.filter((r) => ctype.parent_types.includes(r.component_type)).map((r) => (
                 <option key={r.component_id} value={r.component_id}>
                   {r.label}
@@ -439,7 +437,7 @@ function InstallFromStock({ line, onDone }: { line: StockLine; onDone: (msg: str
           </Field>
         )}
         {ctype && ctype.slots.length > 1 && (
-          <Field label="Position">
+          <Field label={tr('Position')}>
             <select value={f.slot} onChange={(e) => setF({ ...f, slot: e.target.value })}>
               {ctype.slots.map((s) => (
                 <option key={s} value={s}>
@@ -449,14 +447,14 @@ function InstallFromStock({ line, onDone }: { line: StockLine; onDone: (msg: str
             </select>
           </Field>
         )}
-        <Field label="Installed on">
+        <Field label={tr('Installed on')}>
           <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
         </Field>
       </div>
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={!f.bike} onClick={save}>
-          Install one
+          {tr('Install one')}
         </button>
       </div>
     </div>
@@ -481,8 +479,8 @@ function AddStockForm({ mode, onDone }: { mode: 'COUNTED' | 'BULK'; onDone: (msg
       else Object.assign(body, { tracking_mode: 'BULK', kind: f.kind, unit: f.unit || 'ml', track_stock: f.track })
       const line = await api.post<{ id: number }>('/consumables', body, opId)
       // what is already on the shelf is a starting count, not a purchase (no price, no date of buying)
-      if (f.qty) await api.post(`/consumables/${line.id}/txn`, { kind: 'ADJUST', qty: Number(f.qty.replace(',', '.')), on: today(), note: 'Starting stock' })
-      onDone('Stock added.')
+      if (f.qty) await api.post(`/consumables/${line.id}/txn`, { kind: 'ADJUST', qty: Number(f.qty.replace(',', '.')), on: today(), note: tr('Starting stock') })
+      onDone(tr('Stock added.'))
     } catch (e) {
       setErr((e as Error).message)
     }
@@ -491,31 +489,31 @@ function AddStockForm({ mode, onDone }: { mode: 'COUNTED' | 'BULK'; onDone: (msg
     <div className="form">
       {mode === 'COUNTED' ? (
         <>
-          <Field label="What" hint="Spare parts get their own history when installed. Pick 'Other' for patches or coin cells.">
+          <Field label={tr('What')} hint={tr('Spare parts get their own history when installed. Pick \'Other\' for patches or coin cells.')}>
             <select value={f.component_type} onChange={(e) => setF({ ...f, component_type: e.target.value })}>
               {meta.component_types.filter((t) => t.code !== 'OTHER').map((t) => (
                 <option key={t.code} value={t.code}>
                   {t.name}
                 </option>
               ))}
-              <option value="">Other counted item (patches, coin cells…)</option>
+              <option value="">{tr('Other counted item (patches, coin cells…)')}</option>
             </select>
           </Field>
           {f.component_type ? (
             <div className="row">
-              <Field label="Maker (optional)">
+              <Field label={tr('Maker (optional)')}>
                 <input value={f.maker} onChange={(e) => setF({ ...f, maker: e.target.value })} />
               </Field>
-              <Field label="Model (optional)">
+              <Field label={tr('Model (optional)')}>
                 <input value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} />
               </Field>
             </div>
           ) : (
             <div className="row">
-              <Field label="Name">
-                <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Park GP-2 patches" />
+              <Field label={tr('Name')}>
+                <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={tr('Park GP-2 patches')} />
               </Field>
-              <Field label="Unit">
+              <Field label={tr('Unit')}>
                 <input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} placeholder="patch" />
               </Field>
             </div>
@@ -523,7 +521,7 @@ function AddStockForm({ mode, onDone }: { mode: 'COUNTED' | 'BULK'; onDone: (msg
         </>
       ) : (
         <div className="row">
-          <Field label="Kind">
+          <Field label={tr('Kind')}>
             <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>
               {Object.entries(SUPPLY_KINDS).map(([k, label]) => (
                 <option key={k} value={k}>
@@ -532,34 +530,34 @@ function AddStockForm({ mode, onDone }: { mode: 'COUNTED' | 'BULK'; onDone: (msg
               ))}
             </select>
           </Field>
-          <Field label="Product name">
+          <Field label={tr('Product name')}>
             <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
           </Field>
-          <Field label="Unit">
+          <Field label={tr('Unit')}>
             <input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} />
           </Field>
         </div>
       )}
       <div className="row">
-        <Field label="In stock now (optional)">
+        <Field label={tr('In stock now (optional)')}>
           <input inputMode="decimal" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} />
         </Field>
-        <Field label="Storage location (optional)">
-          <input value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} placeholder="Workshop drawer" />
+        <Field label={tr('Storage location (optional)')}>
+          <input value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} placeholder={tr('Workshop drawer')} />
         </Field>
-        <Field label="Minimum stock (optional)">
+        <Field label={tr('Minimum stock (optional)')}>
           <input inputMode="decimal" value={f.min} onChange={(e) => setF({ ...f, min: e.target.value })} />
         </Field>
       </div>
       {mode === 'BULK' && (
         <label className="check">
-          <input type="checkbox" checked={f.track} onChange={(e) => setF({ ...f, track: e.target.checked })} /> Track the amount in stock
+          <input type="checkbox" checked={f.track} onChange={(e) => setF({ ...f, track: e.target.checked })} /> {tr('Track the amount in stock')}
         </label>
       )}
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={mode === 'BULK' ? !f.name : !f.component_type && !f.name} onClick={save}>
-          Add
+          {tr('Add')}
         </button>
       </div>
     </div>
@@ -578,23 +576,23 @@ function StockLines({ lines, onChange, empty }: { lines: StockLine[]; onChange: 
               <strong>{l.name}</strong>
               <br />
               <span className="small">
-                {l.stock ? (l.tracking_mode === 'COUNTED' ? plural(l.stock.qty, `new ${l.unit}`) : `${l.stock.qty.toLocaleString()} ${l.unit}${l.stock.known ? '' : ' (some uses not measured)'}`) : 'amount not tracked'}
-                {l.individual_spares.length > 0 && ` + ${l.individual_spares.length} individual spare${l.individual_spares.length === 1 ? '' : 's'}`}
+                {l.stock ? (l.tracking_mode === 'COUNTED' ? tr('{n} new {units}', { n: l.stock.qty.toLocaleString(locale), units: unitWord(l.unit, l.stock.qty) }) : `${l.stock.qty.toLocaleString(locale)} ${l.unit}${l.stock.known ? '' : tr(' (some uses not measured)')}`) : tr('amount not tracked')}
+                {l.individual_spares.length > 0 && trn(' + {n} individual spare', ' + {n} individual spares', l.individual_spares.length)}
                 {l.storage_location && ` · ${l.storage_location}`}
-                {l.min_stock !== null && ` · Minimum: ${l.min_stock}`}
-                {l.spent_cents ? ` · spent ${euro(l.spent_cents)}` : ''}
+                {l.min_stock !== null && tr(' · Minimum: {min_stock}', { min_stock: l.min_stock })}
+                {l.spent_cents ? tr(' · spent {spent_cents}', { spent_cents: euro(l.spent_cents) }) : ''}
               </span>
               {l.unit_note && <span className="muted small"> · 1 {l.unit} = {l.unit_note}</span>}
               <Compat rows={l.compatibility} />
             </span>
-            {l.low && <Tag tone="warn">below minimum</Tag>}
+            {l.low && <Tag tone="warn">{tr('below minimum')}</Tag>}
             <span className="row-actions">
               <button className="btn btn-small" onClick={() => setSheet({ txn: l })}>
-                Stock change
+                {tr('Stock change')}
               </button>
               {l.component_type && (l.stock?.qty ?? 0) >= 1 && (
                 <button className="btn btn-small" onClick={() => setSheet({ install: l })}>
-                  Install one
+                  {tr('Install one')}
                 </button>
               )}
             </span>
@@ -607,7 +605,7 @@ function StockLines({ lines, onChange, empty }: { lines: StockLine[]; onChange: 
         </Sheet>
       )}
       {sheet && 'install' in sheet && (
-        <Sheet title={`Install from stock · ${sheet.install.name}`} onClose={() => setSheet(null)}>
+        <Sheet title={tr('Install from stock · {name}', { name: sheet.install.name })} onClose={() => setSheet(null)}>
           <InstallFromStock line={sheet.install} onDone={(m) => { setSheet(null); onChange(m) }} />
         </Sheet>
       )}
@@ -618,18 +616,18 @@ function StockLines({ lines, onChange, empty }: { lines: StockLine[]; onChange: 
 function Sessions({ rows, onChange }: { rows: WorkSessionRow[]; onChange: (msg: string) => void }) {
   const [err, setErr] = useState<string | null>(null)
   async function undo(id: number) {
-    const reason = window.prompt('Undo this whole entry? Stock, installations and the old part come back. Reason (optional):', '')
+    const reason = window.prompt(tr('Undo this whole entry? Stock, installations and the old part come back. Reason (optional):'), '')
     if (reason === null) return
     setErr(null)
     try {
       const r = await api.post<OpResult<unknown>>(`/work-sessions/${id}/undo`, { reason: reason || null }, newOpId())
-      onChange(`Undone. ${r.change.notice}`)
+      onChange(tr('Undone. {notice}', { notice: r.change.notice }))
     } catch (e) {
       setErr((e as Error).message)
     }
   }
   const meaningful = rows.filter((r) => r.transactions.length > 0)
-  if (!meaningful.length) return <Empty title="No changes recorded yet" />
+  if (!meaningful.length) return <Empty title={tr('No changes recorded yet')} />
   return (
     <>
       <FormError error={err} form={false} />
@@ -637,15 +635,15 @@ function Sessions({ rows, onChange }: { rows: WorkSessionRow[]; onChange: (msg: 
         {meaningful.map((w) => (
           <li key={w.id} className={w.undone_at ? 'excluded' : ''}>
             <span>
-              <strong>{w.title ?? 'Work'}</strong> <span className="muted small">{when(w.performed_at)}</span>
+              <strong>{w.title ?? tr('Work')}</strong> <span className="muted small">{when(w.performed_at)}</span>
               {w.cost_cents ? <span className="small"> · {euro(w.cost_cents)}</span> : null}
               <br />
               <span className="small">{w.transactions.map((t) => t.text).join(' · ')}</span>
-              {w.undone_at && <span className="small"> · undone{w.undo_reason ? `: ${w.undo_reason}` : ''}</span>}
+              {w.undone_at && <span className="small"> {tr('· undone')}{w.undo_reason ? `: ${w.undo_reason}` : ''}</span>}
             </span>
             {!w.undone_at && (
               <button className="btn btn-small" onClick={() => undo(w.id)}>
-                Undo
+                {tr('Undo')}
               </button>
             )}
           </li>
@@ -672,20 +670,20 @@ export default function InventoryPage() {
   const v = view.data
   return (
     <Card
-      title="Inventory"
+      title={tr('Inventory')}
       actions={
         <>
           <button className="btn btn-primary" onClick={() => setSheet('part')}>
-            Add part
+            {tr('Add part')}
           </button>
           <button className="btn" onClick={() => setSheet('json')}>
-            Import JSON
+            {tr('Import JSON')}
           </button>
           <button className="btn" onClick={() => setSheet('stock')}>
-            Add spare stock
+            {tr('Add spare stock')}
           </button>
           <button className="btn" onClick={() => setSheet('supply')}>
-            Add supply
+            {tr('Add supply')}
           </button>
         </>
       }
@@ -703,19 +701,19 @@ export default function InventoryPage() {
       {!['chains', 'all', 'life'].includes(tab) && view.error && <ErrorBox error={view.error} onRetry={view.reload} />}
       {tab === 'available' && v && (
         <>
-          <h3>Spare stock</h3>
-          <StockLines lines={v.stock} onChange={changed} empty="No spare stock yet. Add tubes, pad sets or quick links as a count." />
-          <h3>Individual spares</h3>
-          <ItemList rows={v.available} empty="No individual spares. Parts you take off and store appear here with their history." />
+          <h3>{tr('Spare stock')}</h3>
+          <StockLines lines={v.stock} onChange={changed} empty={tr('No spare stock yet. Add tubes, pad sets or quick links as a count.')} />
+          <h3>{tr('Individual spares')}</h3>
+          <ItemList rows={v.available} empty={tr('No individual spares. Parts you take off and store appear here with their history.')} />
         </>
       )}
-      {tab === 'service' && v && <ItemList rows={v.needs_service} empty="Nothing waits for preparation or repair." />}
-      {tab === 'installed' && v && <ItemList rows={v.installed} empty="Nothing installed yet." />}
+      {tab === 'service' && v && <ItemList rows={v.needs_service} empty={tr('Nothing waits for preparation or repair.')} />}
+      {tab === 'installed' && v && <ItemList rows={v.installed} empty={tr('Nothing installed yet.')} />}
       {tab === 'shopping' && v && (
         <>
-          <p className="small muted">Suggestions only, from the minimum stock you set and the spares to keep (Settings). Nothing is ordered.</p>
+          <p className="small muted">{tr('Suggestions only, from the minimum stock you set and the spares to keep (Settings). Nothing is ordered.')}</p>
           {v.shopping_list.length === 0 ? (
-            <Empty title="Nothing below minimum">Set a minimum on a stock line to get reminders.</Empty>
+            <Empty title={tr('Nothing below minimum')}>{tr('Set a minimum on a stock line to get reminders.')}</Empty>
           ) : (
             <ul className="list rows">
               {v.shopping_list.map((s) => (
@@ -724,7 +722,7 @@ export default function InventoryPage() {
                     <strong>{s.name}</strong>
                     <br />
                     <span className="small">
-                      Buy {plural(s.suggested_qty, s.unit)} · {s.available} available, minimum {s.min_stock}
+                      {tr('Buy {qty} · {available} available, minimum {min}', { qty: plural(s.suggested_qty, s.unit), available: s.available, min: s.min_stock })}
                     </span>
                   </span>
                 </li>
@@ -735,11 +733,11 @@ export default function InventoryPage() {
       )}
       {tab === 'history' && v && (
         <>
-          <h3>Changes (can be undone)</h3>
+          <h3>{tr('Changes (can be undone)')}</h3>
           <Sessions rows={v.sessions} onChange={changed} />
-          <h3>What happened to parts</h3>
+          <h3>{tr('What happened to parts')}</h3>
           {v.history.length === 0 ? (
-            <Empty title="No removed parts yet" />
+            <Empty title={tr('No removed parts yet')} />
           ) : (
             <ul className="list">
               {v.history.map((h, i) => (
@@ -749,7 +747,7 @@ export default function InventoryPage() {
                   <span className="small">
                     {h.text}
                     {h.note ? ` · ${h.note}` : ''}
-                    {h.voided ? ' · undone' : ''}
+                    {h.voided ? tr(' · undone') : ''}
                   </span>
                 </li>
               ))}
@@ -757,7 +755,7 @@ export default function InventoryPage() {
           )}
           {v.out_of_use.length > 0 && (
             <>
-              <h3>Out of use (kept for history)</h3>
+              <h3>{tr('Out of use (kept for history)')}</h3>
               <ItemList rows={v.out_of_use} empty="" />
             </>
           )}
@@ -766,15 +764,15 @@ export default function InventoryPage() {
       {tab === 'life' && <PartLife />}
       {tab === 'supplies' && v && (
         <>
-          <p className="small muted">Bulk supplies: wax, sealant, fluid, grease. The amount used per job is optional.</p>
-          <StockLines lines={v.supplies} onChange={changed} empty="No supplies yet." />
+          <p className="small muted">{tr('Bulk supplies: wax, sealant, fluid, grease. The amount used per job is optional.')}</p>
+          <StockLines lines={v.supplies} onChange={changed} empty={tr('No supplies yet.')} />
         </>
       )}
       {tab === 'chains' && (
         <>
           {chains.loading && !chains.data && <Loading />}
           {chains.error && <ErrorBox error={chains.error} onRetry={chains.reload} />}
-          {chains.data?.length === 0 && <Empty title="No chains yet">Add Chain A, B and C to rotate waxed chains.</Empty>}
+          {chains.data?.length === 0 && <Empty title={tr('No chains yet')}>{tr('Add Chain A, B and C to rotate waxed chains.')}</Empty>}
           <div className="cards">
             {chains.data?.map((c) => (
               <Link to={`/inventory/${c.component_id}`} key={c.component_id} className="tile">
@@ -784,8 +782,8 @@ export default function InventoryPage() {
                 <ChainStateTag state={c.state} />
                 <span className="small">{c.text}</span>
                 <span className="muted small">
-                  Lifetime {km(c.lifetime_km, 0)}
-                  {c.last_wear ? ` · wear ${c.last_wear.value ?? '?'}${c.last_wear.unit ?? ''} on ${when(c.last_wear.date)}` : ' · wear not measured'}
+                  {tr('Lifetime')} {km(c.lifetime_km, 0)}
+                  {c.last_wear ? tr(' · wear {x}{x2} on {date}', { x: c.last_wear.value ?? '?', x2: c.last_wear.unit ?? '', date: when(c.last_wear.date) }) : tr(' · wear not measured')}
                 </span>
               </Link>
             ))}
@@ -796,15 +794,15 @@ export default function InventoryPage() {
         <>
           {parts.loading && !parts.data && <Loading />}
           {parts.error && <ErrorBox error={parts.error} onRetry={parts.reload} />}
-          {parts.data?.length === 0 && <Empty title="No parts here">Add a part with just a type and a name.</Empty>}
+          {parts.data?.length === 0 && <Empty title={tr('No parts here')}>{tr('Add a part with just a type and a name.')}</Empty>}
           {parts.data && parts.data.length > 0 && (
             <table className="table">
               <thead>
                 <tr>
-                  <th>Part</th>
-                  <th>Type</th>
-                  <th>Where</th>
-                  <th className="num">Usage</th>
+                  <th>{tr('Part')}</th>
+                  <th>{tr('Type')}</th>
+                  <th>{tr('Where')}</th>
+                  <th className="num">{tr('Usage')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -826,12 +824,12 @@ export default function InventoryPage() {
         </>
       )}
       {sheet === 'part' && (
-        <Sheet title="Add part" onClose={() => setSheet(null)}>
+        <Sheet title={tr('Add part')} onClose={() => setSheet(null)}>
           <ComponentForm
             presetType={tab === 'chains' ? 'CHAIN' : undefined}
             onSaved={(c, typed) => {
               // back to the Inventory list (Dirk 2026-11-01); the new part is one click away in the lists
-              changed(typed && c.label !== typed ? `${c.label} added. You already have one with that name, so this one got a number to tell them apart; rename it any time with Edit details on its page.` : `${c.label} added.`)
+              changed(typed && c.label !== typed ? tr('{label} added. You already have one with that name, so this one got a number to tell them apart; rename it any time with Edit details on its page.', { label: c.label }) : `${c.label} added.`)
               parts.reload()
               chains.reload()
             }}
@@ -841,17 +839,17 @@ export default function InventoryPage() {
         </Sheet>
       )}
       {sheet === 'json' && (
-        <Sheet title="Import products from JSON" onClose={() => setSheet(null)}>
+        <Sheet title={tr('Import products from JSON')} onClose={() => setSheet(null)}>
           <ProductImport onDone={changed} />
         </Sheet>
       )}
       {sheet === 'stock' && (
-        <Sheet title="Add spare stock" onClose={() => setSheet(null)}>
+        <Sheet title={tr('Add spare stock')} onClose={() => setSheet(null)}>
           <AddStockForm mode="COUNTED" onDone={changed} />
         </Sheet>
       )}
       {sheet === 'supply' && (
-        <Sheet title="Add supply" onClose={() => setSheet(null)}>
+        <Sheet title={tr('Add supply')} onClose={() => setSheet(null)}>
           <AddStockForm mode="BULK" onDone={changed} />
         </Sheet>
       )}
@@ -911,42 +909,42 @@ interface ChargeRow {
 // Charges of a battery-powered part with the riding in between (Dirk 2026-11-02: "when i charged them, i want
 // to log it with a date and i want to see time and mileage between charges").
 function ChargingCard({ data, onCharge }: { data: NonNullable<ComponentDetail['charging']>; onCharge: () => void }) {
-  const h = (v: number) => `${v.toLocaleString(undefined, { maximumFractionDigits: 1 })} h`
+  const h = (v: number) => `${v.toLocaleString(locale, { maximumFractionDigits: 1 })} h`
   const s = data.since_last
   return (
-    <Card title="Charging" className="span-2" actions={<button className="btn btn-small" onClick={onCharge}>Log a charge</button>}>
+    <Card title={tr('Charging')} className="span-2" actions={<button className="btn btn-small" onClick={onCharge}>{tr('Log a charge')}</button>}>
       {s ? (
         <p className="small charge-now">
-          <strong>Since the last charge</strong> on {when(s.charged_on)}: {h(s.hours)} of riding · {km(s.km, 0)} · {s.rides} ride{s.rides === 1 ? '' : 's'} · {s.days} day{s.days === 1 ? '' : 's'}
-          {s.rides_without_time > 0 && <span className="muted"> ({s.rides_without_time} without a ride time)</span>}
+          <strong>{tr('Since the last charge')}</strong> {tr('on {date}', { date: when(s.charged_on) })}: {h(s.hours)} {tr('of riding ·')} {km(s.km, 0)} · {trn('{n} ride', '{n} rides', s.rides)} · {trn('{n} day', '{n} days', s.days)}
+          {s.rides_without_time > 0 && <span className="muted"> ({s.rides_without_time} {tr('without a ride time)')}</span>}
         </p>
       ) : (
-        <p className="small muted">No charge logged yet. Log the last one (a date is enough) to start counting.</p>
+        <p className="small muted">{tr('No charge logged yet. Log the last one (a date is enough) to start counting.')}</p>
       )}
       {data.average && (
         <p className="small muted">
-          On average between charges: {h(data.average.hours)} · {km(data.average.km, 0)} · {data.average.days} days ({data.average.charges} full period{data.average.charges === 1 ? '' : 's'})
+          {tr('On average between charges:')} {h(data.average.hours)} · {km(data.average.km, 0)} · {tr('{days} days', { days: data.average.days })} ({trn('{n} full period', '{n} full periods', data.average.charges)})
         </p>
       )}
       {data.charges.length > 0 && (
         <details>
-          <summary className="small">All charges ({data.charges.length})</summary>
+          <summary className="small">{tr('All charges (')}{data.charges.length})</summary>
           <table className="table">
             <thead>
               <tr>
-                <th>Charged</th>
-                <th>Until</th>
-                <th className="num">Riding</th>
-                <th className="num">Km</th>
-                <th className="num">Rides</th>
-                <th className="num">Days</th>
+                <th>{tr('Charged')}</th>
+                <th>{tr('Until')}</th>
+                <th className="num">{tr('Riding')}</th>
+                <th className="num">{tr('Km')}</th>
+                <th className="num">{tr('Rides')}</th>
+                <th className="num">{tr('Days')}</th>
               </tr>
             </thead>
             <tbody>
               {data.charges.map((c) => (
                 <tr key={c.event_id}>
                   <td>{when(c.charged_on)}</td>
-                  <td>{c.until ? when(c.until) : 'now'}</td>
+                  <td>{c.until ? when(c.until) : tr('now')}</td>
                   <td className="num">{h(c.hours)}</td>
                   <td className="num">{km(c.km, 0)}</td>
                   <td className="num">{c.rides}</td>
@@ -963,11 +961,11 @@ function ChargingCard({ data, onCharge }: { data: NonNullable<ComponentDetail['c
 
 function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<ComponentDetail['tire_tube']>; onInstall: (kind: 'tire' | 'tube') => void; onReplace: (id: number) => void }) {
   const kinds = [
-    ['INNER_TUBE', 'Inner tube', 'tube'],
-    ['TIRE', 'Tire', 'tire'],
+    ['INNER_TUBE', tr('Inner tube'), 'tube'],
+    ['TIRE', tr('Tire'), 'tire'],
   ] as const
   return (
-    <Card title="Tire and inner tube" className="span-2 tire-tube">
+    <Card title={tr('Tire and inner tube')} className="span-2 tire-tube">
       {kinds.map(([code, name, kind]) => {
         const k = data[code]
         const cur = k.current
@@ -977,40 +975,40 @@ function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<Compon
             <h3 className="small muted">{name}</h3>
             {cur ? (
               <p className="tt-current">
-                <Link to={`/inventory/${cur.component_id}`}>{cur.label}</Link> · in since {when(cur.installed_at)} · <strong>{km(cur.km_here, 0)}</strong> on this wheel
-                {cur.km_total > cur.km_here + 0.5 && <span className="muted"> ({km(cur.km_total, 0)} in total)</span>}
-                {cur.punctures > 0 && <span className="muted"> · {cur.punctures === 1 ? '1 puncture' : `${cur.punctures} punctures`}</span>}{' '}
+                <Link to={`/inventory/${cur.component_id}`}>{cur.label}</Link> {tr('· in since')} {when(cur.installed_at)} · <strong>{km(cur.km_here, 0)}</strong> {tr('on this wheel')}
+                {cur.km_total > cur.km_here + 0.5 && <span className="muted"> ({km(cur.km_total, 0)} {tr('in total)')}</span>}
+                {cur.punctures > 0 && <span className="muted"> · {cur.punctures === 1 ? tr('1 puncture') : `${cur.punctures} punctures`}</span>}{' '}
                 {cur.defect && (
-                  <Tag tone="bad" title="A puncture is logged and not fixed yet. Fix it on the ride (Fix → Replaced or Patched), or replace the tube here.">
-                    defect · puncture {when(cur.defect.since)}
+                  <Tag tone="bad" title={tr('A puncture is logged and not fixed yet. Fix it on the ride (Fix → Replaced or Patched), or replace the tube here.')}>
+                    {tr('defect · puncture')} {when(cur.defect.since)}
                   </Tag>
                 )}{' '}
                 <button className="btn btn-small" onClick={() => onReplace(cur.component_id)}>
-                  Replace {kind}
+                  {tr('Replace')} {kind}
                 </button>
               </p>
             ) : (
               <p className="tt-current">
-                <span className="muted">No {kind} recorded on this wheel.</span>{' '}
+                <span className="muted">{tr(kind === 'tube' ? 'No tube recorded on this wheel.' : 'No tire recorded on this wheel.')}</span>{' '}
                 <button className="btn btn-small" onClick={() => onInstall(kind)}>
-                  Install {kind === 'tube' ? 'an inner tube' : 'a tire'}
+                  {tr('Install')} {kind === 'tube' ? tr('an inner tube') : tr('a tire')}
                 </button>
               </p>
             )}
             {before.length > 0 && (
               <details className="tt-history">
                 <summary className="small">
-                  Earlier {kind === 'tube' ? 'tubes' : 'tires'} on this wheel ({before.length})
+                  {tr(kind === 'tube' ? 'Earlier tubes on this wheel ({n})' : 'Earlier tires on this wheel ({n})', { n: before.length })}
                 </summary>
                 <table className="table">
                   <thead>
                     <tr>
                       <th>{name}</th>
-                      <th>On</th>
-                      <th>Off</th>
-                      <th className="num">Km here</th>
-                      <th className="num">Punctures</th>
-                      <th>Came off</th>
+                      <th>{tr('On')}</th>
+                      <th>{tr('Off')}</th>
+                      <th className="num">{tr('Km here')}</th>
+                      <th className="num">{tr('Punctures')}</th>
+                      <th>{tr('Came off')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1025,7 +1023,7 @@ function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<Compon
                         <td className="num">{h.punctures}</td>
                         <td className="small">
                           {h.ended ?? '–'}
-                          {h.defect && <Tag tone="bad">defect</Tag>}
+                          {h.defect && <Tag tone="bad">{tr('defect')}</Tag>}
                         </td>
                       </tr>
                     ))}
@@ -1036,7 +1034,7 @@ function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<Compon
           </div>
         )
       })}
-      <p className="small muted">Each tire and tube counts the rides from the day it went in until it comes off; the wheel keeps its own km.</p>
+      <p className="small muted">{tr('Each tire and tube counts the rides from the day it went in until it comes off; the wheel keeps its own km.')}</p>
     </Card>
   )
 }
@@ -1050,21 +1048,21 @@ interface FrameHistory {
 function SpokesCard({ wheelId, label, info, onChanged }: { wheelId: number; label: string; info: SpokeInfo; onChanged: () => void }) {
   const [open, setOpen] = useState(false)
   return (
-    <Card title="Spokes">
+    <Card title={tr('Spokes')}>
       <p className="small">
         <SpokeCount sp={info} />
       </p>
       {info.breaks.length > 0 && (
         <p className="small muted">
-          Last broke {when(info.breaks[0].broke_on)}
-          {info.breaks[0].replaced_on ? `, replaced ${when(info.breaks[0].replaced_on)}` : ', not replaced yet'}.
+          {tr('Last broke')} {when(info.breaks[0].broke_on)}
+          {info.breaks[0].replaced_on ? tr(', replaced {replaced_on}', { replaced_on: when(info.breaks[0].replaced_on) }) : tr(', not replaced yet')}.
         </p>
       )}
       <button className="btn btn-small" onClick={() => setOpen(true)}>
-        Broken spoke…
+        {tr('Broken spoke…')}
       </button>
       {open && (
-        <Sheet title={`Broken spokes · ${label}`} onClose={() => setOpen(false)}>
+        <Sheet title={tr('Broken spokes · {label}', { label })} onClose={() => setOpen(false)}>
           <BrokenSpokes wheelId={wheelId} info={info} onChange={onChanged} />
         </Sheet>
       )}
@@ -1076,13 +1074,13 @@ function SpokesCard({ wheelId, label, info, onChanged }: { wheelId: number; labe
 function FrameHistoryCard({ h, kind }: { h: FrameHistory; kind: string }) {
   return (
     <Card title={`${kind} history`}>
-      <p className="small muted">Inspections and crashes while this {kind.toLowerCase()} was on a bike. They stay with it when it moves to another build.</p>
+      <p className="small muted">{tr('Inspections and crashes while this {kind} was on a bike. They stay with it when it moves to another build.', { kind: lc(kind) })}</p>
       <details>
         <summary>
-          Inspections ({h.inspections.length}){h.inspections[0] ? ` · last ${when(h.inspections[0].performed_on)}` : ''}
+          {tr('Inspections (')}{h.inspections.length}){h.inspections[0] ? tr(' · last {performed_on}', { performed_on: when(h.inspections[0].performed_on) }) : ''}
         </summary>
         {h.inspections.length === 0 ? (
-          <p className="small muted">None recorded. Record one on the bike with "Record work done" → Frame and fork inspection.</p>
+          <p className="small muted">{tr('None recorded. Record one on the bike with "Record work done" → Frame and fork inspection.')}</p>
         ) : (
           <ul className="list">
             {h.inspections.map((e) => (
@@ -1096,9 +1094,9 @@ function FrameHistoryCard({ h, kind }: { h: FrameHistory; kind: string }) {
         )}
       </details>
       <details>
-        <summary>Crashes ({h.crashes.length})</summary>
+        <summary>{tr('Crashes (')}{h.crashes.length})</summary>
         {h.crashes.length === 0 ? (
-          <p className="small muted">No crashes recorded.</p>
+          <p className="small muted">{tr('No crashes recorded.')}</p>
         ) : (
           <ul className="list">
             {h.crashes.map((c) => (
@@ -1107,10 +1105,10 @@ function FrameHistoryCard({ h, kind }: { h: FrameHistory; kind: string }) {
                 {c.ride_id ? (
                   <>
                     {' · '}
-                    <Link to={`/rides?open=${c.ride_id}`}>{c.ride_label ?? 'ride'}</Link>
+                    <Link to={`/rides?open=${c.ride_id}`}>{c.ride_label ?? tr('ride')}</Link>
                   </>
                 ) : null}
-                {c.text ? ` · ${c.text}` : ''} {c.open ? <Tag tone="warn">open</Tag> : <Tag tone="good">solved</Tag>}
+                {c.text ? ` · ${c.text}` : ''} {c.open ? <Tag tone="warn">{tr('open')}</Tag> : <Tag tone="good">{tr('solved')}</Tag>}
               </li>
             ))}
           </ul>
@@ -1143,49 +1141,49 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
       {rule.notes && <p className="small muted">{rule.notes}</p>}
       {rule.trigger === 'INTERVAL' ? (
         <div className="row">
-          <Field label="Every … km">
+          <Field label={tr('Every … km')}>
             <input inputMode="decimal" value={f.interval_km} onChange={(e) => setF({ ...f, interval_km: e.target.value })} />
           </Field>
-          <Field label="or every … hours of riding">
-            <input inputMode="decimal" aria-label="Every … hours of riding" value={f.interval_hours} onChange={(e) => setF({ ...f, interval_hours: e.target.value })} />
+          <Field label={tr('or every … hours of riding')}>
+            <input inputMode="decimal" aria-label={tr('Every … hours of riding')} value={f.interval_hours} onChange={(e) => setF({ ...f, interval_hours: e.target.value })} />
           </Field>
-          <Field label="or every … months">
+          <Field label={tr('or every … months')}>
             <input inputMode="numeric" value={f.interval_months} onChange={(e) => setF({ ...f, interval_months: e.target.value })} />
           </Field>
           {rule.action_code === 'WAX_HOT' && (
-            <Field label="After a liquid wax top-up: hot wax … km later" hint="e.g. 200: a top-up at 70 km moves the hot wax to 270 km. Empty: top-ups do not move it.">
-              <input inputMode="decimal" aria-label="Hot wax km after a top-up" value={f.after_top_up_km} onChange={(e) => setF({ ...f, after_top_up_km: e.target.value })} />
+            <Field label={tr('After a liquid wax top-up: hot wax … km later')} hint={tr('e.g. 200: a top-up at 70 km moves the hot wax to 270 km. Empty: top-ups do not move it.')}>
+              <input inputMode="decimal" aria-label={tr('Hot wax km after a top-up')} value={f.after_top_up_km} onChange={(e) => setF({ ...f, after_top_up_km: e.target.value })} />
             </Field>
           )}
         </div>
       ) : rule.trigger === 'PARENT_COUNT' ? (
         <div className="row">
-          <Field label="Replace after it has been on … parts" hint="e.g. a quick link after 2 chains">
+          <Field label={tr('Replace after it has been on … parts')} hint={tr('e.g. a quick link after 2 chains')}>
             <input inputMode="numeric" value={f.interval_count} onChange={(e) => setF({ ...f, interval_count: e.target.value })} />
           </Field>
         </div>
       ) : (
         <div className="row">
-          <Field label="Window from … km">
+          <Field label={tr('Window from … km')}>
             <input inputMode="decimal" value={f.window_min_km} onChange={(e) => setF({ ...f, window_min_km: e.target.value })} />
           </Field>
-          <Field label="to … km (after the cycle start)">
+          <Field label={tr('to … km (after the cycle start)')}>
             <input inputMode="decimal" value={f.window_max_km} onChange={(e) => setF({ ...f, window_max_km: e.target.value })} />
           </Field>
         </div>
       )}
       <div className="row">
-        <Field label="Source">
+        <Field label={tr('Source')}>
           <select value={f.origin} onChange={(e) => setF({ ...f, origin: e.target.value })}>
-            <option value="PERSONAL">Personal interval</option>
-            <option value="MANUFACTURER">Manufacturer interval</option>
+            <option value="PERSONAL">{tr('Personal interval')}</option>
+            <option value="MANUFACTURER">{tr('Manufacturer interval')}</option>
           </select>
         </Field>
         {rule.component_type && (
-          <Field label="Apply to">
+          <Field label={tr('Apply to')}>
             <select value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value })}>
-              <option value="part">This part only</option>
-              <option value="type">All parts of this type</option>
+              <option value="part">{tr('This part only')}</option>
+              <option value="type">{tr('All parts of this type')}</option>
             </select>
           </Field>
         )}
@@ -1193,10 +1191,10 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn" onClick={() => save(false)}>
-          Turn off for this part
+          {tr('Turn off for this part')}
         </button>
         <button className="btn btn-primary" onClick={() => save(true)}>
-          Save rule
+          {tr('Save rule')}
         </button>
       </div>
     </div>
@@ -1206,7 +1204,7 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
 export function ComponentDetailPage() {
   const { id } = useParams()
   const { toast, meta } = useApp()
-  const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
+  const actionName = (code: string | null) => lc(meta.actions.find((a) => a.code === code)?.name ?? code ?? '')
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
   useCrumb(`/inventory/${id}`, data?.label)
   const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | 'inuse' | 'sendout' | { rule: Rule } | { correct: number } | { back: ServiceOrder } | 'install' | 'tire' | 'tube' | { change: number }>(null)
@@ -1226,7 +1224,7 @@ export function ComponentDetailPage() {
     try {
       const r = await api.post<OpResult<unknown>>(`${path}${dry ? '?dry_run=true' : ''}`, body)
       if (dry) return setPreview(r.change)
-      toast(r.change?.notice ?? 'Saved.')
+      toast(r.change?.notice ?? tr('Saved.'))
       close()
       reload()
     } catch (e) {
@@ -1275,69 +1273,69 @@ export function ComponentDetailPage() {
             <>
               {!installed && !away && !ctype?.rider_gear && (ctype?.slots.length || ctype?.parent_types.length) ? (
                 <button className="btn btn-primary" onClick={() => setSheet('install')}>
-                  Install
+                  {tr('Install')}
                 </button>
               ) : null}
               {['FRONT_WHEEL', 'REAR_WHEEL', 'WHEELSET'].includes(data.component_type) && (
                 <button className="btn" onClick={() => setSheet('tire')}>
-                  Install a tire
+                  {tr('Install a tire')}
                 </button>
               )}
               {['FRONT_WHEEL', 'REAR_WHEEL', 'WHEELSET'].includes(data.component_type) && (
                 <button className="btn" onClick={() => setSheet('tube')}>
-                  Install an inner tube
+                  {tr('Install an inner tube')}
                 </button>
               )}
               {installed && (
                 <button className="btn btn-primary" onClick={() => setSheet('replace')}>
-                  Replace
+                  {tr('Replace')}
                 </button>
               )}
-              <button className={installed || (!away && !ctype?.rider_gear && (ctype?.slots.length || ctype?.parent_types.length)) ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')} title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part">
-                Record work done
+              <button className={installed || (!away && !ctype?.rider_gear && (ctype?.slots.length || ctype?.parent_types.length)) ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')} title={tr('Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part')}>
+                {tr('Record work done')}
               </button>
               {ctype?.rider_gear && (
                 <button className={data.disposition === 'IN_USE' ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('inuse')}>
-                  {data.disposition === 'IN_USE' ? 'Stop using' : 'Start using'}
+                  {data.disposition === 'IN_USE' ? tr('Stop using') : tr('Start using')}
                 </button>
               )}
               {away && (
                 <button className="btn btn-primary" onClick={() => setSheet({ back: away })}>
-                  Back from repair
+                  {tr('Back from repair')}
                 </button>
               )}
               <button className="btn" onClick={() => setSheet('details')}>
-                Edit details
+                {tr('Edit details')}
               </button>
               {/* less frequent actions fold into one menu so the header stays short (phone: one row) */}
               <details className="more-menu">
-                <summary className="btn">More…</summary>
+                <summary className="btn">{tr('More…')}</summary>
                 <div className="more-items" onClick={(e) => ((e.currentTarget.parentElement as HTMLDetailsElement).open = false)}>
                   {installed && (
                     <button className="btn" onClick={() => setSheet('remove')}>
-                      Remove
+                      {tr('Remove')}
                     </button>
                   )}
                   {installed && canMove && (
                     <button className="btn" onClick={() => setSheet('move')}>
-                      Move
+                      {tr('Move')}
                     </button>
                   )}
                   {!installed && !ctype?.rider_gear && (
                     <button className="btn" onClick={() => setSheet('disposition')}>
-                      Change status
+                      {tr('Change status')}
                     </button>
                   )}
                   {!away && !ctype?.rider_gear && (
                     <button className="btn" onClick={() => setSheet('sendout')}>
-                      Send away for repair
+                      {tr('Send away for repair')}
                     </button>
                   )}
                   <button className="btn" onClick={openStart}>
-                    Starting km
+                    {tr('Starting km')}
                   </button>
                   <button className="btn" onClick={() => setSheet('retire')}>
-                    Retire
+                    {tr('Retire')}
                   </button>
                 </div>
               </details>
@@ -1345,7 +1343,7 @@ export function ComponentDetailPage() {
           ) : (
             data.disposition !== 'VOIDED' && (
               <button className="btn" onClick={() => setSheet('disposition')}>
-                Back in stock…
+                {tr('Back in stock…')}
               </button>
             )
           )
@@ -1358,7 +1356,7 @@ export function ComponentDetailPage() {
           </div>
           <div>
             <span className="stat">{u.ride_count}</span>
-            <span className="muted small">rides · {u.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h riding</span>
+            <span className="muted small">{tr('rides ·')} {u.hours.toLocaleString(locale, { maximumFractionDigits: 1 })} {tr('h riding')}</span>
           </div>
           <div>
             <span className="stat">{inv.state_text}</span>
@@ -1368,56 +1366,56 @@ export function ComponentDetailPage() {
         <p className="small">{u.summary}</p>
         {u.starting_km === null && data.status !== 'RETIRED' && (
           <p className="small muted">
-            Already ridden before (on another bike or before Bike Log)?{' '}
+            {tr('Already ridden before (on another bike or before Bike Log)?')}{' '}
             <button className="btn btn-small" onClick={openStart}>
-              Add km from before
+              {tr('Add km from before')}
             </button>
           </p>
         )}
-        {data.product && <p className="small muted">Product: {data.product}</p>}
+        {data.product && <p className="small muted">{tr('Product:')} {data.product}</p>}
         {(data.component_type === 'FRONT_WHEEL' || data.component_type === 'REAR_WHEEL') && (
           <p className="small">
-            Tire setup: <TireSetupSelect wheelId={data.id} value={data.tire_setup} onSaved={reload} />{' '}
-            <span className="muted">Set on the wheel, so it moves with the wheel; the tire on it follows.</span>
+            {tr('Tire setup:')} <TireSetupSelect wheelId={data.id} value={data.tire_setup} onSaved={reload} />{' '}
+            <span className="muted">{tr('Set on the wheel, so it moves with the wheel; the tire on it follows.')}</span>
           </p>
         )}
         {(data.component_type === 'TIRE' || data.component_type === 'INNER_TUBE') && (
           <p className="small muted">
-            Tire setup: {data.tire_setup_from ? `${setupLabel(meta.tire_setups, data.effective_tire_setup)} (set on ${data.tire_setup_from})` : 'follows the wheel it is mounted on'}
+            {tr('Tire setup:')} {data.tire_setup_from ? tr('{setupLabel} (set on {tire_setup_from})', { setupLabel: setupLabel(meta.tire_setups, data.effective_tire_setup), tire_setup_from: data.tire_setup_from }) : tr('follows the wheel it is mounted on')}
           </p>
         )}
         {data.component_type === 'TIRE' && (
           <p className="small">
-            Tire pressure: <PressureNote tireId={data.id} value={data.pressure_note} onSaved={reload} />{' '}
-            <span className="muted">A note, shown on the bike page. No reminder.</span>
+            {tr('Tire pressure:')} <PressureNote tireId={data.id} value={data.pressure_note} onSaved={reload} />{' '}
+            <span className="muted">{tr('A note, shown on the bike page. No reminder.')}</span>
           </p>
         )}
         {data.groupset_bike_id && (
           <p className="small">
-            Part of the groupset of this bike: <Link to={`/bikes/${data.groupset_bike_id}/groupset`}>open the groupset page</Link>
+            {tr('Part of the groupset of this bike:')} <Link to={`/bikes/${data.groupset_bike_id}/groupset`}>{tr('open the groupset page')}</Link>
           </p>
         )}
         <p className="small muted">
           {data.bundle ? (
             <>
-              Bought in the bundle <strong>{data.bundle.name}</strong>
-              {data.bundle.price_cents !== null ? ` (${euro(data.bundle.price_cents)}` : ' (no bundle price yet'}
+              {tr('Bought in the bundle')} <strong>{data.bundle.name}</strong>
+              {data.bundle.price_cents !== null ? ` (${euro(data.bundle.price_cents)}` : tr(' (no bundle price yet')}
               {data.bundle.merchant ? `, ${data.bundle.merchant}` : ''}
               {data.bundle.purchased_on ? `, ${when(data.bundle.purchased_on)}` : ''})
-              {data.bundle.share_cents !== null ? ` · share ≈ ${euro(data.bundle.share_cents)} (estimate)` : ''}
+              {data.bundle.share_cents !== null ? tr(' · share ≈ {share_cents} (estimate)', { share_cents: euro(data.bundle.share_cents) }) : ''}
             </>
           ) : (
             <>
-              Price: {data.price_cents !== null ? euro(data.price_cents) : 'not entered'}
-              {data.purchase_date ? ` · bought ${when(data.purchase_date)}` : ''}
-              {data.shop ? ` · from ${data.shop}` : ''}
+              {tr('Price:')} {data.price_cents !== null ? euro(data.price_cents) : tr('not entered')}
+              {data.purchase_date ? tr(' · bought {purchase_date}', { purchase_date: when(data.purchase_date) }) : ''}
+              {data.shop ? tr(' · from {shop}', { shop: data.shop }) : ''}
             </>
           )}
-          {data.serial_number ? ` · serial ${data.serial_number}` : ''}
+          {data.serial_number ? tr(' · serial {serial_number}', { serial_number: data.serial_number }) : ''}
           {data.warranty_until ? (
             <>
-              {` · warranty until ${when(data.warranty_until)} `}
-              {data.warranty_until < today() && <Tag>expired</Tag>}
+              {tr(' · warranty until {warranty_until} ', { warranty_until: when(data.warranty_until) })}
+              {data.warranty_until < today() && <Tag>{tr('expired')}</Tag>}
             </>
           ) : (
             ''
@@ -1428,30 +1426,30 @@ export function ComponentDetailPage() {
       {data.tire_tube && <TireTubeCard data={data.tire_tube} onInstall={(k) => setSheet(k)} onReplace={(id) => setSheet({ change: id })} />}
       {data.charging && <ChargingCard data={data.charging} onCharge={() => setSheet('log')} />}
       <RepairsCard orders={data.service_orders} componentId={data.id} onBack={(o) => setSheet({ back: o })} />
-      <Card title="Service status" className="span-2">
-        <TaskList tasks={data.service_status} onChange={reload} emptyText="No service rules for this part." />
+      <Card title={tr('Service status')} className="span-2">
+        <TaskList tasks={data.service_status} onChange={reload} emptyText={tr('No service rules for this part.')} />
         <div className="form-actions">
           <button className="btn btn-small" onClick={() => setSheet('rule')}>
-            Add a rule for this part
+            {tr('Add a rule for this part')}
           </button>
         </div>
       </Card>
       {data.spokes && <SpokesCard wheelId={data.id} label={data.label} info={data.spokes} onChanged={reload} />}
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
-        <Card title="Parts on it" className="span-2">
-          <p className="small muted">What is mounted on {data.label} now. Unfold a part to see what sits on it; open any part for its km, service and history.</p>
+        <Card title={tr('Parts on it')} className="span-2">
+          <p className="small muted">{tr('What is mounted on')} {data.label} {tr('now. Unfold a part to see what sits on it; open any part for its km, service and history.')}</p>
           <PartTree nodes={data.parts} />
         </Card>
       )}
-      <Card title="Maintenance log" className="span-2">
+      <Card title={tr('Maintenance log')} className="span-2">
         <EventLog events={data.events} onChanged={reload} show="none" />
       </Card>
       {/* everything that happened to this part with its own km at each entry; folded so the page stays short */}
       <FoldedTimeline componentId={data.id} />
-      <Card title="Installation history">
+      <Card title={tr('Installation history')}>
         {data.history.length === 0 ? (
-          <Empty title="Never installed" />
+          <Empty title={tr('Never installed')} />
         ) : (
           <ul className="list">
             {data.history.map((h) => (
@@ -1461,13 +1459,13 @@ export function ComponentDetailPage() {
                   {when(h.installed_at)} → {h.removed_at ? when(h.removed_at) : 'now'}
                 </span>
                 <span className="small">
-                  {h.voided ? `void: ${h.void_reason}` : km(h.km)}
+                  {h.voided ? tr('void: {void_reason}', { void_reason: h.void_reason }) : km(h.km)}
                   {!h.voided && h.removal_outcome && ` · ${h.removal_outcome === 'MOVED' ? 'moved' : (meta.dispositions.find((d) => d.code === h.removal_outcome)?.label ?? '').toLowerCase()}`}
                   {!h.voided && h.removal_reason && ` (${h.removal_reason})`}
                 </span>
                 {!h.voided && (
                   <button className="btn btn-small" onClick={() => { setF({ ...f, installed_at: h.installed_at.slice(0, 10), removed_at: h.removed_at?.slice(0, 10) ?? '' }); setSheet({ correct: h.id }) }}>
-                    Correct
+                    {tr('Correct')}
                   </button>
                 )}
               </li>
@@ -1475,25 +1473,25 @@ export function ComponentDetailPage() {
           </ul>
         )}
       </Card>
-      <Card title="Rules">
+      <Card title={tr('Rules')}>
         {data.rules.length === 0 ? (
-          <Empty title="No rules" />
+          <Empty title={tr('No rules')} />
         ) : (
           <ul className="list">
             {data.rules.map((r) => (
               <li key={r.id}>
                 <span>
                   {r.name}
-                  {!r.active && <Tag>off</Tag>}
+                  {!r.active && <Tag>{tr('off')}</Tag>}
                 </span>
                 <span className="muted small">
-                  {r.trigger === 'CYCLE_WINDOW' ? `once at ${r.window_min_km}–${r.window_max_km} km after ${actionName(r.cycle_action_code)}` : [r.interval_km && `every ${r.interval_km} km`, r.interval_months && `every ${r.interval_months} months`].filter(Boolean).join(' or ') + (r.after_top_up_km ? `, or ${r.after_top_up_km} km after a liquid wax top-up` : '')}
+                  {r.trigger === 'CYCLE_WINDOW' ? tr('once at {window_min_km}–{window_max_km} km after {actionName}', { window_min_km: r.window_min_km, window_max_km: r.window_max_km, actionName: actionName(r.cycle_action_code) }) : [r.interval_km && tr('every {interval_km} km', { interval_km: r.interval_km }), r.interval_months && tr('every {interval_months} months', { interval_months: r.interval_months })].filter(Boolean).join(' or ') + (r.after_top_up_km ? tr(', or {after_top_up_km} km after a liquid wax top-up', { after_top_up_km: r.after_top_up_km }) : '')}
                   {' · '}
-                  {r.component_id ? 'this part' : 'type default'} · {r.origin.toLowerCase()}
-                  {r.requires_setup && ` · only ${setupLabel(meta.tire_setups, r.requires_setup).toLowerCase()}`}
+                  {r.component_id ? tr('this part') : tr('type default')} · {r.origin.toLowerCase()}
+                  {r.requires_setup && tr(' · only {toLowerCase}', { toLowerCase: lc(setupLabel(meta.tire_setups, r.requires_setup)) })}
                 </span>
                 <button className="btn btn-small" onClick={() => setSheet({ rule: r })}>
-                  Edit
+                  {tr('Edit')}
                 </button>
               </li>
             ))}
@@ -1501,7 +1499,7 @@ export function ComponentDetailPage() {
         )}
       </Card>
       {data.dispositions.length > 0 && (
-        <Card title="What happened to it">
+        <Card title={tr('What happened to it')}>
           <ul className="list">
             {data.dispositions.map((d) => (
               <li key={d.id} className={d.voided ? 'excluded' : ''}>
@@ -1509,42 +1507,42 @@ export function ComponentDetailPage() {
                 <span>{d.label}</span>
                 <span className="small">
                   {d.note}
-                  {d.voided ? ' · undone' : ''}
+                  {d.voided ? tr(' · undone') : ''}
                 </span>
               </li>
             ))}
           </ul>
         </Card>
       )}
-      <Card title="Where the kilometres come from" className="span-2">
+      <Card title={tr('Where the kilometres come from')} className="span-2">
         {data.ledger.length === 0 ? (
-          <Empty title="No usage recorded yet" />
+          <Empty title={tr('No usage recorded yet')} />
         ) : (
           <details className="task-group" data-group="ledger">
             <summary>
               <strong>
-                {data.ledger.length} entr{data.ledger.length === 1 ? 'y' : 'ies'}
+                {trn('{n} entry', '{n} entries', data.ledger.length)}
               </strong>{' '}
               <span className="muted small">
-                {when(data.ledger[0].date)} → {when(data.ledger[data.ledger.length - 1].date)} · {usageText(u)} in total
+                {when(data.ledger[0].date)} → {when(data.ledger[data.ledger.length - 1].date)} · {usageText(u)} {tr('in total')}
               </span>
             </summary>
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Source</th>
-                <th>Bike</th>
-                <th className="num">km</th>
-                <th className="num">Running</th>
-                <th>Note</th>
+                <th>{tr('Date')}</th>
+                <th>{tr('Source')}</th>
+                <th>{tr('Bike')}</th>
+                <th className="num">{tr('km')}</th>
+                <th className="num">{tr('Running')}</th>
+                <th>{tr('Note')}</th>
               </tr>
             </thead>
             <tbody>
               {data.ledger.map((e, i) => (
                 <tr key={i} className={e.counted ? '' : 'excluded'}>
                   <td>{when(e.date)}</td>
-                  <td>{e.kind === 'RIDE' ? <Link to={`/rides?open=${e.ride_id}`}>{e.ride_name || 'Ride'}</Link> : e.kind === 'STARTING' ? 'Starting value' : 'Correction'}</td>
+                  <td>{e.kind === 'RIDE' ? <Link to={`/rides?open=${e.ride_id}`}>{e.ride_name || tr('Ride')}</Link> : e.kind === 'STARTING' ? tr('Starting value') : tr('Correction')}</td>
                   <td>{e.bike ?? ''}</td>
                   <td className="num">
                     {e.is_estimate ? '≈' : ''}
@@ -1552,7 +1550,7 @@ export function ComponentDetailPage() {
                   </td>
                   <td className="num">{km(e.running_km, 0)}</td>
                   <td className="small">
-                    {e.basis === 'EXPLICIT' && <Tag tone="info">confirmed</Tag>}
+                    {e.basis === 'EXPLICIT' && <Tag tone="info">{tr('confirmed')}</Tag>}
                     {!e.certain && <Tag tone="warn">{e.is_estimate ? 'estimate' : 'uncertain'}</Tag>}
                     {e.detail}
                   </td>
@@ -1568,12 +1566,12 @@ export function ComponentDetailPage() {
       <Journal componentId={data.id} className="span-2" />
       <ChangeLog componentId={data.id} refresh={data} className="span-2" />
       {sheet === 'log' && (
-        <Sheet title={`Record work done · ${data.label}`} onClose={close}>
+        <Sheet title={tr('Record work done · {label}', { label: data.label })} onClose={close}>
           <LogMaintenance componentId={data.id} onDone={(msg) => { close(); toast(msg); reload() }} />
         </Sheet>
       )}
       {(sheet === 'install' || sheet === 'tire' || sheet === 'tube') && (
-        <Sheet title={sheet === 'tire' ? `Install a tire · ${data.label}` : sheet === 'tube' ? `Install an inner tube · ${data.label}` : `Install ${data.label}`} onClose={close}>
+        <Sheet title={sheet === 'tire' ? tr('Install a tire · {label}', { label: data.label }) : sheet === 'tube' ? tr('Install an inner tube · {label}', { label: data.label }) : tr('Install {label}', { label: data.label })} onClose={close}>
           <InstallHere
             componentType={sheet === 'tire' ? 'TIRE' : sheet === 'tube' ? 'INNER_TUBE' : data.component_type}
             part={sheet === 'install' ? data : undefined}
@@ -1592,105 +1590,105 @@ export function ComponentDetailPage() {
         </Sheet>
       )}
       {sheet && typeof sheet === 'object' && 'change' in sheet && (
-        <Sheet title="Replace the part that is there" onClose={close}>
+        <Sheet title={tr('Replace the part that is there')} onClose={close}>
           <ReplaceForm componentId={sheet.change} onDone={(c, label) => { changed(c); toast(`${label} installed. ${c.notice}`) }} />
         </Sheet>
       )}
       {sheet === 'replace' && (
-        <Sheet title={`Replace ${data.label}`} onClose={close}>
+        <Sheet title={tr('Replace {label}', { label: data.label })} onClose={close}>
           <ReplaceForm componentId={data.id} onDone={(c, label) => { changed(c); toast(`${label} installed. ${c.notice}`) }} />
         </Sheet>
       )}
       {sheet === 'remove' && (
-        <Sheet title={`Remove ${data.label}`} onClose={close}>
+        <Sheet title={tr('Remove {label}', { label: data.label })} onClose={close}>
           <RemoveForm componentId={data.id} suggested={data.suggested_outcome} onDone={changed} />
         </Sheet>
       )}
       {sheet === 'move' && (
-        <Sheet title={`Move ${data.label}`} onClose={close}>
+        <Sheet title={tr('Move {label}', { label: data.label })} onClose={close}>
           <MoveForm componentId={data.id} onDone={changed} />
         </Sheet>
       )}
       {sheet === 'inuse' && (
-        <Sheet title={data.disposition === 'IN_USE' ? `Stop using ${data.label}` : `Start using ${data.label}`} onClose={close}>
+        <Sheet title={data.disposition === 'IN_USE' ? tr('Stop using {label}', { label: data.label }) : tr('Start using {label}', { label: data.label })} onClose={close}>
           <InUseForm componentId={data.id} inUse={data.disposition === 'IN_USE'} onDone={(msg) => { close(); toast(msg); reload() }} />
         </Sheet>
       )}
       {sheet === 'disposition' && (
-        <Sheet title={`Status of ${data.label}`} onClose={close}>
-          <DispositionForm componentId={data.id} current={data.disposition} onDone={() => { close(); toast('Saved.'); reload() }} />
+        <Sheet title={tr('Status of {label}', { label: data.label })} onClose={close}>
+          <DispositionForm componentId={data.id} current={data.disposition} onDone={() => { close(); toast(tr('Saved.')); reload() }} />
         </Sheet>
       )}
       {sheet === 'sendout' && (
-        <Sheet title={`Send ${data.label} away for repair`} onClose={close}>
+        <Sheet title={tr('Send {label} away for repair', { label: data.label })} onClose={close}>
           <SendOutForm componentId={data.id} label={data.label} incidents={data.incident_choices} onDone={(msg) => { close(); toast(msg); reload() }} />
         </Sheet>
       )}
       {sheet && typeof sheet === 'object' && 'back' in sheet && (
-        <Sheet title={`Back from repair: ${data.label}`} onClose={close}>
+        <Sheet title={tr('Back from repair: {label}', { label: data.label })} onClose={close}>
           <ReturnForm order={sheet.back} onDone={(msg) => { close(); toast(msg); reload() }} />
         </Sheet>
       )}
       {sheet === 'details' && (
-        <Sheet title={`Edit ${data.label}`} onClose={close}>
-          <DetailsForm comp={data} onDone={() => (close(), reload(), toast('Saved.'))} />
+        <Sheet title={tr('Edit {label}', { label: data.label })} onClose={close}>
+          <DetailsForm comp={data} onDone={() => (close(), reload(), toast(tr('Saved.')))} />
         </Sheet>
       )}
       {sheet === 'start' && (
-        <Sheet title="Starting mileage" onClose={close}>
+        <Sheet title={tr('Starting mileage')} onClose={close}>
           <div className="form">
             <p className="small muted">
-              The km the part already had on the given date, for example a wheelset used on other bikes. Rides recorded in Bike Log after that date are added on top; rides before it are treated as already inside this value. The date is set to the day the part was first installed here
-              {firstInstall ? ` (${when(firstInstall)})` : ''}, so enter the km it had then.
+              {tr('The km the part already had on the given date, for example a wheelset used on other bikes. Rides recorded in Bike Log after that date are added on top; rides before it are treated as already inside this value. The date is set to the day the part was first installed here')}
+              {firstInstall ? ` (${when(firstInstall)})` : ''}{tr(', so enter the km it had then.')}
             </p>
             <div className="row">
               <Field label="km">
                 <input inputMode="decimal" value={f.km} onChange={(e) => setF({ ...f, km: e.target.value })} />
               </Field>
-              <Field label="As of">
+              <Field label={tr('As of')}>
                 <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
               </Field>
             </div>
             <label className="check">
-              <input type="checkbox" checked={f.estimate} onChange={(e) => setF({ ...f, estimate: e.target.checked })} /> Estimate
+              <input type="checkbox" checked={f.estimate} onChange={(e) => setF({ ...f, estimate: e.target.checked })} /> {tr('Estimate')}
             </label>
             <ChangeNotice change={preview} />
             <FormError error={err} />
             <div className="form-actions">
               <button className="btn" onClick={() => op(`/components/${data.id}/starting-usage`, { km: Number(f.km), effective: f.date, is_estimate: f.estimate }, true)}>
-                Preview
+                {tr('Preview')}
               </button>
               <button className="btn btn-primary" onClick={() => op(`/components/${data.id}/starting-usage`, { km: Number(f.km), effective: f.date, is_estimate: f.estimate })}>
-                Save
+                {tr('Save')}
               </button>
             </div>
           </div>
         </Sheet>
       )}
       {sheet === 'retire' && (
-        <Sheet title={`Retire ${data.label}`} onClose={close}>
+        <Sheet title={tr('Retire {label}', { label: data.label })} onClose={close}>
           <div className="form">
-            <p className="small muted">The part and its history are kept. It is removed from its bike on that date.</p>
+            <p className="small muted">{tr('The part and its history are kept. It is removed from its bike on that date.')}</p>
             <OutcomeChoice name="retire" outcomes={meta.dispositions.filter((d) => ['RETIRED', 'DISCARDED', 'SOLD'].includes(d.code))} value={f.retire_as || (data.suggested_outcome === 'DISCARDED' ? 'DISCARDED' : 'RETIRED')} suggested={data.suggested_outcome === 'DISCARDED' ? 'DISCARDED' : 'RETIRED'} onChange={(v) => setF({ ...f, retire_as: v })} />
-            <Field label="Retired on">
+            <Field label={tr('Retired on')}>
               <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
             </Field>
-            <Field label="Reason">
-              <input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder="worn 0.5%" />
+            <Field label={tr('Reason')}>
+              <input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder={tr('worn 0.5%')} />
             </Field>
             <FormError error={err} />
             <div className="form-actions">
               <button className="btn btn-danger" onClick={() => plain(`/components/${data.id}/retire`, { on: f.date, reason: f.reason || null, disposition: f.retire_as || (data.suggested_outcome === 'DISCARDED' ? 'DISCARDED' : 'RETIRED') })}>
-                Retire
+                {tr('Retire')}
               </button>
             </div>
           </div>
         </Sheet>
       )}
       {sheet === 'rule' && (
-        <Sheet title="Add a rule for this part" onClose={close}>
+        <Sheet title={tr('Add a rule for this part')} onClose={close}>
           <div className="form">
-            <Field label="Action">
+            <Field label={tr('Action')}>
               <select value={f.action_code} onChange={(e) => setF({ ...f, action_code: e.target.value })}>
                 {data.actions.map((a) => (
                   <option key={a.code} value={a.code}>
@@ -1700,13 +1698,13 @@ export function ComponentDetailPage() {
               </select>
             </Field>
             <div className="row">
-              <Field label="Every … km">
+              <Field label={tr('Every … km')}>
                 <input inputMode="decimal" value={f.interval_km} onChange={(e) => setF({ ...f, interval_km: e.target.value })} />
               </Field>
-              <Field label="or every … hours of riding">
+              <Field label={tr('or every … hours of riding')}>
                 <input inputMode="decimal" value={f.interval_hours} onChange={(e) => setF({ ...f, interval_hours: e.target.value })} />
               </Field>
-              <Field label="or every … months">
+              <Field label={tr('or every … months')}>
                 <input inputMode="numeric" value={f.interval_months} onChange={(e) => setF({ ...f, interval_months: e.target.value })} />
               </Field>
             </div>
@@ -1723,43 +1721,43 @@ export function ComponentDetailPage() {
                   })
                 }
               >
-                Add rule
+                {tr('Add rule')}
               </button>
             </div>
           </div>
         </Sheet>
       )}
       {sheet && typeof sheet === 'object' && 'rule' in sheet && (
-        <Sheet title={`Edit: ${sheet.rule.name}`} onClose={close}>
+        <Sheet title={tr('Edit: {name}', { name: sheet.rule.name })} onClose={close}>
           <RuleEditor rule={sheet.rule} componentId={data.id} onDone={() => { close(); reload() }} />
         </Sheet>
       )}
       {sheet && typeof sheet === 'object' && 'correct' in sheet && (
-        <Sheet title="Correct installation record" onClose={close}>
+        <Sheet title={tr('Correct installation record')} onClose={close}>
           <div className="form">
-            <p className="small muted">Use this when the record is wrong (a correction), not when you swapped parts.</p>
+            <p className="small muted">{tr('Use this when the record is wrong (a correction), not when you swapped parts.')}</p>
             <div className="row">
-              <Field label="Installed on">
+              <Field label={tr('Installed on')}>
                 <input type="date" value={f.installed_at} onChange={(e) => setF({ ...f, installed_at: e.target.value })} />
               </Field>
-              <Field label="Removed on">
+              <Field label={tr('Removed on')}>
                 <input type="date" value={f.removed_at} onChange={(e) => setF({ ...f, removed_at: e.target.value })} />
               </Field>
             </div>
-            <Field label="Why">
+            <Field label={tr('Why')}>
               <input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} />
             </Field>
             <ChangeNotice change={preview} />
             <FormError error={err} />
             <div className="form-actions">
               <button className="btn" onClick={() => op(`/installations/${sheet.correct}/correct`, { installed_at: f.installed_at || null, removed_at: f.removed_at || null, clear_removed: !f.removed_at, reason: f.reason }, true)}>
-                Preview mileage impact
+                {tr('Preview mileage impact')}
               </button>
-              <button className="btn" onClick={() => op(`/installations/${sheet.correct}/void`, { reason: f.reason || 'record was wrong' })}>
-                Record was wrong: void it
+              <button className="btn" onClick={() => op(`/installations/${sheet.correct}/void`, { reason: f.reason || tr('record was wrong') })}>
+                {tr('Record was wrong: void it')}
               </button>
               <button className="btn btn-primary" onClick={() => op(`/installations/${sheet.correct}/correct`, { installed_at: f.installed_at || null, removed_at: f.removed_at || null, clear_removed: !f.removed_at, reason: f.reason })}>
-                Save correction
+                {tr('Save correction')}
               </button>
             </div>
           </div>
@@ -1803,10 +1801,10 @@ interface WaxCurrent {
 
 // "Current: liquid wax top-up 12 Oct at 79 km · 41 km since · hot wax due at 279 km (159 km left)"
 function waxNow(c: WaxCurrent): string {
-  let t = `${c.type.toLowerCase()} ${when(c.date)}${c.at_km != null ? ` at ${km(c.at_km, 0)}` : ''} · ${km(c.km_since, 0)} since`
+  let t = tr('{toLowerCase} {date}{x} · {km_since} since', { toLowerCase: lc(c.type), date: when(c.date), x: c.at_km != null ? tr(' at {km}', { km: km(c.at_km, 0) }) : '', km_since: km(c.km_since, 0) })
   if (c.hot_wax_due_at_km != null) {
     const left = c.hot_wax_left_km ?? 0
-    t += ` · hot wax due at ${km(c.hot_wax_due_at_km, 0)} (${left >= 0 ? `${km(left, 0)} left` : `${km(-left, 0)} over`})`
+    t += tr(' · hot wax due at {hot_wax_due_at_km} ({x})', { hot_wax_due_at_km: km(c.hot_wax_due_at_km, 0), x: left >= 0 ? tr('{km} left', { km: km(left, 0) }) : tr('{km} over', { km: km(-left, 0) }) })
   }
   return t
 }
@@ -1818,21 +1816,21 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
   async function setRotation(v: string) {
     try {
       await api.patch(`/components/${comp.id}`, { rotation_bike_id: v ? Number(v) : null })
-      toast(v ? `${comp.label} is in the chain rotation of ${bikes.data?.find((b) => b.id === Number(v))?.name}.` : `${comp.label} left the chain rotation.`)
+      toast(v ? tr('{label} is in the chain rotation of {name}.', { label: comp.label, name: bikes.data?.find((b) => b.id === Number(v))?.name }) : tr('{label} left the chain rotation.', { label: comp.label }))
       onChanged()
     } catch (e) {
       toast((e as Error).message)
     }
   }
   return (
-    <Card title="Chain rotation and wax cycles" className="span-2">
+    <Card title={tr('Chain rotation and wax cycles')} className="span-2">
       <p className="small">
         <ChainStateTag state={chain.state} /> {chain.text}
       </p>
       <label className="inline-field small">
-        Chain rotation of{' '}
-        <select aria-label="Chain rotation" value={chain.rotation_bike_id ?? ''} onChange={(e) => setRotation(e.target.value)}>
-          <option value="">No rotation</option>
+        {tr('Chain rotation of')}{' '}
+        <select aria-label={tr('Chain rotation')} value={chain.rotation_bike_id ?? ''} onChange={(e) => setRotation(e.target.value)}>
+          <option value="">{tr('No rotation')}</option>
           {bikes.data?.filter((b) => b.status === 'ACTIVE').map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -1843,31 +1841,31 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
       {chain.rotation_bike_id && (
         <span className="small">
           {' '}
-          · <Link to={`/bikes/${chain.rotation_bike_id}`}>open the bike for swaps and waxing</Link>
+          · <Link to={`/bikes/${chain.rotation_bike_id}`}>{tr('open the bike for swaps and waxing')}</Link>
         </span>
       )}
       {chain.wax.applications.length === 0 ? (
-        <p className="small muted">No hot wax or liquid wax top-up recorded yet.</p>
+        <p className="small muted">{tr('No hot wax or liquid wax top-up recorded yet.')}</p>
       ) : (
         <>
           {chain.wax.current && (
             <p className="small wax-now">
-              <strong>Current:</strong> {waxNow(chain.wax.current)}
+              <strong>{tr('Current:')}</strong> {waxNow(chain.wax.current)}
             </p>
           )}
           <table className="table wax-apps">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Product</th>
-                <th className="num">At chain km</th>
-                <th className="num">Ridden on it</th>
-                <th className="num">Days on</th>
-                <th>Active</th>
-                <th>Ended by</th>
-                <th>Next due</th>
+                <th>{tr('Date')}</th>
+                <th>{tr('Type')}</th>
+                <th>{tr('Product')}</th>
+                <th className="num">{tr('At chain km')}</th>
+                <th className="num">{tr('Ridden on it')}</th>
+                <th className="num">{tr('Days on')}</th>
+                <th>{tr('Active')}</th>
+                <th>{tr('Ended by')}</th>
+                <th>{tr('Next due')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1880,20 +1878,20 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
                   <td data-label="At chain km" className="num">{w.at_km != null ? km(w.at_km, 0) : '—'}</td>
                   <td data-label="Ridden on it" className="num">{km(w.ridden_km, 0)}</td>
                   <td data-label="Days on" className="num">{w.days_on} d</td>
-                  <td data-label="Active">{w.active ? 'Yes' : 'No'}</td>
-                  <td data-label="Ended by">{w.ended_by ? `${w.ended_by.type === 'Hot wax' ? 'Hot wax' : 'Top-up'} (#${w.ended_by.n})` : '—'}</td>
+                  <td data-label="Active">{w.active ? tr('Yes') : tr('No')}</td>
+                  <td data-label="Ended by">{w.ended_by ? `${w.ended_by.type === 'Hot wax' ? tr('Hot wax') : tr('Top-up')} (#${w.ended_by.n})` : '—'}</td>
                   <td data-label="Next due">{w.next_due ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="small muted">
-            At chain km: km since the last hot wax when it was applied. Ridden on it and Days on: while it was the latest application (the active one: until today).
+            {tr('At chain km: km since the last hot wax when it was applied. Ridden on it and Days on: while it was the latest application (the active one: until today).')}
           </p>
         </>
       )}
       <p className="small muted">
-        After a liquid wax top-up the next hot wax is due a set distance after it (200 km unless you change it under Rules → Hot wax chain → Edit).
+        {tr('After a liquid wax top-up the next hot wax is due a set distance after it (200 km unless you change it under Rules → Hot wax chain → Edit).')}
       </p>
     </Card>
   )
@@ -1905,7 +1903,7 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
   async function save() {
     setErr(null)
     const price = toCents(f.price)
-    if (Number.isNaN(price)) return setErr('Price: enter an amount such as 49,90')
+    if (Number.isNaN(price)) return setErr(tr('Price: enter an amount such as 49,90'))
     try {
       await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, warranty_until: f.warranty_until || null, notes: f.notes || null, shop: f.shop.trim() || null })
       onDone()
@@ -1915,44 +1913,44 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
   }
   return (
     <div className="form">
-      <Field label="Name / label" hint={f.mark.trim() ? `Shown as "${f.label.trim()} [${f.mark.trim()}]"` : undefined}>
+      <Field label={tr('Name / label')} hint={f.mark.trim() ? tr('Shown as "{trim} [{trim2}]"', { trim: f.label.trim(), trim2: f.mark.trim() }) : undefined}>
         <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
       </Field>
       <div className="row">
         {comp.bundle ? (
-          <Field label="Price paid" hint={`Bought in the bundle "${comp.bundle.name}": the bundle carries the price (change it on the bike page under "Bought as a bundle").`}>
-            <input value="in bundle" disabled aria-label="Price paid (in bundle)" />
+          <Field label={tr('Price paid')} hint={tr('Bought in the bundle "{name}": the bundle carries the price (change it on the bike page under "Bought as a bundle").', { name: comp.bundle.name })}>
+            <input value="in bundle" disabled aria-label={tr('Price paid (in bundle)')} />
           </Field>
         ) : (
-          <Field label="Price paid" hint="Leave empty if it came with the bike (then it is part of the bike's price).">
+          <Field label={tr('Price paid')} hint={tr('Leave empty if it came with the bike (then it is part of the bike\'s price).')}>
             <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
           </Field>
         )}
-        <Field label="Bought on">
+        <Field label={tr('Bought on')}>
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
       </div>
       <div className="row">
-        <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label="Bought from" />
+        <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label={tr('Bought from')} />
       </div>
-      <Field label="Mark" hint={comp.component_type === 'CHAIN' ? 'A short tag such as A, B or 2 dots, shown after the name: "Chain [A]". Mark the chain itself with a punch or engraver on an outer plate; paint and nail polish come off in hot wax.' : 'A short tag shown after the name, e.g. A or red sticker: "Name [A]". Two parts of one type cannot have the same name and mark (tires and tubes can).'}>
+      <Field label={tr('Mark')} hint={comp.component_type === 'CHAIN' ? tr('A short tag such as A, B or 2 dots, shown after the name: "Chain [A]". Mark the chain itself with a punch or engraver on an outer plate; paint and nail polish come off in hot wax.') : tr('A short tag shown after the name, e.g. A or red sticker: "Name [A]". Two parts of one type cannot have the same name and mark (tires and tubes can).')}>
         <input value={f.mark} maxLength={20} onChange={(e) => setF({ ...f, mark: e.target.value })} />
       </Field>
       <div className="row">
-        <Field label="Serial number">
+        <Field label={tr('Serial number')}>
           <input value={f.serial_number} onChange={(e) => setF({ ...f, serial_number: e.target.value })} />
         </Field>
-        <Field label="Warranty until">
+        <Field label={tr('Warranty until')}>
           <input type="date" value={f.warranty_until} onChange={(e) => setF({ ...f, warranty_until: e.target.value })} />
         </Field>
       </div>
-      <Field label="Notes" hint="For dated notes such as issues, use the journal below.">
+      <Field label={tr('Notes')} hint={tr('For dated notes such as issues, use the journal below.')}>
         <textarea rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       </Field>
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={!f.label.trim()} onClick={save}>
-          Save
+          {tr('Save')}
         </button>
       </div>
     </div>
@@ -1968,7 +1966,7 @@ function InUseForm({ componentId, inUse, onDone }: { componentId: number; inUse:
     setError(null)
     try {
       await api.post(`/components/${componentId}/disposition`, { disposition: inUse ? 'STORED' : 'IN_USE', on, note: null }, opId)
-      onDone(inUse ? 'Stored: rides no longer count on these.' : 'In use: every ride from that day counts on these and the cleats on them.')
+      onDone(inUse ? tr('Stored: rides no longer count on these.') : tr('In use: every ride from that day counts on these and the cleats on them.'))
     } catch (e) {
       setError((e as Error).message)
     }
@@ -1977,16 +1975,16 @@ function InUseForm({ componentId, inUse, onDone }: { componentId: number; inUse:
     <div className="form">
       <p className="muted">
         {inUse
-          ? 'Rides after this day no longer count on these shoes and their cleats.'
-          : 'From this day every ride with a bike counts on these shoes and the cleats mounted on them, whichever bike you ride.'}
+          ? tr('Rides after this day no longer count on these shoes and their cleats.')
+          : tr('From this day every ride with a bike counts on these shoes and the cleats mounted on them, whichever bike you ride.')}
       </p>
-      <Field label={inUse ? 'Stopped on' : 'In use since'}>
+      <Field label={inUse ? tr('Stopped on') : tr('In use since')}>
         <input type="date" value={on} onChange={(e) => setOn(e.target.value)} />
       </Field>
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={run}>
-          {inUse ? 'Stop using' : 'Start using'}
+          {inUse ? tr('Stop using') : tr('Start using')}
         </button>
       </div>
     </div>

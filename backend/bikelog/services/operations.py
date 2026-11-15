@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from bikelog.models import Component, Operation
 from bikelog.services.usage import component_totals
+from bikelog.i18n import tr
 
 
 class _Rollback(Exception):
@@ -37,15 +38,15 @@ def notice(deltas: list[dict], preview: bool) -> str:
     others = [d for d in deltas if d.get("component_type") not in ("FRAME", "FORK")]
     deltas = others or deltas
     if not deltas:
-        return prefix + "No component mileage changes."
+        return prefix + tr("No component mileage changes.")
     def one(d: dict) -> str:
         return f"{'+' if d['delta_km'] > 0 else '−'}{abs(d['delta_km']):,.1f} km"
     if not preview and len(deltas) > 4:
         # a ride touches every part on the bike: say it once (the preview and the ride page list each part)
         if len({d["delta_km"] for d in deltas}) == 1:
-            return f"{one(deltas[0])} on {len(deltas)} parts."
-        return f"{len(deltas)} parts changed: " + "; ".join(
-            f"{d['label']} {one(d)}" for d in deltas[:3]) + f"; and {len(deltas) - 3} more."
+            return tr("{one} on {deltas} parts.", one=one(deltas[0]), deltas=len(deltas))
+        return tr("{deltas} parts changed: ", deltas=len(deltas)) + "; ".join(
+            f"{d['label']} {one(d)}" for d in deltas[:3]) + tr("; and {x} more.", x=len(deltas) - 3)
     return prefix + "; ".join(f"{d['label']} {one(d)}" for d in deltas) + "."
 
 

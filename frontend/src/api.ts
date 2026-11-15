@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 // All JSON goes through here. Mutations carry the per-launch token from the <meta> tag and a
 // client operation id, so a double click or a retry after a timeout is applied only once.
 
@@ -29,16 +30,16 @@ async function request<T>(method: string, path: string, body?: unknown, opts: { 
   let payload: BodyInit | undefined
   if (opts.raw !== undefined) {
     payload = opts.raw
-    headers['Content-Type'] = opts.contentType ?? 'application/octet-stream'
+    headers['Content-Type'] = opts.contentType ?? tr('application/octet-stream')
   } else if (body !== undefined) {
     payload = JSON.stringify(body)
-    headers['Content-Type'] = 'application/json'
+    headers['Content-Type'] = tr('application/json')
   }
   let res: Response
   try {
     res = await fetch(`./api${path}`, { method, headers, body: payload })
   } catch {
-    throw new ApiError(0, 'Cannot reach Bike Log. Is the app still running?', null)
+    throw new ApiError(0, tr('Cannot reach Bike Log. Is the app still running?'), null)
   }
   const text = await res.text()
   let data: unknown
@@ -53,7 +54,7 @@ async function request<T>(method: string, path: string, body?: unknown, opts: { 
   }
   if (!res.ok) {
     const d = data as { detail?: unknown } | null
-    let msg = `Request failed (${res.status})`
+    let msg = tr('Request failed ({status})', { status: res.status })
     if (d && typeof d.detail === 'string') msg = d.detail
     else if (d && Array.isArray(d.detail)) msg = d.detail.map((e: { loc?: unknown[]; msg?: string }) => `${(e.loc ?? []).slice(1).join('.')}: ${e.msg}`).join('; ')
     throw new ApiError(res.status, msg, data)
@@ -67,5 +68,5 @@ export const api = {
   patch: <T,>(path: string, body: unknown, opId?: string) => request<T>('PATCH', path, body, { opId }),
   put: <T,>(path: string, body: unknown) => request<T>('PUT', path, body),
   del: <T,>(path: string) => request<T>('DELETE', path),
-  upload: <T,>(path: string, content: Blob, contentType = 'text/csv') => request<T>('POST', path, undefined, { raw: content, contentType }),
+  upload: <T,>(path: string, content: Blob, contentType = tr('text/csv')) => request<T>('POST', path, undefined, { raw: content, contentType }),
 }

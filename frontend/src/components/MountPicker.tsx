@@ -4,6 +4,7 @@
 import { useApp } from '../context'
 import { useApi } from '../hooks'
 import { Field } from './ui'
+import { tr, lc } from '../i18n'
 
 export interface MountTarget {
   group: string
@@ -30,34 +31,34 @@ export default function MountPicker({ componentType, bikeId, value, onChange, al
   const targets = q.data?.targets ?? []
   const groups = [...new Set(targets.map((t) => t.group))]
   const index = value ? targets.findIndex((t) => t.bike_id === value.bike_id && t.parent_component_id === value.parent_component_id && t.slot === value.slot) : -1
-  const parents = (ctype?.parent_types ?? []).map((p) => meta.component_types.find((t) => t.code === p)?.name.toLowerCase() ?? p)
+  const parents = (ctype?.parent_types ?? []).map((p) => lc(meta.component_types.find((t) => t.code === p)?.name) || p)
   const hint = q.data?.needs_parent
-    ? `A ${ctype?.name.toLowerCase()} is mounted on a ${parents.join(' or ')}. Wheels inside a wheelset are listed with the wheelset.`
+    ? tr('A {toLowerCase} is mounted on a {join}. Wheels inside a wheelset are listed with the wheelset.', { toLowerCase: lc(ctype?.name), join: parents.join(' or ') })
     : parents.length
-      ? `On the bike, or mounted on a ${parents.join(' or ')}.`
+      ? tr('On the bike, or mounted on a {join}.', { join: parents.join(' or ') })
       : undefined
   return (
-    <Field label="Where does it go?" hint={hint}>
+    <Field label={tr('Where does it go?')} hint={hint}>
       <select
-        aria-label="Where does it go?"
+        aria-label={tr('Where does it go?')}
         value={index < 0 ? '' : String(index)}
         onChange={(e) => onChange(e.target.value === '' ? null : targets[Number(e.target.value)])}
       >
-        {allowSpare ? <option value="">Keep as a spare (in storage)</option> : <option value="">Pick…</option>}
+        {allowSpare ? <option value="">{tr('Keep as a spare (in storage)')}</option> : <option value="">{tr('Pick…')}</option>}
         {groups.map((g) => (
           <optgroup key={g} label={g}>
             {targets.map((t, i) =>
               t.group === g ? (
                 <option key={i} value={i} disabled={!!t.occupied_by}>
                   {t.text}
-                  {t.occupied_by ? ` (has ${t.occupied_by})` : ''}
+                  {t.occupied_by ? tr(' (has {occupied_by})', { occupied_by: t.occupied_by }) : ''}
                 </option>
               ) : null,
             )}
           </optgroup>
         ))}
       </select>
-      {q.data && targets.length === 0 && <span className="field-hint">Nothing to mount it on yet{parents.length ? `: add a ${parents.join(' or ')} first` : ''}.</span>}
+      {q.data && targets.length === 0 && <span className="field-hint">{tr('Nothing to mount it on yet')}{parents.length ? tr(': add a {join} first', { join: parents.join(' or ') }) : ''}.</span>}
     </Field>
   )
 }

@@ -16,6 +16,7 @@ from bikelog.services import worksessions
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import get_component, location, open_installation
 from bikelog.services.usage import component_usage
+from bikelog.i18n import tr
 
 
 def compatibility(session: Session, product_id: int | None) -> list[dict]:
@@ -59,14 +60,14 @@ def item_row(session: Session, comp: Component, chains: dict[int, dict] | None =
         state = "USED_SPARE" if used else "NEW_SPARE"
     readiness, readiness_text = None, None
     if state in ("NEW_SPARE", "USED_SPARE"):
-        readiness, readiness_text = "READY", "Ready to install"
+        readiness, readiness_text = "READY", tr("Ready to install")
         ch = (chains or {}).get(comp.id)
         if ch and ch["state"] in ("NEEDS_HOT_WAX", "NEW_UNWAXED", "UNKNOWN"):
             readiness, readiness_text = "NEEDS_PREPARATION", ch["text"]
         elif ch and ch["state"] == "WORN":
             readiness, readiness_text = "WORN", ch["text"]
     elif state == "AWAITING_SERVICE":
-        readiness, readiness_text = "NEEDS_REPAIR", "Awaiting preparation or repair"
+        readiness, readiness_text = "NEEDS_REPAIR", tr("Awaiting preparation or repair")
     t = COMPONENT_TYPES[comp.component_type]
     product = f"{comp.product.maker or ''} {comp.product.model}".strip() if comp.product else None
     state_text = {"NEW_SPARE": "New spare", "USED_SPARE": "Used spare",
@@ -112,7 +113,7 @@ def replace_options(session: Session, component_id: int) -> dict:
     comp = get_component(session, component_id)
     inst = open_installation(session, comp.id)
     if not inst:
-        raise DomainError(f"{comp.label} is not installed")
+        raise DomainError(tr("{label} is not installed", label=comp.label))
     loc = location(session, comp)
     t = COMPONENT_TYPES[comp.component_type]
     chains = {c["component_id"]: c for c in m.chain_overview(session)} if comp.component_type == "CHAIN" else {}
@@ -174,7 +175,7 @@ def move_targets(session: Session, component_id: int) -> list[dict]:
     comp = get_component(session, component_id)
     loc = location(session, comp)
     if loc["state"] != "INSTALLED" or not loc.get("bike_id"):
-        raise NotFound("Part is not installed on a bike")
+        raise NotFound(tr("Part is not installed on a bike"))
     t = COMPONENT_TYPES[comp.component_type]
     from bikelog.services.inventory import bike_setup, get_bike
     out = []
@@ -207,7 +208,7 @@ def mount_targets(session: Session, component_type: str, bike_id: int | None = N
     ``under`` only positions on that part or on parts mounted on it (a wheelset page: its two wheels)."""
     from bikelog.services.inventory import bike_setup, get_bike
     if component_type not in COMPONENT_TYPES:
-        raise DomainError(f"Unknown part type {component_type}")
+        raise DomainError(tr("Unknown part type {component_type}", component_type=component_type))
     t = COMPONENT_TYPES[component_type]
     on_bike = not t.parent_types or component_type in ON_BIKE_TOO
     bikes = [get_bike(session, bike_id)] if bike_id is not None else list(
@@ -240,11 +241,11 @@ def mount_targets(session: Session, component_type: str, bike_id: int | None = N
     for b in bikes:
         if on_bike and not t.slots:      # free positions (bottle cage, accessory): named when installing
             out.append({"group": b.name, "bike_id": b.id, "parent_component_id": None, "slot": None,
-                        "text": "On the bike (name the position)", "occupied_by": None})
+                        "text": tr("On the bike (name the position)"), "occupied_by": None})
         if on_bike:
             for slot in t.slots:
                 out.append({"group": b.name, "bike_id": b.id, "parent_component_id": None, "slot": slot,
-                            "text": f"On the bike · {_slot_text(slot)}", "occupied_by": occupant(None, b.id, slot)})
+                            "text": tr("On the bike · {slot_text}", slot_text=_slot_text(slot)), "occupied_by": occupant(None, b.id, slot)})
         rows = bike_setup(session, b)
         labels = {r["component_id"]: r for r in rows}
         for r in rows:
@@ -269,7 +270,7 @@ def mount_targets(session: Session, component_type: str, bike_id: int | None = N
                 parent = session.get(Component, inst.parent_component_id)
                 path.insert(0, parent.label)
                 inst = open_installation(session, parent.id)
-            add_parent(c, "Not on a bike (stored)", path)
+            add_parent(c, tr("Not on a bike (stored)"), path)
     if under is not None:
         def inside(cid: int | None) -> bool:
             seen_ids: set[int] = set()

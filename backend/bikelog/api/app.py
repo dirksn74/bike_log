@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, object_session, sessionmaker
 
-from bikelog import __version__, backup, buildinfo, changelog
+from bikelog import __version__, backup, buildinfo, changelog, i18n
 from bikelog.api.security import LocalSecurityMiddleware
 from bikelog.product_specs import fields_for
 from bikelog.catalog import (
@@ -56,6 +56,7 @@ from bikelog.services.errors import DomainError
 from bikelog.services.operations import run_once, with_change
 from bikelog.services.rebuild import rebuild_everything
 from bikelog.services.usage import bike_usage, component_ledger, component_usage
+from bikelog.i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -602,6 +603,7 @@ class SettingsPatch(Body):
     spare_minimums: str | None = None
     spoke_relace_after: str | None = None
     strava_known_bikes_only: str | None = None
+    language: str | None = None
 
 
 class ProfileIn(Body):
@@ -614,6 +616,13 @@ class ProfileIn(Body):
 
 # ---------------------------------------------------------------- app
 
+class I18nJSONResponse(JSONResponse):
+    """Every API answer: label-like texts in the chosen language (i18n.translate_payload; English unchanged)."""
+
+    def render(self, content: Any) -> bytes:
+        return super().render(i18n.translate_payload(content))
+
+
 def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str | None = None,
                static_dir: Path | None = None, testing: bool = False, strava_transport=None,
                server=None, google_transport=None) -> FastAPI:
@@ -621,8 +630,14 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     Without it this is the desktop app: 127.0.0.1 only, per-launch token."""
     token = token or secrets.token_urlsafe(32)
     app = FastAPI(title="Bike Log", version=__version__, docs_url="/api/docs" if testing else None,
-                  redoc_url=None, openapi_url="/api/openapi.json" if testing else None)
+                  redoc_url=None, openapi_url="/api/openapi.json" if testing else None,
+                  default_response_class=I18nJSONResponse)
     app.state.token = token
+    try:   # the language of answers until the first request reads it again (Settings → Language)
+        with factory() as s0:
+            i18n.set_lang(settings_svc.get(s0, "language"))
+    except Exception:  # noqa: BLE001  (no database yet)
+        i18n.set_lang(None)
     static = static_dir if static_dir is not None else _find_static()
     app.state.server = server
     if server is None:
@@ -643,6 +658,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def db() -> Iterator[Session]:
         s = factory()
         try:
+            i18n.set_lang(settings_svc.get(s, "language"))   # Settings → Language (a restore may bring another)
             yield s
             s.commit()
         except Exception:
@@ -654,24 +670,24 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.exception_handler(DomainError)
     async def _domain(req: Request, exc: DomainError):
         log.info("refused %s %s: %s", req.method, req.url.path, exc.message)
-        return JSONResponse({"detail": exc.message, **exc.details}, status_code=exc.status)
+        return I18nJSONResponse({"detail": exc.message, **exc.details}, status_code=exc.status)
 
     @app.exception_handler(IntegrityError)
     async def _integrity(_req: Request, exc: IntegrityError):
         msg = str(exc.orig)
         status = 409 if ("CONFLICT" in msg or "PROTECTED" in msg or "UNIQUE" in msg) else 400
-        return JSONResponse({"detail": f"Rejected by the database: {msg}"}, status_code=status)
+        return JSONResponse({"detail": i18n.tr("Rejected by the database: {msg}", msg=msg)}, status_code=status)
 
     @app.exception_handler(Exception)
     async def _unexpected(req: Request, exc: Exception):
         log.error("unexpected error in %s %s", req.method, req.url.path, exc_info=exc)
-        return JSONResponse({"detail": "Something went wrong inside Bike Log. Nothing was saved. The details are "
-                                       "in the log (Settings → Diagnostics)."}, status_code=500)
+        return JSONResponse({"detail": i18n.tr("Something went wrong inside Bike Log. Nothing was saved. The details "
+                                               "are in the log (Settings → Diagnostics).")}, status_code=500)
 
     @app.exception_handler(OperationalError)
     async def _busy(_req: Request, exc: OperationalError):
         log.warning("database error: %s", exc)
-        return JSONResponse({"detail": "The database is busy or unavailable. Try again in a moment."},
+        return JSONResponse({"detail": i18n.tr("The database is busy or unavailable. Try again in a moment.")},
                             status_code=503)
 
     def op(s: Session, op_id: str | None, kind: str, fn: Callable[[], Any], dry_run: bool = False) -> dict:
@@ -781,7 +797,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def bike_chain_swap(bike_id: int, body: ChainSwapIn, dry_run: bool = False, s: Session = Depends(db),
                         op_id: str | None = OpId):
         def fn():
-            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title="Chain rotation: swap chain")
+            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title=tr("Chain rotation: swap chain"))
             return {**chains_svc.swap(s, bike_id, to_component_id=body.to_component_id, at=body.at,
                                       work_session_id=ws.id), "work_session_id": ws.id}
         return op(s, op_id, "bike.chain_swap", fn, dry_run)
@@ -795,7 +811,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def bike_chain_wax(bike_id: int, body: ChainWaxIn, dry_run: bool = False, s: Session = Depends(db),
                        op_id: str | None = OpId):
         def fn():
-            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title="Chain rotation: hot wax chains")
+            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title=tr("Chain rotation: hot wax chains"))
             return {**chains_svc.wax(s, bike_id, work_session_id=ws.id, **body.model_dump()),
                     "work_session_id": ws.id}
         return op(s, op_id, "bike.chain_wax", fn, dry_run)
@@ -814,7 +830,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         at = body.parts_off_at if body else None
 
         def fn():
-            ws = ws_svc.begin(s, at=at, bike_id=bike_id, title="Retire bike: parts off") if at else None
+            ws = ws_svc.begin(s, at=at, bike_id=bike_id, title=tr("Retire bike: parts off")) if at else None
             return _bike_summary(s, inv.retire_bike(s, bike_id, parts_off_at=at, work_session_id=ws.id if ws else None))
         return run_once(s, op_id, "bike.retire", fn)
 
@@ -835,7 +851,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def bike_purge_now(bike_id: int, body: BikePurgeIn, s: Session = Depends(db)):
         inv.get_bike(s, bike_id)
         if (body.confirm_name or "").strip().lower() != inv.get_bike(s, bike_id).name.strip().lower():
-            raise DomainError(f'Type the bike\'s name "{inv.get_bike(s, bike_id).name}" to delete it for good.')
+            raise DomainError(tr('Type the bike\'s name "{name}" to delete it for good.', name=inv.get_bike(s, bike_id).name))
         dest = backup.backup_database(paths, f"{backup.KEPT_MARK}bike-delete")
         res = bike_purge.purge(s, bike_id, confirm_name=body.confirm_name, retire_parts=body.retire_parts)
         return {**res, "backup": dest.name if dest else None}
@@ -851,7 +867,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def bike_group_wheels(bike_id: int, body: GroupWheelsIn, dry_run: bool = False, s: Session = Depends(db),
                           op_id: str | None = OpId):
         def fn():
-            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title="Group wheels into a wheelset")
+            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title=tr("Group wheels into a wheelset"))
             return {**inv.group_wheels(s, bike_id, at=body.at, label=body.label, wheelset_id=body.wheelset_id,
                                        work_session_id=ws.id), "work_session_id": ws.id}
         return op(s, op_id, "bike.group_wheels", fn, dry_run)
@@ -1008,7 +1024,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def install(component_id: int, body: InstallIn, dry_run: bool = False, s: Session = Depends(db),
                 op_id: str | None = OpId):
         def fn():
-            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title="Install")
+            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title=tr("Install"))
             inst = inv.install(s, component_id, work_session_id=ws.id, **body.model_dump())
             return {"installation_id": inst.id, "work_session_id": ws.id}
         return op(s, op_id, "component.install", fn, dry_run)
@@ -1018,7 +1034,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                op_id: str | None = OpId):
         def fn():
             loc = inv.location(s, inv.get_component(s, component_id))
-            ws = ws_svc.begin(s, at=body.at, bike_id=loc.get("bike_id"), title="Remove")
+            ws = ws_svc.begin(s, at=body.at, bike_id=loc.get("bike_id"), title=tr("Remove"))
             inst = inv.remove(s, component_id, work_session_id=ws.id, **body.model_dump())
             return {"installation_id": inst.id, "work_session_id": ws.id}
         return op(s, op_id, "component.remove", fn, dry_run)
@@ -1037,7 +1053,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         def fn():
             comp = inv.get_component(s, component_id)
             loc = inv.location(s, comp)
-            ws = ws_svc.begin(s, at=body.at, bike_id=loc.get("bike_id"), title=f"Replace {comp.label}",
+            ws = ws_svc.begin(s, at=body.at, bike_id=loc.get("bike_id"), title=tr("Replace {label}", label=comp.label),
                               notes=body.session_notes)
             return {**inv.replace(s, component_id, work_session_id=ws.id, **data), "work_session_id": ws.id}
         return op(s, op_id, "component.replace", fn, dry_run)
@@ -1051,21 +1067,21 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
              op_id: str | None = OpId):
         def fn():
             comp = inv.get_component(s, component_id)
-            ws = ws_svc.begin(s, at=body.at, bike_id=inv.location(s, comp).get("bike_id"), title=f"Move {comp.label}")
+            ws = ws_svc.begin(s, at=body.at, bike_id=inv.location(s, comp).get("bike_id"), title=tr("Move {label}", label=comp.label))
             return {**inv.move(s, component_id, work_session_id=ws.id, **body.model_dump()), "work_session_id": ws.id}
         return op(s, op_id, "component.move", fn, dry_run)
 
     @app.post("/api/components/{component_id}/disposition")
     def disposition(component_id: int, body: DispositionIn, s: Session = Depends(db), op_id: str | None = OpId):
         def fn():
-            ws = ws_svc.begin(s, at=body.on, title="Inventory update")
+            ws = ws_svc.begin(s, at=body.on, title=tr("Inventory update"))
             inv.set_disposition(s, component_id, body.disposition, on=body.on, note=body.note, work_session_id=ws.id)
             return {**_component_summary(s, inv.get_component(s, component_id)), "work_session_id": ws.id}
         return op(s, op_id, "component.disposition", fn)
 
     @app.post("/api/components/{component_id}/retire")
     def retire(component_id: int, body: RetireIn, s: Session = Depends(db)):
-        ws = ws_svc.begin(s, at=body.on, title="Retire")
+        ws = ws_svc.begin(s, at=body.on, title=tr("Retire"))
         return _component_summary(s, inv.retire_component(s, component_id, work_session_id=ws.id, **body.model_dump()))
 
     @app.post("/api/components/{component_id}/starting-usage")
@@ -1103,7 +1119,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                    view: str = "all", unassigned: bool = False,
                    limit: int = Query(200, le=1000), offset: int = 0, s: Session = Depends(db)):
         if view not in ("all", "active", "removed"):
-            raise DomainError("view must be all, active or removed")
+            raise DomainError(tr("view must be all, active or removed"))
         rows = rides_svc.list_rides(s, bike_id=bike_id, flagged_only=flagged, include_excluded=include_excluded,
                                     limit=limit, offset=offset, view=view, unassigned=unassigned)
         return rows
@@ -1286,7 +1302,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def install_from_stock(consumable_id: int, body: StockInstallIn, dry_run: bool = False,
                            s: Session = Depends(db), op_id: str | None = OpId):
         def fn():
-            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title="Install from stock")
+            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title=tr("Install from stock"))
             comp = stock.draw_component(s, consumable_id, on=body.at, label=body.label, work_session_id=ws.id)
             inst = inv.install(s, comp.id, at=body.at, bike_id=body.bike_id,
                                parent_component_id=body.parent_component_id, slot=body.slot, work_session_id=ws.id)
@@ -1322,7 +1338,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         if body.hidden is not None:
             row = picklists.set_hidden(s, item_id, body.hidden)
         if row is None:
-            raise DomainError("Nothing to change")
+            raise DomainError(tr("Nothing to change"))
         return row
 
     @app.post("/api/lists/items/{item_id}/merge")
@@ -1336,7 +1352,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.post("/api/products/{product_id}/compatibility")
     def product_compat(product_id: int, body: CompatIn, s: Session = Depends(db)):
         if not s.get(Product, product_id):
-            raise DomainError("Product not found")
+            raise DomainError(tr("Product not found"))
         inv.get_bike(s, body.bike_id)
         return spares.set_compatibility(s, product_id, body.bike_id, body.verified, body.note)
 
@@ -1406,7 +1422,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def bike_position_options(bike_id: int, wheel: str, damage: str = "TUBE", s: Session = Depends(db)):
         inv.get_bike(s, bike_id)
         if wheel not in repairs_svc.WHEEL_NAMES or damage not in repairs_svc.DAMAGE_TYPES:
-            raise DomainError("wheel must be FRONT_WHEEL or REAR_WHEEL, damage TUBE or TIRE")
+            raise DomainError(tr("wheel must be FRONT_WHEEL or REAR_WHEEL, damage TUBE or TIRE"))
         return repairs_svc.position_options(s, bike_id, wheel, damage)
 
     @app.post("/api/bikes/{bike_id}/swap-position")
@@ -1414,9 +1430,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         def go():
             b = inv.get_bike(s, bike_id)
             if body.wheel not in repairs_svc.WHEEL_NAMES or body.damage not in repairs_svc.DAMAGE_TYPES:
-                raise DomainError("wheel must be FRONT_WHEEL or REAR_WHEEL, damage TUBE or TIRE")
+                raise DomainError(tr("wheel must be FRONT_WHEEL or REAR_WHEEL, damage TUBE or TIRE"))
             what = "tube" if body.damage == "TUBE" else "tire"
-            w = ws_svc.begin(s, at=body.at, bike_id=b.id, title=f"Swap {what}")
+            w = ws_svc.begin(s, at=body.at, bike_id=b.id, title=tr("Swap tube") if what == "tube" else tr("Swap tire"))
             text = repairs_svc.replace_at_position(s, bike_id=b.id, wheel=body.wheel, damage=body.damage, at=body.at,
                                                    source=body.source, work_session_id=w.id, reason=f"swap {what}")
             return {"work_session_id": w.id, "text": f"{repairs_svc.WHEEL_NAMES[body.wheel].capitalize()} {what}: {text}"}
@@ -1447,7 +1463,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                         op_id: str | None = OpId):
         def fn():
             name = groupsets.get_template(code)["name"]
-            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title=f"Add groupset {name}", notes=body.notes)
+            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title=tr("Add groupset {name}", name=name), notes=body.notes)
             return groupsets.import_groupset(s, code, work_session_id=ws.id, **body.model_dump())
         return op(s, op_id, "groupset.import", fn, dry_run)
 
@@ -1502,7 +1518,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.post("/api/profiles", status_code=201)
     def add_profile(body: ProfileIn, s: Session = Depends(db)):
         if s.scalar(select(UsageProfile).where(UsageProfile.code == body.code)):
-            raise DomainError(f"Profile {body.code} exists")
+            raise DomainError(tr("Profile {code} exists", code=body.code))
         p = UsageProfile(code=body.code, name=body.name, kind="TRAINER",
                          excluded_slots_json=json.dumps(body.excluded_slots),
                          excluded_types_json=json.dumps(body.excluded_types), notes=body.notes)
@@ -1516,9 +1532,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     async def import_csv(request: Request, file_name: str | None = None):
         content = await request.body()
         if not content:
-            raise DomainError("Empty upload")
+            raise DomainError(tr("Empty upload"))
         if len(content) > 20_000_000:
-            raise DomainError("File too large (max 20 MB)")
+            raise DomainError(tr("File too large (max 20 MB)"))
         from starlette.concurrency import run_in_threadpool
         res = await run_in_threadpool(imports.run_csv_import, factory, content, file_name=file_name)
         log.info("CSV import %s: %s", file_name or "(upload)", res.get("counts"))
@@ -1536,7 +1552,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.get("/api/product-templates/{component_type}/{kind}")
     def product_template(component_type: str, kind: str):
         if kind not in ("schema", "example"):
-            raise DomainError("Ask for 'schema' or 'example'")
+            raise DomainError(tr("Ask for 'schema' or 'example'"))
         doc = (product_import.schema if kind == "schema" else product_import.example)(component_type)
         name = f"{component_type.lower()}.{kind}.json"
         return JSONResponse(doc, headers={"Content-Disposition": f'attachment; filename="{name}"'})
@@ -1545,9 +1561,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     async def import_products(request: Request, dry_run: bool = False):
         content = await request.body()
         if not content:
-            raise DomainError("Empty upload")
+            raise DomainError(tr("Empty upload"))
         if len(content) > 5_000_000:
-            raise DomainError("File too large (max 5 MB)")
+            raise DomainError(tr("File too large (max 5 MB)"))
         from starlette.concurrency import run_in_threadpool
         res = await run_in_threadpool(product_import.run_import, factory, content, dry_run=dry_run)
         if not dry_run:
@@ -1626,7 +1642,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def changes(bike_id: int | None = None, component_id: int | None = None, limit: int = 500,
                 s: Session = Depends(db)):
         if (bike_id is None) == (component_id is None):
-            raise DomainError("Ask for the changes of one bike or one part")
+            raise DomainError(tr("Ask for the changes of one bike or one part"))
         return changelog.entries(s, bike_id=bike_id, component_id=component_id, limit=min(limit, 2000))
 
     @app.get("/api/logs")
@@ -1656,7 +1672,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def backup_download(name: str):
         f = (paths.backups / name).resolve()
         if f.parent != paths.backups.resolve() or not f.name.endswith(".db") or not f.exists():
-            raise DomainError("No such backup")
+            raise DomainError(tr("No such backup"))
         return FileResponse(f, filename=name, media_type="application/octet-stream")
 
     @app.post("/api/backups/upload", status_code=201)
@@ -1705,7 +1721,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def download_export(name: str):
         f = (paths.exports / name).resolve()
         if f.parent != paths.exports.resolve() or not f.exists():
-            raise DomainError("No such export")
+            raise DomainError(tr("No such export"))
         return FileResponse(f, filename=name, media_type="application/zip")
 
     # ------------------------------------------------------------ frontend
@@ -1719,6 +1735,15 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             page = index_html
             if server is not None:   # CSRF token belongs to the signed-in session (set by the middleware)
                 page = page_template.replace("%BIKELOG_TOKEN%", request.state.csrf)
+            # the screens' language is known before the first one is drawn (Settings → Language)
+            s = factory()
+            try:
+                language = settings_svc.get(s, "language")
+            except Exception:  # noqa: BLE001  (a database that cannot be read yet: English)
+                language = "en"
+            finally:
+                s.close()
+            page = page.replace("%BIKELOG_LANG%", language if i18n.valid(language) else "en")
             return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 
         app.mount("/", StaticFiles(directory=static), name="static")

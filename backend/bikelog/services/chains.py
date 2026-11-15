@@ -15,6 +15,7 @@ from bikelog.services import maintenance as m
 from bikelog.services import inventory as inv
 from bikelog.services.errors import DomainError
 from bikelog.services.usage import usage_since
+from bikelog.i18n import num, tr
 
 READY = "READY_TO_INSTALL"
 DIRTY = ("NEEDS_HOT_WAX", "NEW_UNWAXED", "UNKNOWN")
@@ -56,17 +57,16 @@ def rotation(session: Session, bike_id: int) -> dict:
     prompt = None
     if on and wax and wax["status"] in SOON:
         used = on["km_since_hot_wax"]
-        km = f"{used:,.0f} km since hot wax" if used is not None else "no hot wax recorded"
+        km = tr("{used} km since hot wax", used=num(used)) if used is not None else tr("no hot wax recorded")
         if ready:
             prompt = {"kind": "SWAP", "to": ready[0]["component_id"], "to_label": ready[0]["label"],
-                      "text": f"{on['label']} has {km}. Swap to {ready[0]['label']} (waxed, ready)."}
+                      "text": tr("{on} has {km}. Swap to {x} (waxed, ready).", on=on['label'], km=km, x=ready[0]['label'])}
         else:
             names = [r["label"] for r in dirty] + [on["label"]]
-            prompt = {"kind": "WAX", "text": f"{on['label']} has {km} and no waxed chain is ready. "
-                                             f"Wax {', '.join(names)}, then put one on."}
+            prompt = {"kind": "WAX", "text": tr("{on} has {km} and no waxed chain is ready. Wax {items}, then put one on.", on=on['label'], km=km, items=', '.join(names))}
     elif not on and ready:
         prompt = {"kind": "INSTALL", "to": ready[0]["component_id"], "to_label": ready[0]["label"],
-                  "text": f"No chain on {bike.name}. Put {ready[0]['label']} on (waxed, ready)."}
+                  "text": tr("No chain on {name}. Put {x} on (waxed, ready).", name=bike.name, x=ready[0]['label'])}
     return {"bike_id": bike.id, "bike": bike.name, "chains": rows, "on": on["component_id"] if on else None,
             "next_ready": ready[0]["component_id"] if ready else None,
             # the chain on the bike counts as dirty once ridden since its last hot wax (or never hot waxed)
@@ -90,13 +90,13 @@ def candidates(session: Session, bike_id: int) -> list[dict]:
             continue
         other = session.get(Bike, c.rotation_bike_id) if c.rotation_bike_id else None
         out.append({"component_id": c.id, "consumable_id": None, "label": c.label, "mark": c.mark,
-                    "note": f"in the rotation of {other.name}, moves here" if other and not other.deleted_at else None})
+                    "note": tr("in the rotation of {name}, moves here", name=other.name) if other and not other.deleted_at else None})
     for line in session.scalars(select(Consumable).where(Consumable.component_type == "CHAIN",
                                                          Consumable.tracking_mode == "COUNTED").order_by(Consumable.name)):
         left = stock.level(session, line)["qty"]
         if left >= 1:
             out.append({"component_id": None, "consumable_id": line.id, "label": line.name, "mark": None,
-                        "note": f"from stock, {left:g} left"})
+                        "note": tr("from stock, {left} left", left=f"{left:g}")})
     return out
 
 
@@ -105,12 +105,12 @@ def elsewhere(session: Session, bike_id: int) -> list[dict]:
     out = []
     for c in session.scalars(select(Component).where(Component.component_type == "CHAIN").order_by(Component.label)):
         if c.status == "RETIRED":
-            out.append({"component_id": c.id, "label": c.label, "text": "retired"})
+            out.append({"component_id": c.id, "label": c.label, "text": tr("retired")})
             continue
         i = inv.open_installation(session, c.id)
         if i is not None and i.bike_id != bike_id:
-            where = inv.get_bike(session, i.bike_id).name if i.bike_id else "a part that is not on a bike"
-            out.append({"component_id": c.id, "label": c.label, "text": f"on {where}"})
+            where = inv.get_bike(session, i.bike_id).name if i.bike_id else tr("a part that is not on a bike")
+            out.append({"component_id": c.id, "label": c.label, "text": tr("on {where}", where=where)})
     return out
 
 
@@ -119,25 +119,25 @@ def add(session: Session, bike_id: int, *, component_id: int | None = None, cons
     """A chain joins this bike's rotation; a chain from stock gets its own record first."""
     bike = inv.get_bike(session, bike_id)
     if (component_id is None) == (consumable_id is None):
-        raise DomainError("Pick one chain")
+        raise DomainError(tr("Pick one chain"))
     if consumable_id is not None:
         from bikelog.services import stock
         line = stock.get(session, consumable_id)
         if line.component_type != "CHAIN":
-            raise DomainError(f"{line.name} is not a chain")
+            raise DomainError(tr("{name} is not a chain", name=line.name))
         comp = stock.draw_component(session, consumable_id, on=at[:10])
     else:
         comp = inv.get_component(session, component_id)
         if comp.component_type != "CHAIN":
-            raise DomainError(f"{comp.label} is not a chain")
+            raise DomainError(tr("{label} is not a chain", label=comp.label))
         if comp.status != "ACTIVE":
-            raise DomainError(f"{comp.label} is retired")
+            raise DomainError(tr("{label} is retired", label=comp.label))
         i = inv.open_installation(session, comp.id)
         if i is not None and i.bike_id != bike.id:
-            raise DomainError(f"{comp.label} is on another bike. Take it off first.")
+            raise DomainError(tr("{label} is on another bike. Take it off first.", label=comp.label))
     comp.rotation_bike_id = bike.id
     session.flush()
-    return {"component_id": comp.id, "label": comp.label, "text": f"{comp.label} joined the chain rotation of {bike.name}."}
+    return {"component_id": comp.id, "label": comp.label, "text": tr("{label} joined the chain rotation of {name}.", label=comp.label, name=bike.name)}
 
 
 def timeline(session: Session, bike_id: int, chain_ids: list[int]) -> list[dict]:
@@ -209,7 +209,7 @@ def wax_applications(session: Session, comp: Component) -> dict:
     sort = {e["id"]: session.get(MaintenanceEvent, e["id"]).sort_utc for e in events}
     events.sort(key=lambda e: (sort[e["id"]], e["id"]))
     today = today_local(settings.tz(session)).isoformat()
-    kind = {"WAX_HOT": "Hot wax", "WAX_LIQUID": "Liquid wax top-up"}
+    kind = {"WAX_HOT": tr("Hot wax"), "WAX_LIQUID": tr("Liquid wax top-up")}
     rows, last_hot = [], None
     for n, e in enumerate(events, start=1):
         if e["action_code"] == "WAX_HOT":
@@ -235,12 +235,12 @@ def wax_applications(session: Session, comp: Component) -> dict:
         parts = []
         if cyc and cyc.get("hot_wax_due_at_km") is not None:
             left = cyc["hot_wax_left_km"]
-            hot = (f"Hot wax at {cyc['hot_wax_due_at_km']:,.0f} km "
-                   + (f"({left:,.0f} km left)" if left >= 0 else f"({-left:,.0f} km over)"))
+            hot = (tr("Hot wax at {km} km ({left} km left)", km=num(cyc['hot_wax_due_at_km']), left=num(left)) if left >= 0
+                   else tr("Hot wax at {km} km ({over} km over)", km=num(cyc['hot_wax_due_at_km']), over=num(-left)))
             if act["action_code"] == "WAX_HOT":
                 rule = next((r for r in m.effective_rules(session, comp) if r.action_code == "WAX_LIQUID"), None)
                 if rule and rule.window_min_km is not None:
-                    parts.append(f"Top-up at {rule.window_min_km:,.0f}–{rule.window_max_km:,.0f} km")
+                    parts.append(tr("Top-up at {window_min_km}–{window_max_km} km", window_min_km=num(rule.window_min_km), window_max_km=num(rule.window_max_km)))
             parts.append(hot)
         act["next_due"] = " · ".join(parts) or None
         km_now = cyc["km"] if cyc else None
@@ -256,9 +256,9 @@ def swap(session: Session, bike_id: int, *, to_component_id: int, at: str, work_
     rot = rotation(session, bike_id)
     new = inv.get_component(session, to_component_id)
     if new.component_type != "CHAIN":
-        raise DomainError(f"{new.label} is not a chain")
+        raise DomainError(tr("{label} is not a chain", label=new.label))
     if rot["on"] == new.id:
-        raise DomainError(f"{new.label} is already on the bike")
+        raise DomainError(tr("{label} is already on the bike", label=new.label))
     if rot["on"] is None:
         inv.install(session, new.id, at=at, bike_id=bike_id, slot="CHAIN", work_session_id=work_session_id)
         old = None
@@ -270,7 +270,7 @@ def swap(session: Session, bike_id: int, *, to_component_id: int, at: str, work_
         new.rotation_bike_id = bike_id
     session.flush()
     return {"off": old.label if old else None, "on": new.label,
-            "text": f"{old.label} off, {new.label} on." if old else f"{new.label} on."}
+            "text": tr("{label} off, {label2} on.", label=old.label, label2=new.label) if old else tr("{label} on.", label=new.label)}
 
 
 def wax(session: Session, bike_id: int, *, component_ids: list[int], at: str, consumable_id: int | None = None,
@@ -279,17 +279,17 @@ def wax(session: Session, bike_id: int, *, component_ids: list[int], at: str, co
     """Hot wax several chains at once (they become "waxed, ready"); optionally swap one onto the bike first,
     so the chain coming off is waxed too."""
     if not component_ids:
-        raise DomainError("Tick the chains you waxed")
+        raise DomainError(tr("Tick the chains you waxed"))
     for cid in component_ids:
         if inv.get_component(session, cid).component_type != "CHAIN":
-            raise DomainError("Only chains are hot waxed here")
+            raise DomainError(tr("Only chains are hot waxed here"))
     swapped = None
     if then_install is not None:
         swapped = swap(session, bike_id, to_component_id=then_install, at=at, work_session_id=work_session_id)
     m.log_batch(session, action_code="WAX_HOT", at=at, component_ids=component_ids, consumable_id=consumable_id,
                 consumable_qty=consumable_qty, work_session_id=work_session_id)
     names = [inv.get_component(session, c).label for c in component_ids]
-    text = f"Hot waxed {', '.join(names)}."
+    text = tr("Hot waxed {items}.", items=', '.join(names))
     if swapped:
         text += f" {swapped['text']}"
     return {"text": text, "swap": swapped}

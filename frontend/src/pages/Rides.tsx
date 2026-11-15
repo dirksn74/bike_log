@@ -25,6 +25,7 @@ import type {
   RideDetail,
   RideRow,
 } from "../types";
+import { tr, codeText, trn } from '../i18n'
 
 interface FormState {
   bike_id: string;
@@ -48,7 +49,7 @@ const empty = (bikeId?: number | null): FormState => ({
   unit: "km",
   minutes: "",
   name: "",
-  sport_type: "Ride",
+  sport_type: tr('Ride'),
   usage_profile_code: "",
   assignment_uncertain: false,
   uncertainty_note: "",
@@ -146,12 +147,12 @@ export function RideForm({
   }
   return (
     <div className="form">
-      <Field label="Bike">
+      <Field label={tr('Bike')}>
         <select
           value={f.bike_id}
           onChange={(e) => set("bike_id", e.target.value)}
         >
-          <option value="">Unknown bike</option>
+          <option value="">{tr('Unknown bike')}</option>
           {bikes.data?.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -160,7 +161,7 @@ export function RideForm({
         </select>
       </Field>
       <div className="row">
-        <Field label="Date">
+        <Field label={tr('Date')}>
           <input
             type="date"
             value={f.date}
@@ -168,8 +169,8 @@ export function RideForm({
           />
         </Field>
         <Field
-          label="Start time (optional)"
-          hint="Leave empty if you don't know it."
+          label={tr('Start time (optional)')}
+          hint={tr('Leave empty if you don\'t know it.')}
         >
           <input
             type="time"
@@ -179,7 +180,7 @@ export function RideForm({
         </Field>
       </div>
       <div className="row">
-        <Field label="Distance" hint="Empty = unknown (not zero).">
+        <Field label={tr('Distance')} hint={tr('Empty = unknown (not zero).')}>
           <input
             inputMode="decimal"
             value={f.distance}
@@ -187,16 +188,16 @@ export function RideForm({
             placeholder="42"
           />
         </Field>
-        <Field label="Unit">
+        <Field label={tr('Unit')}>
           <select
             value={f.unit}
             onChange={(e) => set("unit", e.target.value as "km" | "mi")}
           >
-            <option value="km">km</option>
-            <option value="mi">mi</option>
+            <option value="km">{tr('km')}</option>
+            <option value="mi">{tr('mi')}</option>
           </select>
         </Field>
-        <Field label="Minutes (optional)">
+        <Field label={tr('Minutes (optional)')}>
           <input
             inputMode="numeric"
             value={f.minutes}
@@ -204,23 +205,23 @@ export function RideForm({
           />
         </Field>
       </div>
-      <Field label="Name (optional)">
+      <Field label={tr('Name (optional)')}>
         <input value={f.name} onChange={(e) => set("name", e.target.value)} />
       </Field>
       <div className="row">
-        <Field label="Type">
+        <Field label={tr('Type')}>
           <select
             value={f.sport_type}
             onChange={(e) => set("sport_type", e.target.value)}
           >
-            <option value="Ride">Outdoor ride</option>
-            <option value="VirtualRide">Indoor / Zwift</option>
-            <option value="GravelRide">Gravel</option>
+            <option value="Ride">{tr('Outdoor ride')}</option>
+            <option value="VirtualRide">{tr('Indoor / Zwift')}</option>
+            <option value="GravelRide">{tr('Gravel')}</option>
           </select>
         </Field>
         <Field
-          label="Setup"
-          hint="A trainer setup leaves removed parts (wheels, tires, pads) out."
+          label={tr('Setup')}
+          hint={tr('A trainer setup leaves removed parts (wheels, tires, pads) out.')}
         >
           <select
             value={f.usage_profile_code}
@@ -228,8 +229,8 @@ export function RideForm({
           >
             <option value="">
               {f.sport_type === "VirtualRide" && !ride
-                ? "Default trainer setup"
-                : "Normal (outdoor)"}
+                ? tr('Default trainer setup')
+                : tr('Normal (outdoor)')}
             </option>
             {meta.profiles
               .filter((p) => p.kind === "TRAINER")
@@ -247,14 +248,14 @@ export function RideForm({
           checked={f.assignment_uncertain}
           onChange={(e) => set("assignment_uncertain", e.target.checked)}
         />{" "}
-        I'm not sure about the bike or equipment
+        {tr('I\'m not sure about the bike or equipment')}
       </label>
       {f.assignment_uncertain && (
-        <Field label="What is uncertain?">
+        <Field label={tr('What is uncertain?')}>
           <input
             value={f.uncertainty_note}
             onChange={(e) => set("uncertainty_note", e.target.value)}
-            placeholder="BMC or TIME?"
+            placeholder={tr('BMC or TIME?')}
           />
         </Field>
       )}
@@ -263,7 +264,7 @@ export function RideForm({
       <div className="form-actions">
         {ride && (
           <button className="btn" disabled={busy} onClick={() => save(true)}>
-            Preview mileage impact
+            {tr('Preview mileage impact')}
           </button>
         )}
         <button
@@ -271,7 +272,7 @@ export function RideForm({
           disabled={busy}
           onClick={() => save(false)}
         >
-          {busy ? "Saving…" : ride ? "Save changes" : "Add ride"}
+          {busy ? tr('Saving…') : ride ? tr('Save changes') : tr('Add ride')}
         </button>
       </div>
     </div>
@@ -289,21 +290,21 @@ function RideSummaryStats({ summary }: { summary: RideDetail["summary"] }) {
   return (
     <div className="ride-stats">
       <div>
-        <span className="muted small">This ride</span>
+        <span className="muted small">{tr('This ride')}</span>
         <span className="stat">{km(summary.km)}</span>
         <span className="small">
-          {summary.hours ? hours(summary.hours) : "no time recorded"}
+          {summary.hours ? hours(summary.hours) : tr('no time recorded')}
         </span>
       </div>
       {b && (
         <>
           <div>
-            <span className="muted small">{b.name} in total</span>
+            <span className="muted small">{b.name} {tr('in total')}</span>
             <span className="stat">
               {b.starting_is_estimate ? "≈ " : ""}
               {km(b.total_km, 0)}
             </span>
-            <span className="small" title="Recorded ride time; km from before tracking have no hours">
+            <span className="small" title={tr('Recorded ride time; km from before tracking have no hours')}>
               {hours(b.total_hours)}
             </span>
           </div>
@@ -312,7 +313,7 @@ function RideSummaryStats({ summary }: { summary: RideDetail["summary"] }) {
               <span className="muted small">{p.label}</span>
               <span className="stat">{km(p.km, 0)}</span>
               <span className="small">
-                {hours(p.hours)} · {p.rides} ride{p.rides === 1 ? "" : "s"}
+                {hours(p.hours)} · {trn('{n} ride', '{n} rides', p.rides)}
               </span>
             </div>
           ))}
@@ -344,7 +345,7 @@ function RideNotes({
     setBusy(true);
     try {
       await api.patch(`/rides/${id}`, { notes: text.trim() || null });
-      toast("Notes saved.");
+      toast(tr('Notes saved.'));
       setText(null);
       onSaved();
     } catch (e) {
@@ -356,10 +357,10 @@ function RideNotes({
   return (
     <section className="ride-section ride-notes">
       <div className="ride-section-head">
-        <h3>Notes</h3>
+        <h3>{tr('Notes')}</h3>
         {text === null && (
           <button className="btn btn-small" onClick={() => setText(notes ?? "")}>
-            {notes ? "Edit notes" : "Add notes"}
+            {notes ? tr('Edit notes') : tr('Add notes')}
           </button>
         )}
       </div>
@@ -367,31 +368,31 @@ function RideNotes({
         notes ? (
           <p className="ride-notes-text">{notes}</p>
         ) : (
-          <p className="small muted">None yet.</p>
+          <p className="small muted">{tr('None yet.')}</p>
         )
       ) : (
         <div className="form">
           <Field
-            label="Notes"
+            label={tr('Notes')}
             hint={`${text.length} / ${NOTES_MAX} characters. Kept when Strava syncs again.`}
           >
             <textarea
-              aria-label="Ride notes"
+              aria-label={tr('Ride notes')}
               rows={6}
               maxLength={NOTES_MAX}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="How it went, route, weather, what to check on the bike ..."
+              placeholder={tr('How it went, route, weather, what to check on the bike ...')}
               autoFocus
             />
           </Field>
           <FormError error={err} />
           <div className="form-actions">
             <button className="btn btn-primary" disabled={busy} onClick={save}>
-              Save notes
+              {tr('Save notes')}
             </button>
             <button className="btn" onClick={() => setText(null)}>
-              Cancel
+              {tr('Cancel')}
             </button>
           </div>
         </div>
@@ -416,7 +417,7 @@ export function RideDetailView({
   const [showParts, setShowParts] = useState(false);
   if (loading && !data) return <Loading />;
   if (error || !data)
-    return <ErrorBox error={error ?? "not found"} onRetry={reload} />;
+    return <ErrorBox error={error ?? tr('not found')} onRetry={reload} />;
   if (editing)
     return (
       <RideForm
@@ -468,39 +469,38 @@ export function RideDetailView({
     <div className="form ride-view">
       <header className="ride-summary">
         <p>
-          <strong>{data.name || "Ride"}</strong> ·{" "}
+          <strong>{data.name || tr('Ride')}</strong> ·{" "}
           {when(data.start_time_utc ?? data.ride_date)}
           {data.date_only && (
-            <Tag title="No start time recorded">date only</Tag>
+            <Tag title={tr('No start time recorded')}>{tr('date only')}</Tag>
           )}{" "}
           · {km(data.distance_km)} · {duration(data.duration_s)} ·{" "}
-          {data.bike ?? <Tag tone="warn">no bike</Tag>}
+          {data.bike ?? <Tag tone="warn">{tr('no bike')}</Tag>}
         </p>
         <p className="small muted">
-          Source: {data.source_kind.toLowerCase()}
+          {tr('Source:')} {data.source_kind.toLowerCase()}
           {data.overridden_fields.length > 0 &&
-            ` · locally corrected: ${data.overridden_fields.join(", ")}`}
-          {data.usage_profile_name && ` · setup: ${data.usage_profile_name}`}
+            tr(' · locally corrected: {join}', { join: data.overridden_fields.join(", ") })}
+          {data.usage_profile_name && tr(' · setup: {usage_profile_name}', { usage_profile_name: data.usage_profile_name })}
         </p>
         {data.inclusion === "EXCLUDED" && (
           <div className="notice">
-            Removed ({data.exclusion_reason}). It counts no km and is never
-            imported again from Strava or CSV. Restore it to count it again.
+            {tr('Removed (')}{data.exclusion_reason}{tr('). It counts no km and is never imported again from Strava or CSV. Restore it to count it again.')}
           </div>
         )}
         {data.flags.map((f, i) => (
           <div key={i} className="flag">
-            <Tag tone="warn">{f.code.replace(/_/g, " ").toLowerCase()}</Tag>{" "}
+            <Tag tone="warn">{codeText(f.code)}</Tag>{" "}
             {f.detail}
           </div>
         ))}
       </header>
       <section className="ride-section">
         <div className="ride-section-head">
-          <h3>Conditions</h3>
+          <h3>{tr('Conditions')}</h3>
         </div>
-        <div className="row conditions" role="group" aria-label="Conditions">
-          {[{ code: null, label: "not set" }, ...meta.ride_conditions].map(
+        <div className="row conditions" role="group" aria-label={tr('Conditions')}>
+          {[{ code: null, label: tr('not set') }, ...meta.ride_conditions].map(
             (c) => (
               <button
                 key={c.code ?? "none"}
@@ -531,31 +531,31 @@ export function RideDetailView({
       />
       <section className="ride-section">
         <div className="ride-section-head">
-          <h3>Distance and time</h3>
+          <h3>{tr('Distance and time')}</h3>
           <button
             className="btn btn-small"
             aria-expanded={showParts}
             onClick={() => setShowParts(!showParts)}
           >
-            {showParts ? "Hide details" : "Show details"}
+            {showParts ? tr('Hide details') : tr('Show details')}
           </button>
         </div>
         <RideSummaryStats summary={data.summary} />
         {data.counting_note && <p className="notice">{data.counting_note}</p>}
         {showParts && (
           <div className="ride-parts">
-            <h4>Distance and time given to parts</h4>
+            <h4>{tr('Distance and time given to parts')}</h4>
             {data.equipment.length === 0 ? (
-              <p className="muted">No parts received mileage from this ride.</p>
+              <p className="muted">{tr('No parts received mileage from this ride.')}</p>
             ) : (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Part</th>
-                    <th>Slot</th>
-                    <th>km</th>
-                    <th>Hours</th>
-                    <th>Basis</th>
+                    <th>{tr('Part')}</th>
+                    <th>{tr('Slot')}</th>
+                    <th>{tr('km')}</th>
+                    <th>{tr('Hours')}</th>
+                    <th>{tr('Basis')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -569,15 +569,15 @@ export function RideDetailView({
                         {e.state === "COUNTED" ? (
                           km(e.km)
                         ) : (
-                          <span className="muted">inside starting value</span>
+                          <span className="muted">{tr('inside starting value')}</span>
                         )}
                       </td>
                       <td>{e.state === "COUNTED" ? hours(e.hours) : "—"}</td>
                       <td>
                         {e.basis === "EXPLICIT"
                           ? "confirmed"
-                          : "installation history"}
-                        {!e.certain && <Tag tone="warn">uncertain</Tag>}
+                          : tr('installation history')}
+                        {!e.certain && <Tag tone="warn">{tr('uncertain')}</Tag>}
                       </td>
                     </tr>
                   ))}
@@ -585,9 +585,9 @@ export function RideDetailView({
               </table>
             )}
             <details>
-              <summary>Confirm which part was used</summary>
+              <summary>{tr('Confirm which part was used')}</summary>
               <div className="row">
-                <Field label="Slot">
+                <Field label={tr('Slot')}>
                   <select
                     value={equip.slot}
                     onChange={(e) => setEquip({ ...equip, slot: e.target.value })}
@@ -599,14 +599,14 @@ export function RideDetailView({
                     ))}
                   </select>
                 </Field>
-                <Field label="Part">
+                <Field label={tr('Part')}>
                   <select
                     value={equip.component_id}
                     onChange={(e) =>
                       setEquip({ ...equip, component_id: e.target.value })
                     }
                   >
-                    <option value="">None used</option>
+                    <option value="">{tr('None used')}</option>
                     {comps.data
                       ?.filter((c) => c.status === "ACTIVE")
                       .map((c) => (
@@ -632,7 +632,7 @@ export function RideDetailView({
                     )
                   }
                 >
-                  Confirm
+                  {tr('Confirm')}
                 </button>
                 {data.explicit_equipment.map((e) => (
                   <button
@@ -642,7 +642,7 @@ export function RideDetailView({
                       act(`/rides/${id}/equipment/${e.slot}`, undefined, "del")
                     }
                   >
-                    Back to history for {slotName(e.slot)}
+                    {tr('Back to history for')} {slotName(e.slot)}
                   </button>
                 ))}
               </div>
@@ -653,21 +653,21 @@ export function RideDetailView({
       <FormError error={err} />
       <div className="form-actions ride-actions">
         <button className="btn" onClick={() => setEditing(true)}>
-          Edit ride
+          {tr('Edit ride')}
         </button>
         {data.inclusion === "INCLUDED" ? (
           <button
             className="btn btn-danger"
-            title="Moves it to Removed rides: it counts no km and is never imported again. You can restore it."
+            title={tr('Moves it to Removed rides: it counts no km and is never imported again. You can restore it.')}
             onClick={() =>
-              act(`/rides/${id}/exclude`, { reason: "removed by user" })
+              act(`/rides/${id}/exclude`, { reason: tr('removed by user') })
             }
           >
-            Remove ride
+            {tr('Remove ride')}
           </button>
         ) : (
           <button className="btn" onClick={() => act(`/rides/${id}/restore`)}>
-            Restore
+            {tr('Restore')}
           </button>
         )}
       </div>
@@ -676,11 +676,11 @@ export function RideDetailView({
 }
 
 const RIDE_TABS: [string, string][] = [
-  ["active", "Rides"],
-  ["unassigned", "No bike"],
-  ["removed", "Removed rides"],
-  ["incidents", "Incidents"],
-  ["punctures", "Punctures"],
+  ["active", tr('Rides')],
+  ["unassigned", tr('No bike')],
+  ["removed", tr('Removed rides')],
+  ["incidents", tr('Incidents')],
+  ["punctures", tr('Punctures')],
 ];
 
 function BikeSelect({
@@ -701,11 +701,11 @@ function BikeSelect({
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
     >
-      <option value="">— no bike —</option>
+      <option value="">{tr('— no bike —')}</option>
       {bikes.map((b) => (
         <option key={b.id} value={b.id}>
           {b.name}
-          {b.status === "RETIRED" ? " (retired)" : ""}
+          {b.status === "RETIRED" ? tr(' (retired)') : ""}
         </option>
       ))}
     </select>
@@ -744,11 +744,11 @@ function RemoveRides({
     try {
       const r = await api.post<OpResult<{ removed: number; km: number }>>(
         "/rides/remove",
-        { ride_ids: ids, reason: "removed by user" },
+        { ride_ids: ids, reason: tr('removed by user') },
         opId,
       );
       onDone(
-        `${r.result.removed} ride${r.result.removed === 1 ? "" : "s"} removed (${km(r.result.km)}). ${r.change?.notice ?? ""}`,
+        trn('{n} ride removed ({km}). {x2}', '{n} rides removed ({km}). {x2}', r.result.removed, { km: km(r.result.km), x2: r.change?.notice ?? "" }),
       );
     } catch (e) {
       setErr((e as Error).message);
@@ -757,26 +757,25 @@ function RemoveRides({
   }
   const n = ids.length;
   return (
-    <Sheet title={n === 1 ? "Remove 1 ride" : `Remove ${n} rides`} onClose={onClose}>
+    <Sheet title={n === 1 ? tr('Remove 1 ride') : tr('Remove {n} rides', { n })} onClose={onClose}>
       <div className="remove-rides">
         <p>
           <strong>
-            {n} ride{n === 1 ? "" : "s"} · {km(total)}
+            {trn('{n} ride', '{n} rides', n)} · {km(total)}
           </strong>
         </p>
         <p className="small muted">
-          They move to Removed rides: they count no km for the bike and its parts and are never
-          imported again from Strava or a CSV file. You can restore them there at any time.
+          {tr('They move to Removed rides: they count no km for the bike and its parts and are never imported again from Strava or a CSV file. You can restore them there at any time.')}
         </p>
-        {preview === null && !err && <Loading what="Working out the km change" />}
+        {preview === null && !err && <Loading what={tr('Working out the km change')} />}
         {preview && <p className="small remove-preview">{preview.replace(/^Preview: /, "")}</p>}
         <FormError error={err} />
         <div className="form-actions">
           <button className="btn btn-danger" disabled={busy} onClick={go}>
-            {n === 1 ? "Remove ride" : `Remove ${n} rides`}
+            {n === 1 ? tr('Remove ride') : tr('Remove {n} rides', { n })}
           </button>
           <button className="btn" onClick={onClose}>
-            Cancel
+            {tr('Cancel')}
           </button>
         </div>
       </div>
@@ -818,7 +817,7 @@ export default function RidesPage() {
         ? bikes.data?.find((b) => b.id === bikeId)?.name
         : null;
       toast(
-        `${r.result.changed} ride${r.result.changed === 1 ? "" : "s"} ${name ? `assigned to ${name}` : "now without a bike"}. ${r.change?.notice ?? ""}`,
+        trn('{n} ride {x2}. {x3}', '{n} rides {x2}. {x3}', r.result.changed, { x2: name ? tr('assigned to {name}', { name }) : tr('now without a bike'), x3: r.change?.notice ?? "" }),
       );
       setSelected(new Set());
       reload();
@@ -834,7 +833,7 @@ export default function RidesPage() {
         newOpId(),
       );
       toast(
-        `${r.result.restored} ride${r.result.restored === 1 ? "" : "s"} restored (${km(r.result.km)}). ${r.change?.notice ?? ""}`,
+        trn('{n} ride restored ({km}). {x2}', '{n} rides restored ({km}). {x2}', r.result.restored, { km: km(r.result.km), x2: r.change?.notice ?? "" }),
       );
       setSelected(new Set());
       reload();
@@ -845,7 +844,7 @@ export default function RidesPage() {
   async function restore(id: number) {
     try {
       const r = await api.post<OpResult<unknown>>(`/rides/${id}/restore`, {});
-      toast(r.change?.notice ?? "Restored.");
+      toast(r.change?.notice ?? tr('Restored.'));
       reload();
     } catch (e) {
       toast((e as Error).message);
@@ -864,10 +863,10 @@ export default function RidesPage() {
   );
   return (
     <Card
-      title="Rides"
+      title={tr('Rides')}
       actions={
         <button className="btn btn-primary" onClick={() => setAdding(true)}>
-          Add ride
+          {tr('Add ride')}
         </button>
       }
     >
@@ -886,14 +885,12 @@ export default function RidesPage() {
       </div>
       {tab === "removed" && (
         <p className="small muted">
-          Removed rides count no kilometres and are never imported again from
-          Strava or a CSV file. Restore one to count it again.
+          {tr('Removed rides count no kilometres and are never imported again from Strava or a CSV file. Restore one to count it again.')}
         </p>
       )}
       {tab === "unassigned" && (
         <p className="small muted">
-          Rides without a bike count for no part. Pick the bike for each ride,
-          or tick several and assign them together.
+          {tr('Rides without a bike count for no part. Pick the bike for each ride, or tick several and assign them together.')}
         </p>
       )}
       {tab === "incidents" && <IncidentList bikes={allBikes} />}
@@ -905,9 +902,9 @@ export default function RidesPage() {
               <select
                 value={bike}
                 onChange={(e) => setBike(e.target.value)}
-                aria-label="Filter by bike"
+                aria-label={tr('Filter by bike')}
               >
-                <option value="">All bikes</option>
+                <option value="">{tr('All bikes')}</option>
                 {allBikes.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
@@ -921,31 +918,31 @@ export default function RidesPage() {
                 checked={flagged}
                 onChange={(e) => setFlagged(e.target.checked)}
               />{" "}
-              Only rides to review
+              {tr('Only rides to review')}
             </label>
           </div>
           {tab === "removed" && selected.size > 0 && (
             <div className="bulk-bar">
-              <span>{selected.size} selected</span>
+              <span>{selected.size} {tr('selected')}</span>
               <button
                 className="btn btn-primary btn-small"
                 onClick={() => restoreMany([...selected])}
               >
-                Restore rides
+                {tr('Restore rides')}
               </button>
               <button
                 className="btn btn-small"
                 onClick={() => setSelected(new Set())}
               >
-                Clear
+                {tr('Clear')}
               </button>
             </div>
           )}
           {tab !== "removed" && selected.size > 0 && (
             <div className="bulk-bar">
-              <span>{selected.size} selected</span>
+              <span>{selected.size} {tr('selected')}</span>
               <BikeSelect
-                label="Bike for selected rides"
+                label={tr('Bike for selected rides')}
                 value={bulkBike}
                 bikes={allBikes.filter((b) => b.status === "ACTIVE")}
                 onChange={setBulkBike}
@@ -954,39 +951,39 @@ export default function RidesPage() {
                 className="btn btn-primary btn-small"
                 onClick={() => assign([...selected], bulkBike)}
               >
-                {bulkBike ? "Assign bike" : "Remove bike"}
+                {bulkBike ? tr('Assign bike') : tr('Remove bike')}
               </button>
               <button
                 className="btn btn-danger btn-small"
                 onClick={() => setRemoving([...selected])}
               >
-                Remove rides
+                {tr('Remove rides')}
               </button>
               <button
                 className="btn btn-small"
                 onClick={() => setSelected(new Set())}
               >
-                Clear
+                {tr('Clear')}
               </button>
             </div>
           )}
-          {loading && !data && <Loading what="Loading rides" />}
+          {loading && !data && <Loading what={tr('Loading rides')} />}
           {error && <ErrorBox error={error} onRetry={reload} />}
           {data && data.length === 0 && (
             <Empty
               title={
                 tab === "removed"
-                  ? "No removed rides"
+                  ? tr('No removed rides')
                   : tab === "unassigned"
-                    ? "Every ride has a bike"
+                    ? tr('Every ride has a bike')
                     : flagged
-                      ? "No rides need review"
-                      : "No rides yet"
+                      ? tr('No rides need review')
+                      : tr('No rides yet')
               }
             >
               {tab === "active" &&
                 !flagged &&
-                "Add a ride (bike, date and distance are enough), import a CSV or connect Strava under Settings."}
+                tr('Add a ride (bike, date and distance are enough), import a CSV or connect Strava under Settings.')}
             </Empty>
           )}
           {data && data.length > 0 && (
@@ -997,7 +994,7 @@ export default function RidesPage() {
                     <th>
                       <input
                         type="checkbox"
-                        aria-label="Select all rides"
+                        aria-label={tr('Select all rides')}
                         checked={selected.size > 0 && selected.size === selectable.length}
                         onChange={(e) =>
                           setSelected(
@@ -1009,11 +1006,11 @@ export default function RidesPage() {
                       />
                     </th>
                   )}
-                  <th>Date</th>
-                  <th>Name</th>
-                  <th>Bike</th>
-                  <th className="num">Distance</th>
-                  <th>Notes</th>
+                  <th>{tr('Date')}</th>
+                  <th>{tr('Name')}</th>
+                  <th>{tr('Bike')}</th>
+                  <th className="num">{tr('Distance')}</th>
+                  <th>{tr('Notes')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1028,7 +1025,7 @@ export default function RidesPage() {
                         <input
                           type="checkbox"
                           disabled={tab === "removed" && r.inclusion !== "EXCLUDED"}
-                          aria-label={`Select ${r.name || "ride"} ${r.ride_date}`}
+                          aria-label={tr('Select {x} {ride_date}', { x: r.name || "ride", ride_date: r.ride_date })}
                           checked={selected.has(r.id)}
                           onChange={() => toggle(r.id)}
                         />
@@ -1036,14 +1033,14 @@ export default function RidesPage() {
                     )}
                     <td>{when(r.start_time_utc ?? r.ride_date)}</td>
                     <td>
-                      <button className="linklike">{r.name || "Ride"}</button>
+                      <button className="linklike">{r.name || tr('Ride')}</button>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       {r.removed ? (
                         (r.bike ?? "—")
                       ) : (
                         <BikeSelect
-                          label={`Bike for ${r.name || "ride"} ${r.ride_date}`}
+                          label={tr('Bike for {x} {ride_date}', { x: r.name || "ride", ride_date: r.ride_date })}
                           value={r.bike_id}
                           bikes={allBikes}
                           onChange={(id) => assign([r.id], id)}
@@ -1052,11 +1049,11 @@ export default function RidesPage() {
                       {r.bike_overridden && (
                         <span
                           className="small muted"
-                          title="Your choice is kept when Strava or a CSV import is read again."
+                          title={tr('Your choice is kept when Strava or a CSV import is read again.')}
                         >
                           {" "}
-                          changed by you · {r.source_kind.toLowerCase()}:{" "}
-                          {r.source_bike ?? "no bike"}
+                          {tr('changed by you ·')} {r.source_kind.toLowerCase()}:{" "}
+                          {r.source_bike ?? tr('no bike')}
                         </span>
                       )}
                       {!r.bike_id && !r.bike_overridden && r.uncertainty_note && (
@@ -1068,7 +1065,7 @@ export default function RidesPage() {
                       {r.removed && (
                         <Tag>
                           {r.status === "SOURCE_DELETED"
-                            ? "deleted at source"
+                            ? tr('deleted at source')
                             : "removed"}
                         </Tag>
                       )}
@@ -1080,17 +1077,17 @@ export default function RidesPage() {
                             restore(r.id);
                           }}
                         >
-                          Restore
+                          {tr('Restore')}
                         </button>
                       )}
                       {r.sport_type === "VirtualRide" && (
-                        <Tag tone="info">indoor</Tag>
+                        <Tag tone="info">{tr('indoor')}</Tag>
                       )}
-                      {r.conditions === "WET" && <Tag tone="info">wet</Tag>}
+                      {r.conditions === "WET" && <Tag tone="info">{tr('wet')}</Tag>}
                       {r.incidents > 0 && (
                         <Tag tone="bad">
                           {r.incidents === 1
-                            ? "1 incident"
+                            ? tr('1 incident')
                             : `${r.incidents} incidents`}
                         </Tag>
                       )}
@@ -1105,7 +1102,7 @@ export default function RidesPage() {
                       )}
                       {r.flags.map((f, i) => (
                         <Tag key={i} tone="warn" title={f.detail}>
-                          {f.code.replace(/_/g, " ").toLowerCase()}
+                          {codeText(f.code)}
                         </Tag>
                       ))}
                     </td>
@@ -1130,7 +1127,7 @@ export default function RidesPage() {
         />
       )}
       {adding && (
-        <Sheet title="Add ride" onClose={() => setAdding(false)}>
+        <Sheet title={tr('Add ride')} onClose={() => setAdding(false)}>
           <RideForm
             onSaved={(c) => {
               setAdding(false);
@@ -1140,7 +1137,7 @@ export default function RidesPage() {
         </Sheet>
       )}
       {open && (
-        <Sheet title="Ride" onClose={close}>
+        <Sheet title={tr('Ride')} onClose={close}>
           <RideDetailView id={Number(open)} onChanged={changed} />
         </Sheet>
       )}

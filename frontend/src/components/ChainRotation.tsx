@@ -9,15 +9,16 @@ import { km, today, when } from '../format'
 import { useApi } from '../hooks'
 import type { ChainRotationData, ChainRow } from '../types'
 import { Card, ErrorBox, Field, FormError, Loading, Sheet, Tag } from './ui'
+import { tr, codeText, trn } from '../i18n'
 
 const STATE: Record<string, [string, 'good' | 'warn' | 'bad' | 'info' | 'neutral']> = {
-  INSTALLED: ['on the bike', 'info'],
-  READY_TO_INSTALL: ['waxed, ready', 'good'],
-  NEEDS_HOT_WAX: ['dirty, waiting for wax', 'warn'],
-  NEW_UNWAXED: ['new, wax before use', 'warn'],
-  UNKNOWN: ['no hot wax recorded', 'neutral'],
-  WORN: ['worn, do not use', 'bad'],
-  AWAITING_SERVICE: ['awaiting repair', 'warn'],
+  INSTALLED: [tr('on the bike'), 'info'],
+  READY_TO_INSTALL: [tr('waxed, ready'), 'good'],
+  NEEDS_HOT_WAX: [tr('dirty, waiting for wax'), 'warn'],
+  NEW_UNWAXED: [tr('new, wax before use'), 'warn'],
+  UNKNOWN: [tr('no hot wax recorded'), 'neutral'],
+  WORN: [tr('worn, do not use'), 'bad'],
+  AWAITING_SERVICE: [tr('awaiting repair'), 'warn'],
   RETIRED: ['retired', 'neutral'],
 }
 
@@ -80,9 +81,9 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
   const addPicker = (
     <>
       <label className="inline-field small">
-        {data.chains.length < 2 ? 'Add a chain to rotate with: ' : 'Add a chain: '}
-        <select aria-label="Add a chain to the rotation" value="" onChange={(e) => add(e.target.value)}>
-          <option value="">{data.candidates.length ? 'pick a chain' : 'no chain off a bike (Inventory → Add part)'}</option>
+        {data.chains.length < 2 ? tr('Add a chain to rotate with: ') : tr('Add a chain: ')}
+        <select aria-label={tr('Add a chain to the rotation')} value="" onChange={(e) => add(e.target.value)}>
+          <option value="">{data.candidates.length ? tr('pick a chain') : tr('no chain off a bike (Inventory → Add part)')}</option>
           {data.candidates.map((c) => (
             <option key={c.component_id ? `c${c.component_id}` : `s${c.consumable_id}`} value={c.component_id ? `c:${c.component_id}` : `s:${c.consumable_id}`}>
               {c.label}
@@ -93,7 +94,7 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
       </label>
       {data.elsewhere.length > 0 && (
         <details className="small muted">
-          <summary>Other chains ({data.elsewhere.length})</summary>
+          <summary>{tr('Other chains (')}{data.elsewhere.length})</summary>
           <ul>
             {data.elsewhere.map((c) => (
               <li key={c.component_id}>
@@ -107,10 +108,9 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
   )
   if (data.chains.length < 2)
     return (
-      <Card title="Chain rotation" className="span-2">
+      <Card title={tr('Chain rotation')} className="span-2">
         <p className="small muted">
-          Only {data.chains[0].label} rotates on this bike. With two or more chains, this card shows which one is on, which are
-          waxed and ready, and when to swap.
+          {tr('Only {label} rotates on this bike. With two or more chains, this card shows which one is on, which are waxed and ready, and when to swap.', { label: data.chains[0].label })}
         </p>
         {addPicker}
         <FormError error={err} />
@@ -118,17 +118,17 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
     )
   const p = data.prompt
   return (
-    <Card title="Chain rotation" className="span-2" actions={<button className="btn btn-small" onClick={() => setWaxing(true)}>Wax chains</button>}>
+    <Card title={tr('Chain rotation')} className="span-2" actions={<button className="btn btn-small" onClick={() => setWaxing(true)}>{tr('Wax chains')}</button>}>
       {p && (
         <div className={`rotation-prompt ${p.kind === 'WAX' ? 'warn' : ''}`}>
           <span>{p.text}</span>
           {p.to ? (
             <button className="btn btn-primary btn-small" onClick={() => swap(p.to!)}>
-              {p.kind === 'INSTALL' ? `Put ${p.to_label} on` : `Swap to ${p.to_label}`}
+              {p.kind === 'INSTALL' ? tr('Put {to_label} on', { to_label: p.to_label }) : tr('Swap to {to_label}', { to_label: p.to_label })}
             </button>
           ) : (
             <button className="btn btn-primary btn-small" onClick={() => setWaxing(true)}>
-              Wax chains
+              {tr('Wax chains')}
             </button>
           )}
         </div>
@@ -145,16 +145,16 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
               </strong>
               <Tag tone={tone}>{word}</Tag>
               <span className="small">
-                {c.km_since_hot_wax !== null ? `${km(c.km_since_hot_wax, 0)} since hot wax` : 'no hot wax yet'}
-                {ws && ws.status !== 'OK' && <span className="muted"> ({ws.status.replace('_', ' ').toLowerCase()})</span>}
+                {c.km_since_hot_wax !== null ? tr('{km_since_hot_wax} since hot wax', { km_since_hot_wax: km(c.km_since_hot_wax, 0) }) : tr('no hot wax yet')}
+                {ws && ws.status !== 'OK' && <span className="muted"> ({codeText(ws.status)})</span>}
               </span>
               <span className="muted small">
-                {km(c.lifetime_km, 0)} lifetime · {c.wax_cycles} wax cycle{c.wax_cycles === 1 ? '' : 's'}
-                {c.last_wear ? ` · wear ${c.last_wear.value ?? '?'}${c.last_wear.unit ?? ''} on ${when(c.last_wear.date)}` : ' · wear not measured'}
+                {km(c.lifetime_km, 0)} {tr('lifetime ·')} {trn('{n} wax cycle', '{n} wax cycles', c.wax_cycles)}
+                {c.last_wear ? tr(' · wear {x}{x2} on {date}', { x: c.last_wear.value ?? '?', x2: c.last_wear.unit ?? '', date: when(c.last_wear.date) }) : tr(' · wear not measured')}
               </span>
               {c.state === 'READY_TO_INSTALL' && c.component_id !== data.on && (
                 <button className="btn btn-small" onClick={() => swap(c.component_id)}>
-                  Put on
+                  {tr('Put on')}
                 </button>
               )}
             </li>
@@ -163,8 +163,8 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
       </ul>
       <details className="task-group" data-group="rotation-history">
         <summary>
-          <strong>Rotation history</strong>
-          <span className="muted small">{data.timeline.filter((t) => t.kind === 'ON').length} turns on the bike</span>
+          <strong>{tr('Rotation history')}</strong>
+          <span className="muted small">{data.timeline.filter((t) => t.kind === 'ON').length} {tr('turns on the bike')}</span>
         </summary>
         <ul className="list">
           {data.timeline.map((t, i) => (
@@ -172,11 +172,11 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
               <span>{when(t.date)}</span>
               {t.kind === 'ON' ? (
                 <span>
-                  <Link to={`/inventory/${t.component_id}`}>{t.label}</Link> on{t.until ? ` until ${when(t.until)}` : ', still on'} · {km(t.km ?? 0, 0)}
+                  <Link to={`/inventory/${t.component_id}`}>{t.label}</Link> {tr('on')}{t.until ? ` until ${when(t.until)}` : tr(', still on')} · {km(t.km ?? 0, 0)}
                 </span>
               ) : (
                 <span>
-                  <Link to={`/inventory/${t.component_id}`}>{t.label}</Link> {t.kind === 'TOP_UP' ? 'liquid wax top-up' : 'hot waxed'}
+                  <Link to={`/inventory/${t.component_id}`}>{t.label}</Link> {t.kind === 'TOP_UP' ? tr('liquid wax top-up') : tr('hot waxed')}
                 </span>
               )}
             </li>
@@ -184,9 +184,9 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
         </ul>
       </details>
       {data.candidates.length > 0 && <p>{addPicker}</p>}
-      <p className="small muted">A chain joins this rotation when it first goes on this bike, or here. Give each chain a mark under Edit details (A, B …): it is shown after the name, e.g. "Chain [A]".</p>
+      <p className="small muted">{tr('A chain joins this rotation when it first goes on this bike, or here. Give each chain a mark under Edit details (A, B …): it is shown after the name, e.g. "Chain [A]".')}</p>
       {waxing && (
-        <Sheet title="Wax chains" onClose={() => setWaxing(false)}>
+        <Sheet title={tr('Wax chains')} onClose={() => setWaxing(false)}>
           <WaxForm data={data} onDone={(t) => (setWaxing(false), done(t))} />
         </Sheet>
       )}
@@ -223,7 +223,7 @@ function WaxForm({ data, onDone }: { data: ChainRotationData; onDone: (text: str
   return (
     <div className="form">
       <fieldset className="field">
-        <legend className="field-label">Chains you hot waxed</legend>
+        <legend className="field-label">{tr('Chains you hot waxed')}</legend>
         {data.chains
           .filter((c) => !['RETIRED', 'WORN'].includes(c.state))
           .map((c) => (
@@ -232,12 +232,12 @@ function WaxForm({ data, onDone }: { data: ChainRotationData; onDone: (text: str
             </label>
           ))}
       </fieldset>
-      <Field label="Waxed on">
+      <Field label={tr('Waxed on')}>
         <input type="date" value={at} onChange={(e) => setAt(e.target.value)} />
       </Field>
-      <Field label="Then put on the bike">
+      <Field label={tr('Then put on the bike')}>
         <select value={then ?? ''} onChange={(e) => setPicked(e.target.value ? Number(e.target.value) : null)}>
-          <option value="">{onChain ? `Keep ${onChain.label} on` : 'Nothing for now'}</option>
+          <option value="">{onChain ? tr('Keep {label} on', { label: onChain.label }) : tr('Nothing for now')}</option>
           {data.chains
             .filter((c) => c.component_id !== data.on && (ids.includes(c.component_id) || c.state === 'READY_TO_INSTALL'))
             .map((c) => (
@@ -247,17 +247,17 @@ function WaxForm({ data, onDone }: { data: ChainRotationData; onDone: (text: str
             ))}
         </select>
       </Field>
-      {onChain && then !== null && <p className="small muted">{onChain.label} comes off first (stored, keeps its km) and is waxed with the others if ticked.</p>}
+      {onChain && then !== null && <p className="small muted">{onChain.label} {tr('comes off first (stored, keeps its km) and is waxed with the others if ticked.')}</p>}
       <Field
-        label="Wax used (optional)"
+        label={tr('Wax used (optional)')}
         hint={
           <>
-            Your wax is kept under <Link to="/inventory?tab=supplies">Inventory → Supplies</Link> (add one there with Add supply).
+            {tr('Your wax is kept under')} <Link to="/inventory?tab=supplies">{tr('Inventory → Supplies')}</Link> {tr('(add one there with Add supply).')}
           </>
         }
       >
-        <select aria-label="Wax used" value={supply} onChange={(e) => setSupply(e.target.value)}>
-          <option value="">Not recorded</option>
+        <select aria-label={tr('Wax used')} value={supply} onChange={(e) => setSupply(e.target.value)}>
+          <option value="">{tr('Not recorded')}</option>
           {supplies.data?.filter((c) => ['WAX', 'LUBE', 'OTHER'].includes(c.kind)).map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -268,7 +268,7 @@ function WaxForm({ data, onDone }: { data: ChainRotationData; onDone: (text: str
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={busy || ids.length === 0} onClick={save}>
-          {busy ? 'Saving…' : `Hot wax ${ids.length} chain${ids.length === 1 ? '' : 's'}`}
+          {busy ? tr('Saving…') : trn('Hot wax {n} chain', 'Hot wax {n} chains', ids.length)}
         </button>
       </div>
     </div>

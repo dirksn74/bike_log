@@ -1,5 +1,6 @@
 // Part properties: form strings ↔ stored values (components/Properties.tsx).
 import type { SpecFieldDef } from './types'
+import { tr } from './i18n'
 
 export type Raw = Record<string, string>
 
@@ -17,7 +18,7 @@ export function specsFrom(fields: SpecFieldDef[], raw: Raw): Record<string, unkn
     if (!v) continue
     if (f.kind === 'number' || f.kind === 'integer') {
       const n = Number(v.replace(',', '.'))
-      if (Number.isNaN(n)) throw new Error(`${f.label}: enter a number, e.g. ${f.unit === '°' ? '-10' : '100'}`)
+      if (Number.isNaN(n)) throw new Error(tr('{label}: enter a number, e.g. {x}', { label: f.label, x: f.unit === '°' ? '-10' : '100' }))
       out[f.key] = f.kind === 'integer' ? Math.round(n) : n
     } else if (f.kind === 'boolean') out[f.key] = v === 'yes'
     else out[f.key] = v

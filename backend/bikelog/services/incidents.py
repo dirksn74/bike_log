@@ -14,6 +14,7 @@ from bikelog.catalog import COMPONENT_TYPES, INCIDENT_OPTIONS, INCIDENT_TYPES, W
 from bikelog.models import Bike, Component, Installation, JournalEntry, Ride, UsageContribution, new_uuid
 from bikelog.services import journal, settings
 from bikelog.services.errors import DomainError, NotFound
+from bikelog.i18n import tr
 
 REMOVED = "incident removed"            # void reason of a removed incident (Restore brings these back)
 CHANGED = "taken out of the incident"   # void reason of an affected part unticked while editing
@@ -22,7 +23,7 @@ CHANGED = "taken out of the incident"   # void reason of an affected part untick
 def _ride(session: Session, ride_id: int) -> Ride:
     ride = session.get(Ride, ride_id)
     if ride is None:
-        raise NotFound("Ride not found")
+        raise NotFound(tr("Ride not found"))
     return ride
 
 
@@ -69,9 +70,9 @@ def _matches(opt: IncidentOption, part: dict) -> bool:
 def choices(session: Session, ride: Ride, incident_type: str) -> list[dict]:
     """What this incident type can affect on this ride: key, label, component_id (None = not a part)."""
     if incident_type not in INCIDENT_TYPES:
-        raise DomainError(f"incident_type must be one of {', '.join(INCIDENT_TYPES)}")
+        raise DomainError(tr("incident_type must be one of {items}", items=', '.join(INCIDENT_TYPES)))
     parts = parts_on_ride(session, ride)
-    bike = {"key": WHOLE_BIKE, "label": "Whole bike", "component_id": None, "affected": None, "recorded": True}
+    bike = {"key": WHOLE_BIKE, "label": tr("Whole bike"), "component_id": None, "affected": None, "recorded": True}
     opts = INCIDENT_OPTIONS.get(incident_type)
     if opts is None:     # defect / other: any part that was on the bike
         return [bike] + [{"key": f"c{p['component_id']}", "label": p["label"], "component_id": p["component_id"],
@@ -146,7 +147,7 @@ def _pick(session: Session, ride: Ride, incident_type: str, keys: list[str]) -> 
     keys = list(dict.fromkeys(keys or [WHOLE_BIKE]))
     bad = [k for k in keys if k not in opts and not k.startswith("x:")]
     if bad:
-        raise DomainError(f"{INCIDENT_TYPES[incident_type]}: this ride cannot have {', '.join(bad)} affected")
+        raise DomainError(tr("{INCIDENT_TYPES}: this ride cannot have {items} affected", INCIDENT_TYPES=INCIDENT_TYPES[incident_type], items=', '.join(bad)))
     return [opts[k] if k in opts else {"key": k, "component_id": None, "affected": k[2:]} for k in keys]
 
 
@@ -156,7 +157,7 @@ def _entries(session: Session, group: str, *, voided: bool | None = False) -> li
         q = q.where(JournalEntry.voided_at.is_(None))
     rows = list(session.scalars(q.order_by(JournalEntry.id)))
     if not rows:
-        raise NotFound("Incident not found")
+        raise NotFound(tr("Incident not found"))
     return rows
 
 
@@ -173,7 +174,7 @@ def log(session: Session, ride_id: int, *, incident_type: str, affected: list[st
     ride = _ride(session, ride_id)
     picks = _pick(session, ride, incident_type, affected or [])
     if ride.bike_id is None and any(p["component_id"] is None for p in picks):
-        raise DomainError("This ride has no bike; pick the parts that were affected or set the ride's bike first")
+        raise DomainError(tr("This ride has no bike; pick the parts that were affected or set the ride's bike first"))
     group = new_uuid()
     for p in picks:
         _add(session, ride, incident_type, p, group=group, text=text, resolved_on=resolved_on)
@@ -187,7 +188,7 @@ def update(session: Session, group: str, *, incident_type: str | None = None, af
     rows = _entries(session, group)
     ride = _ride(session, rows[0].ride_id) if rows[0].ride_id else None
     if ride is None:
-        raise DomainError("This incident is not linked to a ride")
+        raise DomainError(tr("This incident is not linked to a ride"))
     itype = incident_type or rows[0].incident_type
     current = choices(session, ride, itype)
     have = {_key(e, current): e for e in rows}
@@ -197,7 +198,7 @@ def update(session: Session, group: str, *, incident_type: str | None = None, af
         picks = [{"key": k} for k in have]
     want = {p["key"] for p in picks}
     if not want:
-        raise DomainError("Pick at least one thing that was affected")
+        raise DomainError(tr("Pick at least one thing that was affected"))
     first = rows[0]
     new_text = text if "text" in fields else (None if first.text == INCIDENT_TYPES.get(first.incident_type)
                                               else first.text)
@@ -225,7 +226,7 @@ def remove(session: Session, group: str) -> None:
 def restore(session: Session, group: str) -> None:
     rows = [e for e in _entries(session, group, voided=None) if e.voided_at and e.void_reason == REMOVED]
     if not rows:
-        raise DomainError("Nothing to restore: this incident was not removed")
+        raise DomainError(tr("Nothing to restore: this incident was not removed"))
     for e in rows:
         e.voided_at, e.void_reason = None, None
     session.flush()

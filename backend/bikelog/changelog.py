@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS
 from bikelog.models import Bike, ChangeLog, Component, Installation, MaintenanceEvent, Product
 from bikelog.timeutil import utc_now
+from bikelog.i18n import tr
 
 SOURCES = {
     "APP": "You (app)",
@@ -290,8 +291,8 @@ def entries(session: Session, *, bike_id: int | None = None, component_id: int |
         if field in bike_labels and value and value.isdigit():
             return _fmt(session, "rotation_bike_id", int(value))
         return value
-    return [{"id": c.id, "changed_at": c.changed_at, "action": c.action, "field": c.field,
+    return [{"id": c.id, "changed_at": c.changed_at, "action": c.action, "field": tr(c.field) if c.field else c.field,
              "old_value": shown(c.field, c.old_value), "new_value": shown(c.field, c.new_value), "source": c.source,
-             "who": SOURCES.get(c.source, c.source), "via": c.via,
+             "who": tr(SOURCES.get(c.source, c.source)), "via": c.via,
              "component_id": c.component_id, "component": labels.get(c.component_id) if bike_id is not None else None}
             for c in session.scalars(q)]

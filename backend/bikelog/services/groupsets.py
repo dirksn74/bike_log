@@ -20,6 +20,7 @@ from bikelog.models import Component, Installation, Product
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance
 from bikelog.services.errors import DomainError, NotFound
+from bikelog.i18n import code_text, lc, tr
 
 OCCUPIED_MODES = {"KEEP": "Keep the current part; the new one becomes a spare",
                   "REPLACE": "Replace the current part with the new one"}
@@ -28,7 +29,7 @@ OCCUPIED_MODES = {"KEEP": "Keep the current part; the new one becomes a spare",
 def get_template(code: str) -> dict:
     t = TEMPLATES.get(code)
     if not t:
-        raise NotFound(f"Unknown groupset template {code!r}")
+        raise NotFound(tr("Unknown groupset template {code}", code=repr(code)))
     return t
 
 
@@ -49,11 +50,11 @@ def choose(template: dict, options: dict | None) -> tuple[dict, dict]:
         choice = next((c for c in opt["choices"] if c["value"] == value), None)
         if choice is None:
             allowed = ", ".join(c["value"] for c in opt["choices"])
-            raise DomainError(f"{opt['label']}: {value!r} is not offered (choose {allowed})")
+            raise DomainError(tr("{opt}: {value} is not offered (choose {allowed})", opt=opt['label'], value=repr(value), allowed=allowed))
         chosen[opt["key"]] = value
         variables.update(choice["vars"])
     if options:
-        raise DomainError(f"Unknown options: {', '.join(options)}")
+        raise DomainError(tr("Unknown options: {items}", items=', '.join(options)))
     return chosen, variables
 
 
@@ -130,26 +131,26 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
     go straight into storage instead of onto the bike (e.g. a bottom bracket that does not fit the frame)."""
     template = get_template(code)
     if occupied not in OCCUPIED_MODES:
-        raise DomainError(f"occupied must be one of {', '.join(OCCUPIED_MODES)}")
+        raise DomainError(tr("occupied must be one of {items}", items=', '.join(OCCUPIED_MODES)))
     bike = inv.get_bike(session, bike_id) if bike_id is not None else None
     if bike and bike.status == "RETIRED":
-        raise DomainError(f"{bike.name} is retired")
+        raise DomainError(tr("{name} is retired", name=bike.name))
     chosen, variables = choose(template, options)
     all_items = items(template, chosen, variables)
     keys = {i["key"] for i in all_items}
     if include is not None:
         unknown = set(include) - {i["key"] for i in template["items"]}
         if unknown:
-            raise DomainError(f"Unknown items: {', '.join(sorted(unknown))}")
+            raise DomainError(tr("Unknown items: {items}", items=', '.join(sorted(unknown))))
         selected = [i for i in all_items if i["key"] in set(include)]
     else:
         selected = [i for i in all_items if i["default"]]
     if not selected:
-        raise DomainError("Pick at least one part to add")
+        raise DomainError(tr("Pick at least one part to add"))
     selected_keys = {i["key"] for i in selected}
     to_spares = set(to_spares or [])
     if to_spares - keys:
-        raise DomainError(f"Unknown items: {', '.join(sorted(to_spares - keys))}")
+        raise DomainError(tr("Unknown items: {items}", items=', '.join(sorted(to_spares - keys))))
     prefix = (label_prefix or template.get("label_prefix") or template["series"]).strip()
     taken: set[str] = set()
     rows = []
@@ -164,13 +165,13 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
                "product_id": product.id if product else None, "product_exists": product is not None,
                "list_price_cents": product.list_price_cents if product else None,
                "action": "SPARE", "slot": mount["slot"], "bike_id": None, "parent_key": None,
-               "parent_component_id": None, "replaces_component_id": None, "text": "Added as a spare"}
+               "parent_component_id": None, "replaces_component_id": None, "text": tr("Added as a spare")}
         if bike is None:
-            row["text"] = "Added as a spare (no bike chosen)"
+            row["text"] = tr("Added as a spare (no bike chosen)")
             rows.append(row)
             continue
         if it["key"] in to_spares:
-            row.update(text="Kept as a spare, not installed (your choice)", kept_as_spare=True)
+            row.update(text=tr("Kept as a spare, not installed (your choice)"), kept_as_spare=True)
             rows.append(row)
             continue
         where_text = bike.name
@@ -178,20 +179,19 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
         if "parent" in mount:
             if mount["parent"] not in selected_keys:
                 name = next((i["name"] for i in all_items if i["key"] == mount["parent"]), mount["parent"])
-                row["text"] = (f"Added as a spare: it goes on the new {name}, which is not part of this import"
-                               if mount["parent"] in keys else "Added as a spare")
+                row["text"] = (tr("Added as a spare: it goes on the new {name}, which is not part of this import", name=name)
+                               if mount["parent"] in keys else tr("Added as a spare"))
                 rows.append(row)
                 continue
             parent_row = next(r for r in rows if r["key"] == mount["parent"])
             row.update(action="INSTALL", parent_key=mount["parent"],
-                       text=f"Mounted on {parent_row['label']}")
+                       text=tr("Mounted on {label}", label=parent_row['label']))
             rows.append(row)
             continue
         if "wheel" in mount:
             wheel_inst = inv.wheel_on_bike(session, bike.id, mount["wheel"])
             if wheel_inst is None:
-                row["text"] = (f"Added as a spare: {bike.name} has no {mount['wheel'].replace('_', ' ').lower()} "
-                               "installed. Install it on the wheel later.")
+                row["text"] = (tr("Added as a spare: {name} has no {x} installed. Install it on the wheel later.", name=bike.name, x=code_text(mount['wheel'])))
                 rows.append(row)
                 continue
             wheel = session.get(Component, wheel_inst.component_id)
@@ -201,19 +201,18 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
         else:
             row["bike_id"] = bike.id
             occupant = _open_in(session, bike_id=bike.id, slot=mount["slot"])
-        slot_text = mount["slot"].replace("_", " ").lower()
+        slot_text = code_text(mount["slot"])
         if occupant is None:
-            row.update(action="INSTALL", text=f"Installed on {where_text} ({slot_text})")
+            row.update(action="INSTALL", text=tr("Installed on {where} ({slot})", where=where_text, slot=slot_text))
         else:
             old = session.get(Component, occupant.component_id)
             if occupied == "REPLACE":
                 outcome = COMPONENT_TYPES[old.component_type].removed_default
                 row.update(action="REPLACE", replaces_component_id=old.id, replaces_label=old.label,
                            old_outcome=outcome,
-                           text=f"Replaces {old.label} on {where_text}; {old.label} → "
-                                f"{DISPOSITIONS[outcome].lower()}")
+                           text=tr("Replaces {label} on {where}; {label} → {outcome}", label=old.label, where=where_text, outcome=lc(tr(DISPOSITIONS[outcome]))))
             else:
-                row.update(text=f"Added as a spare: {where_text} ({slot_text}) already has {old.label}",
+                row.update(text=tr("Added as a spare: {where} ({slot}) already has {label}", where=where_text, slot=slot_text, label=old.label),
                            occupied_by=old.label)
         rows.append(row)
     counts = {a: sum(1 for r in rows if r["action"] == a) for a in ("INSTALL", "REPLACE", "SPARE")}
@@ -243,14 +242,14 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
     selected = {r["key"] for r in p["items"]}
     for key, cents in prices.items():
         if key not in selected:
-            raise DomainError(f"Price given for {key!r}, which is not part of this import")
+            raise DomainError(tr("Price given for {key}, which is not part of this import", key=repr(key)))
         if cents is not None and cents < 0:
-            raise DomainError("A price cannot be negative")
+            raise DomainError(tr("A price cannot be negative"))
     if bundle is not None and any(v is not None for v in prices.values()):
-        raise DomainError("Enter either one price for the whole bundle or prices per part, not both")
+        raise DomainError(tr("Enter either one price for the whole bundle or prices per part, not both"))
     for key, outcome in outcomes.items():
         if outcome not in DISPOSITIONS or outcome == "VOIDED":
-            raise DomainError(f"{key}: unknown outcome {outcome!r}")
+            raise DomainError(tr("{key}: unknown outcome {outcome}", key=key, outcome=repr(outcome)))
     created: dict[str, Component] = {}
     note = f"Added with the groupset import: {template['name']}" + (f"\n{notes}" if notes else "")
     for row in p["items"]:
@@ -302,17 +301,17 @@ def check_templates() -> list[str]:
     for code, t in TEMPLATES.items():
         keys = [i["key"] for i in t["items"]]
         if len(keys) != len(set(keys)):
-            problems.append(f"{code}: duplicate item keys")
+            problems.append(tr("{code}: duplicate item keys", code=code))
         option_keys = {o["key"] for o in t["options"]}
         for o in t["options"]:
             if o["default"] not in {c["value"] for c in o["choices"]}:
-                problems.append(f"{code}: option {o['key']} default is not a choice")
+                problems.append(tr("{code}: option {o} default is not a choice", code=code, o=o['key']))
         for opt_values in _all_choice_sets(t):
             chosen, variables = choose(t, opt_values)
             try:
                 resolved = items(t, chosen, variables)
             except (KeyError, ValueError) as e:
-                problems.append(f"{code}: placeholder {e} has no value for {opt_values}")
+                problems.append(tr("{code}: placeholder {e} has no value for {opt_values}", code=code, e=e, opt_values=opt_values))
                 continue
             for i in resolved:
                 ctype = COMPONENT_TYPES.get(i["type"])

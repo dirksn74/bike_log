@@ -20,6 +20,7 @@ from bikelog.services import journal
 from bikelog.services import maintenance as m
 from bikelog.services.inventory import bike_setup, get_bike, location, open_installation
 from bikelog.services.usage import bike_hours_since, bike_km_since, component_usage
+from bikelog.i18n import tr
 
 GROUPSET_CATEGORIES = ("Drivetrain", "Brakes", "Controls")
 NEEDS_ACTION = ("OVERDUE", "DUE", "DUE_SOON", "ATTENTION")
@@ -94,7 +95,7 @@ def _name(session: Session, comps: list[Component]) -> str:
                                  .order_by(PurchaseBundle.id)):
             return b.name
     makers = Counter(c.product.maker for c in comps if c.product and c.product.maker)
-    return f"{makers.most_common(1)[0][0]} groupset" if makers else "Groupset"
+    return f"{makers.most_common(1)[0][0]} groupset" if makers else tr("Groupset")
 
 
 def groupset_summary(session: Session, bike) -> dict | None:

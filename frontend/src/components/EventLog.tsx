@@ -6,6 +6,7 @@ import { centsInput, euro, toCents, when } from '../format'
 import type { EventRow } from '../types'
 import ShopPicker from './ShopPicker'
 import { Empty, Field, FormError, Sheet, Tag } from './ui'
+import { tr, codeText } from '../i18n'
 
 // Maintenance log with Edit and Delete on every entry. Delete removes the entry from the log, the reminders
 // and the costs (supplies it used come back into stock); it is kept under "Deleted entries" to restore.
@@ -16,11 +17,11 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
   const live = events.filter((e) => !e.voided).slice(0, limit)
   const deleted = events.filter((e) => e.voided)
   async function del(e: EventRow) {
-    if (!window.confirm(`Delete "${e.action}" on ${when(e.performed_at)}? It disappears from the log and the reminders; you can restore it under "Deleted entries".`)) return
+    if (!window.confirm(tr('Delete "{action}" on {performed_at}? It disappears from the log and the reminders; you can restore it under "Deleted entries".', { action: e.action, performed_at: when(e.performed_at) }))) return
     setErr(null)
     try {
       await api.del(`/maintenance/events/${e.id}`)
-      toast('Entry deleted. Restore it under "Deleted entries" if that was a mistake.')
+      toast(tr('Entry deleted. Restore it under "Deleted entries" if that was a mistake.'))
       onChanged()
     } catch (x) {
       setErr((x as Error).message)
@@ -30,7 +31,7 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
     setErr(null)
     try {
       await api.post(`/maintenance/events/${e.id}/restore`, {})
-      toast('Entry restored.')
+      toast(tr('Entry restored.'))
       onChanged()
     } catch (x) {
       setErr((x as Error).message)
@@ -39,14 +40,14 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
   const where = (e: EventRow) => (
     <>
       {(show === 'part' || show === 'both') && e.component_id && <Link to={`/inventory/${e.component_id}`}>{e.component}</Link>}
-      {(show === 'bike' || show === 'both') && !e.component_id && e.bike && <span className="muted">{e.bike} (whole bike)</span>}
+      {(show === 'bike' || show === 'both') && !e.component_id && e.bike && <span className="muted">{e.bike} {tr('(whole bike)')}</span>}
     </>
   )
   return (
     <>
       <FormError error={err} form={false} />
       {live.length === 0 ? (
-        <Empty title="Nothing logged yet" />
+        <Empty title={tr('Nothing logged yet')} />
       ) : (
         <ul className="list event-log">
           {live.map((e) => (
@@ -55,13 +56,13 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
               <strong>{e.action}</strong>
               {where(e)}
               <span className="small">{details(e)}</span>
-              {e.outcome && <Tag>{e.outcome.replace(/_/g, ' ').toLowerCase()}</Tag>}
+              {e.outcome && <Tag>{codeText(e.outcome)}</Tag>}
               <span className="row-actions">
                 <button className="btn btn-small" onClick={() => setEditing(e)}>
-                  Edit
+                  {tr('Edit')}
                 </button>
                 <button className="btn btn-small" onClick={() => del(e)}>
-                  Delete
+                  {tr('Delete')}
                 </button>
               </span>
             </li>
@@ -70,7 +71,7 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
       )}
       {deleted.length > 0 && (
         <details className="deleted-entries">
-          <summary className="small muted">Deleted entries ({deleted.length})</summary>
+          <summary className="small muted">{tr('Deleted entries (')}{deleted.length})</summary>
           <ul className="list">
             {deleted.map((e) => {
               const undone = (e.void_reason ?? '').startsWith('undone')
@@ -80,10 +81,10 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
                   <span>{e.action}</span>
                   {where(e)}
                   {undone ? (
-                    <span className="small muted">taken back with Undo of its session</span>
+                    <span className="small muted">{tr('taken back with Undo of its session')}</span>
                   ) : (
                     <button className="btn btn-small" onClick={() => restore(e)}>
-                      Restore
+                      {tr('Restore')}
                     </button>
                   )}
                 </li>
@@ -93,8 +94,8 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
         </details>
       )}
       {editing && (
-        <Sheet title={`Edit: ${editing.action}`} onClose={() => setEditing(null)}>
-          <EditEvent ev={editing} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); toast('Entry saved.'); onChanged() }} />
+        <Sheet title={tr('Edit: {action}', { action: editing.action })} onClose={() => setEditing(null)}>
+          <EditEvent ev={editing} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); toast(tr('Entry saved.')); onChanged() }} />
         </Sheet>
       )}
     </>
@@ -102,7 +103,7 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
 }
 
 function details(e: EventRow): string {
-  return [e.symptom && `symptom: ${e.symptom}`, e.work_done, e.measurement_value !== null && `${e.measurement_value}${e.measurement_unit ?? ''}`, e.consumable, e.cost_cents ? euro(e.cost_cents) : null, e.shop ? `at ${e.shop}` : null, e.notes]
+  return [e.symptom && tr('symptom: {symptom}', { symptom: e.symptom }), e.work_done, e.measurement_value !== null && `${e.measurement_value}${e.measurement_unit ?? ''}`, e.consumable, e.cost_cents ? euro(e.cost_cents) : null, e.shop ? `at ${e.shop}` : null, e.notes]
     .filter(Boolean)
     .join(' · ')
 }
@@ -125,9 +126,9 @@ function EditEvent({ ev, onSaved, onCancel }: { ev: EventRow; onSaved: () => voi
   async function save() {
     setErr(null)
     const cost = toCents(f.cost)
-    if (Number.isNaN(cost)) return setErr('Cost: enter an amount such as 12,50')
+    if (Number.isNaN(cost)) return setErr(tr('Cost: enter an amount such as 12,50'))
     const value = f.measurement.trim() === '' ? null : Number(f.measurement.replace(',', '.'))
-    if (value !== null && Number.isNaN(value)) return setErr('Measurement: enter a number')
+    if (value !== null && Number.isNaN(value)) return setErr(tr('Measurement: enter a number'))
     // a date alone keeps the time the entry had (the order against that day's rides stays the same)
     const at = f.at === ev.performed_at.slice(0, 10) ? ev.performed_at : f.at
     try {
@@ -142,34 +143,34 @@ function EditEvent({ ev, onSaved, onCancel }: { ev: EventRow; onSaved: () => voi
     <div className="form">
       <p className="small muted">
         {ev.component ?? ev.bike}
-        {ev.consumable ? ` · used: ${ev.consumable} (to change what was done or the supplies, delete the entry and record it again)` : ''}
+        {ev.consumable ? tr(' · used: {consumable} (to change what was done or the supplies, delete the entry and record it again)', { consumable: ev.consumable }) : ''}
       </p>
       <div className="row">
-        <Field label="Date">
+        <Field label={tr('Date')}>
           <input type="date" value={f.at} onChange={set('at')} />
         </Field>
-        <Field label="Cost (optional)">
+        <Field label={tr('Cost (optional)')}>
           <input inputMode="decimal" value={f.cost} onChange={set('cost')} placeholder="€" />
         </Field>
       </div>
       {has('symptom') && (
-        <Field label="Symptom">
+        <Field label={tr('Symptom')}>
           <input value={f.symptom} onChange={set('symptom')} />
         </Field>
       )}
       {has('work_done') && (
-        <Field label="Work done">
+        <Field label={tr('Work done')}>
           <input value={f.work_done} onChange={set('work_done')} />
         </Field>
       )}
       {(ev.outcome || has('outcome')) && (
-        <Field label="Outcome">
+        <Field label={tr('Outcome')}>
           {act && act.outcomes.length ? (
             <select value={f.outcome} onChange={set('outcome')}>
               <option value="">—</option>
               {act.outcomes.map((o) => (
                 <option key={o} value={o}>
-                  {o.replace(/_/g, ' ').toLowerCase()}
+                  {codeText(o)}
                 </option>
               ))}
             </select>
@@ -179,21 +180,21 @@ function EditEvent({ ev, onSaved, onCancel }: { ev: EventRow; onSaved: () => voi
         </Field>
       )}
       {(ev.measurement_value !== null || act?.unit) && (
-        <Field label={`Measurement${ev.measurement_unit || act?.unit ? ` (${ev.measurement_unit || act?.unit})` : ''}`}>
+        <Field label={tr('Measurement{x}', { x: ev.measurement_unit || act?.unit ? ` (${ev.measurement_unit || act?.unit})` : '' })}>
           <input inputMode="decimal" value={f.measurement} onChange={set('measurement')} />
         </Field>
       )}
-      <ShopPicker value={f.shop} onChange={(v) => setF((x) => ({ ...x, shop: v }))} label="Done by a bike shop (optional)" />
-      <Field label="Notes">
+      <ShopPicker value={f.shop} onChange={(v) => setF((x) => ({ ...x, shop: v }))} label={tr('Done by a bike shop (optional)')} />
+      <Field label={tr('Notes')}>
         <textarea rows={2} value={f.notes} onChange={set('notes')} />
       </Field>
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={save}>
-          Save
+          {tr('Save')}
         </button>
         <button className="btn" onClick={onCancel}>
-          Cancel
+          {tr('Cancel')}
         </button>
       </div>
     </div>

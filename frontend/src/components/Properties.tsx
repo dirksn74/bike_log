@@ -4,6 +4,7 @@ import { useApp } from "../context";
 import { show, specsFrom, toRaw, type Raw } from "../specs";
 import type { SpecFieldDef } from "../types";
 import { Card, Field, FormError } from "./ui";
+import { tr } from '../i18n'
 
 // A part's properties (stem length, reach, integration ...): the fields of its type (product_specs.py,
 // sent with meta.component_types), in Add part and on the part's page. Empty = not known.
@@ -33,7 +34,7 @@ export function SpecInputs({
                 <option value="">—</option>
                 {(f.kind === "boolean" ? ["yes", "no"] : f.values).map((v) => (
                   <option key={v} value={v}>
-                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                    {tr(v.charAt(0).toUpperCase() + v.slice(1))}
                   </option>
                 ))}
               </select>
@@ -93,7 +94,7 @@ export function PropertiesCard({
         specs: { ...others, ...specsFrom(fields, edit) },
         notes: note.trim() || null,
       });
-      toast("Properties saved.");
+      toast(tr('Properties saved.'));
       setEdit(null);
       onChanged();
     } catch (e) {
@@ -104,7 +105,7 @@ export function PropertiesCard({
   }
   return (
     <Card
-      title="Properties"
+      title={tr('Properties')}
       className="properties-card"
       actions={
         !edit && (
@@ -115,7 +116,7 @@ export function PropertiesCard({
               setEdit(toRaw(fields, { ...(productSpecs ?? {}), ...specs }))
             )}
           >
-            Edit properties
+            {tr('Edit properties')}
           </button>
         )
       }
@@ -123,29 +124,28 @@ export function PropertiesCard({
       {edit ? (
         <div className="form">
           <SpecInputs fields={fields} raw={edit} onChange={setEdit} />
-          <Field label="Notes">
+          <Field label={tr('Notes')}>
             <textarea
               rows={3}
-              aria-label="Notes"
+              aria-label={tr('Notes')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Anything worth knowing about this part"
+              placeholder={tr('Anything worth knowing about this part')}
             />
           </Field>
           <FormError error={err} />
           <div className="form-actions">
             <button className="btn btn-primary" disabled={busy} onClick={save}>
-              Save
+              {tr('Save')}
             </button>
             <button className="btn" onClick={() => setEdit(null)}>
-              Cancel
+              {tr('Cancel')}
             </button>
           </div>
         </div>
       ) : known.length === 0 && !notes ? (
         <p className="small muted">
-          None entered yet. Edit properties to add them (all optional), and
-          notes.
+          {tr('None entered yet. Edit properties to add them (all optional), and notes.')}
         </p>
       ) : (
         <>
@@ -157,7 +157,7 @@ export function PropertiesCard({
                   {show(value(f.key))}
                   {f.unit && f.unit !== "°" ? ` ${f.unit}` : (f.unit ?? "")}
                   {specs[f.key] === undefined && (
-                    <span className="muted small"> (from the product)</span>
+                    <span className="muted small"> {tr('(from the product)')}</span>
                   )}
                 </dd>
               </div>
@@ -165,7 +165,7 @@ export function PropertiesCard({
           </dl>
           {notes && (
             <p className="part-notes">
-              <span className="muted small">Notes</span>
+              <span className="muted small">{tr('Notes')}</span>
               <br />
               {notes}
             </p>
