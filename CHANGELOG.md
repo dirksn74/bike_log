@@ -17,6 +17,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   name (e.g. "Continental Grand Prix 5000 S TR 28" …" → Continental Grand Prix 5000 S TR) and links the
   ticked ones in one click; names stay as typed. The Part life report then averages per product. PHP web
   version: its Maker/Model fields get the same suggestions. No database change.
+- **Brand and model on the part page** (Dirk 2026-11-15: "if i click on a tire … i still dont see brand and
+  model"). The part page always shows *Brand and model* (or *not set*) with a button that opens Edit details.
 - **Delete a part entered by mistake** (Dirk 2026-11-15). Part page → More… → **Delete (entered by
   mistake)**, shown only while nothing has happened to the part yet (never installed, no km, no work, no
   notes, not taken from stock). Everything else is retired as before, so no history is lost.

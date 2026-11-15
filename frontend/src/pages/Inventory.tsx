@@ -1469,7 +1469,13 @@ export function ComponentDetailPage() {
             </button>
           </p>
         )}
-        {data.product && <p className="small muted">{tr('Product:')} {data.product}</p>}
+        {/* brand and model always visible (DECISIONS 149), with a way to set them */}
+        <p className="small">
+          <span className="muted">{tr('Brand and model:')}</span> {data.product ?? <span className="muted">{tr('not set')}</span>}{' '}
+          <button className="btn btn-small" onClick={() => setSheet('details')}>
+            {data.product ? tr('Change') : tr('Set brand and model')}
+          </button>
+        </p>
         {(data.component_type === 'FRONT_WHEEL' || data.component_type === 'REAR_WHEEL') && (
           <p className="small">
             {tr('Tire setup:')} <TireSetupSelect wheelId={data.id} value={data.tire_setup} onSaved={reload} />{' '}
