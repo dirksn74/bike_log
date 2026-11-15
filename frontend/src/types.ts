@@ -243,6 +243,7 @@ export interface Task {
   due_date?: string
   snooze_id?: number
   origin?: string
+  trigger?: string
   rotation?: { kind: 'SWAP' | 'WAX' | 'INSTALL'; text: string; to?: number; to_label?: string; bike_id: number }
   forecast?: { status: 'OK' | 'INSUFFICIENT_INFO'; text: string; date?: string; in_days?: number } | null
 }
@@ -451,7 +452,7 @@ export interface Rule {
   component_id: number | null
   action_code: string
   action: string
-  trigger: 'INTERVAL' | 'CYCLE_WINDOW' | 'PARENT_COUNT' | 'ONCE_AFTER_INSTALL'
+  trigger: 'INTERVAL' | 'CYCLE_WINDOW' | 'PARENT_COUNT' | 'ONCE_AFTER_INSTALL' | 'LIFETIME'
   interval_km: number | null
   interval_hours: number | null
   warn_hours: number | null

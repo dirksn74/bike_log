@@ -142,9 +142,19 @@ export default function TaskList({ tasks, onChange, emptyText = tr('Nothing due 
                   {tr('Wax chains')}
                 </Link>
               )}
-              {!t.rotation && (t.status !== 'ATTENTION' || !t.component_id) && t.status !== 'NOT_APPLICABLE' && (
+              {t.trigger === 'LIFETIME' && t.component_id && (
+                <Link className="btn btn-small btn-primary" to={`/inventory/${t.component_id}?do=replace`}>
+                  {tr('Replace…')}
+                </Link>
+              )}
+              {!t.rotation && t.trigger !== 'LIFETIME' && (t.status !== 'ATTENTION' || !t.component_id) && t.status !== 'NOT_APPLICABLE' && (
                 <button className="btn btn-small btn-primary" onClick={() => setLogging(t)}>
                   {tr('Log done')}
+                </button>
+              )}
+              {t.trigger === 'LIFETIME' && t.component_id && (
+                <button className="btn btn-small" onClick={() => setLogging(t)}>
+                  {tr('Log inspection')}
                 </button>
               )}
               {t.status === 'SNOOZED' ? (

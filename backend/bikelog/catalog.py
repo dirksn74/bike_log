@@ -321,7 +321,7 @@ class DefaultRule:
     name: str
     component_type: str
     action_code: str
-    trigger: str = "INTERVAL"                # INTERVAL | CYCLE_WINDOW | PARENT_COUNT | ONCE_AFTER_INSTALL
+    trigger: str = "INTERVAL"                # INTERVAL | CYCLE_WINDOW | PARENT_COUNT | ONCE_AFTER_INSTALL | LIFETIME
     interval_km: float | None = None
     interval_months: int | None = None
     window_min_km: float | None = None
@@ -363,6 +363,13 @@ DEFAULT_RULES: list[DefaultRule] = [
     DefaultRule("TIRE_CHECK", "Inspect tire", "TIRE", "TIRE_INSPECT", interval_km=1000, warn_km=100,
                 interval_months=12, warn_days=30,
                 notes="Yearly also for sidewall cracks from age; no bicycle-tire age limit was found."),
+    # Dirk 2026-11-15: "a tire lasts 6000km". The part's own total km (every wheel and bike, km from before
+    # included), so it carries over when tires swap front/rear; only a new tire starts again at 0 (DECISIONS 150)
+    DefaultRule("TIRE_REPLACE", "Replace tire", "TIRE", "TIRE_INSPECT", trigger="LIFETIME", interval_km=6000,
+                warn_km=500,
+                notes="Personal value (Dirk 2026-11-15: a tire lasts about 6,000 km). Counts the tire's own total km "
+                      "on every wheel and bike, km from before included; logging work does not reset it, a new "
+                      "tire starts at 0. Replace sooner when the tread is worn, cut or the sidewalls crack."),
     # sealant dries out with time, not distance; renewing it also resets the top-up reminder
     DefaultRule("TIRE_SEALANT", "Top up sealant", "TIRE", "SEALANT_TOP_UP", interval_months=3, warn_days=14,
                 reset_actions=("SEALANT_TOP_UP", "SEALANT_RENEW"), requires_setup="TUBELESS", origin="MANUFACTURER",

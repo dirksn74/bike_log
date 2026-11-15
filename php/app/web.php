@@ -108,6 +108,9 @@ function rule_summary(array $r): string
         return t('once {from}–{to} km after {action}', ['from' => num((float)$r['window_min_km']), 'to' => num((float)$r['window_max_km']),
             'action' => lc(Catalog::actionName((string)$r['cycle_action_code']))]) . $off;
     }
+    if ($r['trigger_kind'] === 'LIFETIME') {
+        return t('replace at {km} km in total', ['km' => num((float)$r['interval_km'])]) . $off;
+    }
     if ($r['trigger_kind'] === 'PARENT_COUNT') {
         $p = lc(Catalog::typePlural(Catalog::parentTypes((string)$r['component_type'])[0] ?? 'CHAIN'));
         return t('replace after {n} {parts}', ['n' => (int)$r['interval_count'], 'parts' => $p]) . $off;

@@ -190,7 +190,8 @@ scripts/release_notes.py text of a release page: docs/INSTALL.md + the version's
   used, `cost_cents` (service fee), `work_session_id`; voidable.
 - **service_rule** (trigger INTERVAL with km / months / ride hours (`interval_hours`, `warn_hours`), CYCLE
   window, PARENT_COUNT = number of parents served, `interval_count`, e.g. a quick link on its 2nd chain,
-  or ONCE_AFTER_INSTALL = once after fitting, taken as done after `window_max_km`). Target: exactly one
+  or ONCE_AFTER_INSTALL = once after fitting, taken as done after `window_max_km`, or LIFETIME = the part's
+  own total km reach `interval_km`, reset by nothing logged, only a new part starts at 0, DECISIONS 150). Target: exactly one
   of `component_type` (type default; "BIKE" = bike-level default), `component_id` (one part) or `bike_id`
   (one bike). `requires_setup`: a tire setup (TUBE/TUBELESS/TUBULAR) or a shifting type
   (ELECTRONIC/MECHANICAL). **reminder_snooze** (on a part, or `bike_id` with no part).
@@ -238,7 +239,11 @@ nothing. Starting mileage before its effective date covers earlier rides. Unknow
 **Reminders (`maintenance.py`).** Rules per type with overrides per part. Defaults: hot wax every 500 km;
 liquid-wax top-up once in the 250–300 km window after hot wax (the hot wax is then due 200 km after the top-up, DECISIONS 133; a wet ride makes the top-up due at once, DECISIONS 137); chain wear check
 1000 km; brake fluid every 24 months (a bleed never resets it); pad check 1000 km; wheel inspection
-3000 km/12 months; hub bearings 10000 km; freehub 5000 km/12 months; tire check 1000 km; sealant top-up every 3 months, tubeless only
+3000 km/12 months; hub bearings 10000 km; freehub 5000 km/12 months; tire check 1000 km; tire replace at
+6000 km of the tire's own total km (TIRE_REPLACE, trigger LIFETIME, `_lifetime_status`: km from before
+included, carries over front/rear swaps, an inspection never resets it, unknown earlier use =
+INSUFFICIENT_INFO, quotes the last TIRE_INSPECT; reminder button Replace… → part page `?do=replace`,
+DECISIONS 150); sealant top-up every 3 months, tubeless only
 (else NOT_APPLICABLE, hidden from the queue); headset service 5000 km/12 months. Part types include HEADSET and
 POWER_METER (on the bike or on a crankset; actions zero offset, battery, firmware). Ride-hour rules
 (`usage.hours_since`, rides without a moving time are counted and named): power meter

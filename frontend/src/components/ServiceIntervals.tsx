@@ -20,6 +20,7 @@ const n = (v: number | null | undefined) => (v == null ? '' : v.toLocaleString(l
 function describeRule(r: IntervalRule): string {
   if (r.trigger === 'CYCLE_WINDOW') return tr('once per hot-wax cycle, {n}–{n2} km after the hot wax', { n: n(r.window_min_km), n2: n(r.window_max_km) })
   if (r.trigger === 'PARENT_COUNT') return tr('replace after it has been on {interval_count} chains', { interval_count: r.interval_count })
+  if (r.trigger === 'LIFETIME') return tr('replace at {n} km in total (its own km on every wheel and bike)', { n: n(r.interval_km) }) + (r.warn_km ? tr(' · reminds you {join} before', { join: `${n(r.warn_km)} km` }) : '')
   if (r.trigger === 'ONCE_AFTER_INSTALL') return tr('once after fitting{x}', { x: r.window_max_km ? tr(' (within {n} km)', { n: n(r.window_max_km) }) : '' })
   const every = [r.interval_km && `${n(r.interval_km)} km`, r.interval_hours && tr('{n} h of riding', { n: n(r.interval_hours) }), r.interval_months && tr('{n} months', { n: r.interval_months })].filter(Boolean)
   let t = every.length ? tr('every {items}', { items: every.join(tr(' or ')) }) + (every.length > 1 ? tr(', whichever comes first') : '') : tr('no interval set')
@@ -122,6 +123,7 @@ function IntervalForm({ rule, onDone }: { rule: IntervalRule; onDone: () => void
         ...(rule.action_code === 'WAX_HOT' ? { after_top_up_km: num(f.after_top_up_km) } : {}),
       })
     else if (rule.trigger === 'PARENT_COUNT') Object.assign(body, { interval_count: num(f.interval_count) })
+    else if (rule.trigger === 'LIFETIME') Object.assign(body, { interval_km: num(f.interval_km), warn_km: num(f.warn_km) })
     else Object.assign(body, { window_min_km: num(f.window_min_km), window_max_km: num(f.window_max_km), warn_km: num(f.warn_km) })
     try {
       await api.patch(`/rules/${rule.id}`, body)
@@ -151,6 +153,12 @@ function IntervalForm({ rule, onDone }: { rule: IntervalRule; onDone: () => void
             <Field label={tr('… days before')}><input inputMode="numeric" aria-label={tr('Remind … days before')} value={f.warn_days} onChange={set('warn_days')} /></Field>
           </div>
         </>
+      )}
+      {rule.trigger === 'LIFETIME' && (
+        <div className="row">
+          <Field label={tr('Replace at … km in total')} hint={tr("The part's own km on every wheel and bike, km from before included. Logging work does not reset it; a new part starts at 0.")}><input inputMode="decimal" value={f.interval_km} onChange={set('interval_km')} /></Field>
+          <Field label={tr('Remind … km before')}><input inputMode="decimal" value={f.warn_km} onChange={set('warn_km')} /></Field>
+        </div>
       )}
       {rule.trigger === 'PARENT_COUNT' && (
         <Field label={tr('Replace after it has been on … parts')}><input inputMode="numeric" value={f.interval_count} onChange={set('interval_count')} /></Field>
