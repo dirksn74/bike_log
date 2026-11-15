@@ -13,7 +13,7 @@ $_SESSION = [];
 $bike = Db::insert('bikes', ['user_id' => $uid, 'name' => 'Roadie', 'shifting' => 'ELECTRONIC', 'created_at' => $now, 'updated_at' => $now]);
 $ride = fn(string $date, float $km) => Db::insert('rides', ['user_id' => $uid, 'bike_id' => $bike, 'ride_date' => $date,
     'distance_km' => $km, 'duration_s' => 3600, 'kind' => 'OUTDOOR', 'created_at' => $now, 'updated_at' => $now]);
-$part = fn(string $type, string $label, array $extra = []) => Inventory::createComponent($uid, ['component_type' => $type, 'label' => $label, 'prior_usage' => 'NEW'] + $extra);
+$part = fn(string $type, string $label, array $extra = []) => Inventory::createComponent($uid, ['component_type' => $type, 'label' => $label] + $extra + ['prior_usage' => 'NEW']);
 $rem = function (int $cid) use ($uid) {
     foreach (Reminders::forUser($uid, null, $cid) as $r) {
         if (($r['rule']['rule_code'] ?? '') === 'TIRE_REPLACE') {
