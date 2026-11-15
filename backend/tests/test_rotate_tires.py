@@ -115,3 +115,20 @@ def test_bike_change_log_shows_tire_moves_and_tube_changes_on_its_wheels(session
     assert [r["id"] for r in rows] == sorted((r["id"] for r in rows), reverse=True)
     # another bike does not get them
     assert not any(r["component"] in ("Tire A", "Tire B", "Tire C") for r in changelog.entries(session, bike_id=other.id))
+
+
+def test_bike_journal_lists_part_changes_read_only_and_folds_a_big_session(session):
+    from bikelog.services import journal
+    b, fw, rw, ft, rt = setup(session)
+    inv.move(session, ft.id, at="2026-11-10T10:00", parent_component_id=rw.id, slot="TIRE", swap=True)
+    rows = [r for r in journal.entries(session, bike_id=b.id) if r["kind"] == "PART_CHANGE"]
+    assert rows and all(r["source"] == "PARTS" for r in rows)
+    assert any("Tire A" in r["text"] and "R wheel" in r["text"] for r in rows)
+    ws = worksessions.begin(session, at="2026-11-15", bike_id=b.id)
+    repairs.rotate_tires(session, bike_id=b.id, move_from="FRONT_WHEEL", at="2026-11-15",
+                         source={"kind": "new", "label": "Tire C"}, old_outcome="DISCARDED", work_session_id=ws.id)
+    day = [r for r in journal.entries(session, bike_id=b.id) if r["kind"] == "PART_CHANGE" and r["on"] == "2026-11-15"]
+    assert len(day) <= 2
+    assert not any(r["kind"] == "PART_CHANGE" for r in journal.entries(session, bike_id=b.id, include_parts=False))
+    # a part's own journal is unchanged
+    assert not any(r["kind"] == "PART_CHANGE" for r in journal.entries(session, component_id=ft.id))

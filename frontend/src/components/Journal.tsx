@@ -8,7 +8,8 @@ import { Card, Empty, ErrorBox, FormError, Loading, Tag } from './ui'
 import { tr, lc } from '../i18n'
 
 // Dated notes on a bike or a part. Notes written on maintenance entries show up here too (read-only),
-// so there is one place to read what happened.
+// and on a bike also the part changes (put on, off, replaced, moved, also tires on its wheels), so there is
+// one place to read what happened.
 export default function Journal({ bikeId, componentId, className = '' }: { bikeId?: number; componentId?: number; className?: string }) {
   const query = bikeId ? `bike_id=${bikeId}` : `component_id=${componentId}`
   const { data, error, loading, reload } = useApi<JournalRow[]>(`/journal?${query}`)
@@ -62,11 +63,12 @@ export default function Journal({ bikeId, componentId, className = '' }: { bikeI
       {data && data.length > 0 && (
         <ul className="list journal">
           {data.map((r) => (
-            <li key={`${r.source}${r.id}`}>
+            <li key={`${r.source}${r.id}${r.ref ?? ''}`}>
               <span className="muted small journal-date">{when(r.on)}</span>
               <span className="journal-text">
                 {r.kind === 'ISSUE' && <Tag tone={r.open_issue ? 'warn' : 'good'}>{r.open_issue ? tr('open issue') : `resolved ${when(r.resolved_on)}`}</Tag>}
                 {r.kind === 'MAINTENANCE' && <Tag tone="info">{tr('maintenance')}</Tag>}
+                {r.kind === 'PART_CHANGE' && <Tag tone="neutral">{tr('part change')}</Tag>}
                 {r.incident_label && <Tag tone="bad">{lc(r.incident_label)}</Tag>}{' '}
                 {r.ride_id && (
                   <>

@@ -1126,6 +1126,7 @@
  "{name} was merged into another entry; rename that one": "{name} wurde mit einem anderen Eintrag zusammengeführt; benenne den um",
  "{n} broken spoke on {label} {since}: {advice}.{waiting} A new wheel, a re-lace or a new spoke set starts the count again.": "{n} gebrochene Speiche an {label} {since}: {advice}.{waiting} Ein neues Laufrad, neues Einspeichen oder ein neuer Speichensatz startet die Zählung neu.",
  "{n} broken spokes on {label} {since}: {advice}.{waiting} A new wheel, a re-lace or a new spoke set starts the count again.": "{n} gebrochene Speichen an {label} {since}: {advice}.{waiting} Ein neues Laufrad, neues Einspeichen oder ein neuer Speichensatz startet die Zählung neu.",
+ "{n} part changes: {items}": "{n} Teileänderungen: {items}",
  "{one} on {deltas} parts.": "{one} an {deltas} Teilen.",
  "{on} has {km} and no waxed chain is ready. Wax {items}, then put one on.": "{on} hat {km}, und keine gewachste Kette ist bereit. Wachse {items}, dann montiere eine.",
  "{on} has {km}. Swap to {x} (waxed, ready).": "{on} hat {km}. Wechsle auf {x} (gewachst, bereit).",
