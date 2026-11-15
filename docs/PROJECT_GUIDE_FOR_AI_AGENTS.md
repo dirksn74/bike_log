@@ -335,7 +335,10 @@ piece or the total split evenly in cents (remainder on the first ones); mark and
 quantity > 1; chains get A, B, C …. POST /api/components takes `quantity` and `price_is_total` (not with
 `install`) and answers the first part plus `created` [{id, label}] (always, also for one part). UI:
 ComponentForm "How many?" (only when kept as a spare) and "That price is per piece / for all N together".
-PHP: same fields in parts/edit (`quantity`, `price_is_total`), page_part_edit.
+PHP: same fields in parts/edit (`quantity`, `price_is_total`), page_part_edit. Lists fold identical parts
+into one line "N × name" with a folded "Show each one" (#1 … #N links): frontend `groupRows` in
+pages/Inventory.tsx (key: type, label, product, state, readiness, place, km, compatibility), PHP
+`group_identical` / `group_name_html` in app/web.php (spares/index.php, parts/list.php). Display only.
 
 **Breadcrumbs (`frontend/src/crumbs.ts`, `components/Breadcrumbs.tsx`, DECISIONS 104).** Rendered by
 App above the routes on every non-main page. `nextTrail` keeps the way you came (main item resets, a

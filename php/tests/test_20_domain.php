@@ -179,6 +179,10 @@ $w->post('r=part_edit', ['component_type' => 'INNER_TUBE', 'label' => 'Conti Rac
 $tubes15 = Db::all("SELECT * FROM components WHERE user_id = ? AND label = 'Conti Race 28' AND purchase_date = '2026-11-15'", [$uid]);
 check(count($tubes15) === 15 && count(array_unique(array_column($tubes15, 'id'))) === 15, 'quantity 15 makes 15 separate parts');
 check(array_sum(array_column($tubes15, 'price_cents')) == 10000 && min(array_column($tubes15, 'price_cents')) == 666, 'total price split evenly');
+$w->get('r=spares');
+check(str_contains($w->body, '15 × Conti Race 28') && str_contains($w->body, '#15'), 'identical spares shown as one line');
+$w->get('r=parts');
+check(str_contains($w->body, '15 × Conti Race 28'), 'identical parts grouped in the parts list');
 $w->post('r=part_edit', ['component_type' => 'BRAKE_PADS', 'label' => 'Cage X', 'prior_usage' => 'NEW', 'quantity' => '2',
     'install_bike_id' => $bmc, 'slot' => 'FRONT_PADS', 'installed_on' => '2026-10-01']);
 check((int)Db::value("SELECT COUNT(*) FROM components WHERE user_id = ? AND label = 'Cage X'", [$uid]) === 0, 'several at once cannot be installed');

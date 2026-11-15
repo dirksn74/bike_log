@@ -2048,4 +2048,6 @@ return [
     'A serial number belongs to one part; add it later on each part\'s page' => 'Eine Seriennummer gehört zu genau einem Teil; trag sie später auf der Seite des jeweiligen Teils ein',
     'Leave the mark empty when adding several parts; each one can get its own mark later' => 'Lass die Markierung leer, wenn du mehrere Teile anlegst; jedes kann später seine eigene Markierung bekommen',
     '{n} × {name} added as separate spares.' => '{n} × {name} als einzelne Ersatzteile angelegt.',
+    '{n} × {name}' => '{n} × {name}',
+    'Show each one' => 'Jedes einzeln zeigen',
 ];

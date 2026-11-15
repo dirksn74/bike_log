@@ -786,6 +786,8 @@ you disagree. Dates are 2026-10-24 unless noted.
     in the inventory, and both count toward the spares to keep. Why not a purchase bundle: a bundle's price
     counts for the bike most parts went on, wrong for spares that end up on different bikes. Quantity is
     refused with an install (one by one), a mark or a serial number. PHP: no unique name rule existed; same
-    quantity fields in the part form.
+    quantity fields in the part form. Then (Dirk: "yes, identical items can be grouped") the inventory lists
+    fold parts that look the same (same type, name, product, state, km, place) into one line "N × name" with
+    links to each; grouping is display only, never stored, so nothing about identity changes.
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

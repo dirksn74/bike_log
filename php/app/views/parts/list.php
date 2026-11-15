@@ -13,9 +13,9 @@
 <?php if (!$parts): ?><p class="muted"><?= h(t('No parts yet. Add one with just a type and a name.')) ?></p><?php endif; ?>
 <table class="list">
   <thead><tr><th><?= h(t('Part')) ?></th><th><?= h(t('Type')) ?></th><th><?= h(t('Where')) ?></th><th class="num"><?= h(t('Km')) ?></th></tr></thead>
-  <?php foreach ($parts as $p): ?>
+  <?php foreach (group_identical($parts, fn($x) => [$x['component_type'], Domain::componentName($x), $x['status'], $x['bike']['id'] ?? null, Domain::totalsLabel($x['totals'])]) as $g): $p = $g[0]; ?>
   <tr class="<?= $p['status'] === 'RETIRED' ? 'retired' : '' ?>">
-    <td><a href="<?= h(url('part', ['id' => $p['id']])) ?>"><?= h(Domain::componentName($p)) ?></a></td>
+    <td><?= group_name_html($g) ?></td>
     <td><?= h(Catalog::typeName($p['component_type'])) ?></td>
     <td><?= $p['status'] === 'RETIRED' ? status_badge('RETIRED') : ($p['bike'] ? h($p['bike']['name']) : '<span class="muted">' . h(t('spare')) . '</span>') ?></td>
     <td class="num"><?= h(Domain::totalsLabel($p['totals'])) ?></td>
