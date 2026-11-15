@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { km, when } from '../format'
 import { useApi } from '../hooks'
 import { Empty, ErrorBox, Loading, Tag } from './ui'
+import { tr } from '../i18n'
 
 // Rides → Punctures (DECISIONS 117): every flat (a "Flat tire" incident, one row per wheel) with the tube and
 // tire that were on, and per tube / tire model the punctures and km per puncture. Computed, nothing stored.
@@ -62,15 +63,15 @@ function ModelTable({ title, rows, what }: { title: string; rows: ModelRow[]; wh
         <strong>{title}</strong>
       </summary>
       {rows.length === 0 ? (
-        <p className="small muted">None recorded yet.</p>
+        <p className="small muted">{tr('None recorded yet.')}</p>
       ) : (
         <table className="table">
           <thead>
             <tr>
-              <th>{what === 'tube' ? 'Tube' : 'Tire'}</th>
-              <th className="num">Punctures</th>
-              <th className="num">Km ridden</th>
-              <th className="num">Km per puncture</th>
+              <th>{what === 'tube' ? tr('Tube') : tr('Tire')}</th>
+              <th className="num">{tr('Punctures')}</th>
+              <th className="num">{tr('Km ridden')}</th>
+              <th className="num">{tr('Km per puncture')}</th>
             </tr>
           </thead>
           {rows.map((m) => (
@@ -79,7 +80,7 @@ function ModelTable({ title, rows, what }: { title: string; rows: ModelRow[]; wh
                 <th colSpan={4} scope="rowgroup">
                   {m.model}{' '}
                   <span className="small muted">
-                    {m.punctures === 1 ? '1 puncture' : `${m.punctures} punctures`} · {m.items.length === 1 ? `1 ${what}` : `${m.items.length} ${what}s`}
+                    {m.punctures === 1 ? tr('1 puncture') : `${m.punctures} punctures`} · {m.items.length === 1 ? `1 ${what}` : `${m.items.length} ${what}s`}
                   </span>
                 </th>
               </tr>
@@ -87,11 +88,11 @@ function ModelTable({ title, rows, what }: { title: string; rows: ModelRow[]; wh
                 <tr key={x.component_id ?? `stock-${i}`} className="punct-item">
                   <td>
                     {x.component_id ? <Link to={`/inventory/${x.component_id}`}>{x.label}</Link> : <span className="muted">{x.label}</span>}
-                    {x.in_use && x.component_id && <span className="small muted"> · in use</span>}
+                    {x.in_use && x.component_id && <span className="small muted"> {tr('· in use')}</span>}
                   </td>
                   <td className="num">{x.punctures}</td>
                   <td className="num">{x.km != null ? km(x.km, 0) : '–'}</td>
-                  <td className="num">{x.km_per_puncture != null ? km(x.km_per_puncture, 0) : x.punctures === 0 && x.km ? 'none yet' : '–'}</td>
+                  <td className="num">{x.km_per_puncture != null ? km(x.km_per_puncture, 0) : x.punctures === 0 && x.km ? tr('none yet') : '–'}</td>
                 </tr>
               ))}
             </tbody>
@@ -110,50 +111,48 @@ export default function Punctures() {
   if (error) return <ErrorBox error={error} onRetry={reload} />
   if (!data || data.total === 0)
     return (
-      <Empty title="No punctures logged">
-        Log a puncture on the ride it happened: Rides → open the ride → Add incident → Flat tire, then say per wheel whether it was the tube only or the tube and the tire. Fix
-        brings in the new tube (from stock, a spare or patched). The statistics show up here.
+      <Empty title={tr('No punctures logged')}>
+        {tr('Log a puncture on the ride it happened: Rides → open the ride → Add incident → Flat tire, then say per wheel whether it was the tube only or the tube and the tire. Fix brings in the new tube (from stock, a spare or patched). The statistics show up here.')}
       </Empty>
     )
   return (
     <div className="punctures">
       <p className="small muted">
-        Every flat logged on a ride (Add incident → Flat tire), per wheel. Each tube and tire has its own line with its own km; km per puncture = its km ÷ its
-        punctures. Tubes from stock that were never installed as a part of their own count for the tube the last fix on that wheel put in (marked "from the last fix").
+        {tr('Every flat logged on a ride (Add incident → Flat tire), per wheel. Each tube and tire has its own line with its own km; km per puncture = its km ÷ its punctures. Tubes from stock that were never installed as a part of their own count for the tube the last fix on that wheel put in (marked "from the last fix").')}
       </p>
       <div className="stats">
         <div>
           <span className="stat">{data.total}</span>
-          <span className="muted small">{data.total === 1 ? "puncture" : "punctures"}</span>
+          <span className="muted small">{data.total === 1 ? tr('puncture') : tr('punctures')}</span>
         </div>
         <div>
           <span className="small">{counts(data.by_wheel)}</span>
-          <span className="muted small">by wheel</span>
+          <span className="muted small">{tr('by wheel')}</span>
         </div>
         <div>
           <span className="small">{counts(data.by_conditions)}</span>
-          <span className="muted small">wet or dry</span>
+          <span className="muted small">{tr('wet or dry')}</span>
         </div>
         <div>
           <span className="small">{counts(data.by_bike)}</span>
-          <span className="muted small">by bike</span>
+          <span className="muted small">{tr('by bike')}</span>
         </div>
       </div>
-      <ModelTable title="By inner tube" rows={data.by_tube} what="tube" />
-      <ModelTable title="By tire" rows={data.by_tire} what="tire" />
+      <ModelTable title={tr('By inner tube')} rows={data.by_tube} what="tube" />
+      <ModelTable title={tr('By tire')} rows={data.by_tire} what="tire" />
       <details className="life-type punct-list">
         <summary>
-          <strong>All punctures</strong> <span className="muted small">{data.total}</span>
+          <strong>{tr('All punctures')}</strong> <span className="muted small">{data.total}</span>
         </summary>
         <table className="table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Bike · wheel</th>
-              <th>Tube</th>
-              <th>Tire</th>
-              <th>Damage</th>
-              <th>Fixed</th>
+              <th>{tr('Date')}</th>
+              <th>{tr('Bike · wheel')}</th>
+              <th>{tr('Tube')}</th>
+              <th>{tr('Tire')}</th>
+              <th>{tr('Damage')}</th>
+              <th>{tr('Fixed')}</th>
             </tr>
           </thead>
           <tbody>
@@ -168,11 +167,11 @@ export default function Punctures() {
                 </td>
                 <td>
                   {r.tube_id ? <Link to={`/inventory/${r.tube_id}`}>{r.tube_model}</Link> : (r.tube_model ?? '–')}
-                  {r.tube_inferred && <div className="small muted">from the last fix</div>}
+                  {r.tube_inferred && <div className="small muted">{tr('from the last fix')}</div>}
                 </td>
                 <td>{r.tire_id ? <Link to={`/inventory/${r.tire_id}`}>{r.tire_model}</Link> : r.tire_model}</td>
                 <td>{r.damage}</td>
-                <td className="small">{r.fixed ?? <Tag tone="warn">not yet</Tag>}</td>
+                <td className="small">{r.fixed ?? <Tag tone="warn">{tr('not yet')}</Tag>}</td>
               </tr>
             ))}
           </tbody>

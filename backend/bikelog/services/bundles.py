@@ -21,12 +21,13 @@ from bikelog.models import Bike, Component, PurchaseBundle
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import location
 from bikelog.timeutil import utc_now
+from bikelog.i18n import num, tr
 
 
 def get(session: Session, bundle_id: int) -> PurchaseBundle:
     b = session.get(PurchaseBundle, bundle_id)
     if not b:
-        raise NotFound("Bundle not found")
+        raise NotFound(tr("Bundle not found"))
     return b
 
 
@@ -36,19 +37,18 @@ def active(b: PurchaseBundle | None) -> bool:
 
 def _check_price(cents: int | None) -> None:
     if cents is not None and cents < 0:
-        raise DomainError("A price cannot be negative")
+        raise DomainError(tr("A price cannot be negative"))
 
 
 def _check_member(session: Session, comp: Component, bundle: PurchaseBundle) -> None:
     if comp.disposition == "VOIDED":
-        raise DomainError(f"{comp.label} is the record of an undone operation")
+        raise DomainError(tr("{label} is the record of an undone operation", label=comp.label))
     if comp.bundle_id and comp.bundle_id != bundle.id and active(session.get(PurchaseBundle, comp.bundle_id)):
-        raise DomainError(f"{comp.label} already belongs to another bundle")
+        raise DomainError(tr("{label} already belongs to another bundle", label=comp.label))
     if comp.price_cents is not None:
-        raise DomainError(f"{comp.label} has its own price (€{comp.price_cents / 100:,.2f}). A part is priced either "
-                          "on its own or as part of a bundle: remove its price first, or leave it out.")
+        raise DomainError(tr("{label} has its own price (€{x}). A part is priced either on its own or as part of a bundle: remove its price first, or leave it out.", label=comp.label, x=num(comp.price_cents / 100, 2)))
     if comp.from_stock_txn_id:
-        raise DomainError(f"{comp.label} came from stock; its cost belongs to that stock purchase")
+        raise DomainError(tr("{label} came from stock; its cost belongs to that stock purchase", label=comp.label))
 
 
 def create(session: Session, *, name: str, component_ids: list[int], merchant: str | None = None,
@@ -56,9 +56,9 @@ def create(session: Session, *, name: str, component_ids: list[int], merchant: s
            work_session_id: int | None = None) -> PurchaseBundle:
     name = (name or "").strip()
     if not name:
-        raise DomainError("Give the bundle a name, e.g. 'Ultegra Di2 R8100 groupset'")
+        raise DomainError(tr("Give the bundle a name, e.g. 'Ultegra Di2 R8100 groupset'"))
     if not component_ids:
-        raise DomainError("Pick the parts that were bought together")
+        raise DomainError(tr("Pick the parts that were bought together"))
     _check_price(price_cents)
     b = PurchaseBundle(name=name, merchant=(merchant or "").strip() or None, purchased_on=purchased_on,
                        price_cents=price_cents, notes=notes, work_session_id=work_session_id)
@@ -71,11 +71,11 @@ def create(session: Session, *, name: str, component_ids: list[int], merchant: s
 def update(session: Session, bundle_id: int, **fields) -> PurchaseBundle:
     b = get(session, bundle_id)
     if not active(b):
-        raise DomainError("This bundle was voided")
+        raise DomainError(tr("This bundle was voided"))
     if "price_cents" in fields:
         _check_price(fields["price_cents"])
     if "name" in fields and not (fields["name"] or "").strip():
-        raise DomainError("The bundle needs a name")
+        raise DomainError(tr("The bundle needs a name"))
     for k in ("name", "merchant", "purchased_on", "price_cents", "notes"):
         if k in fields:
             setattr(b, k, fields[k])
@@ -86,11 +86,11 @@ def update(session: Session, bundle_id: int, **fields) -> PurchaseBundle:
 def add_members(session: Session, bundle_id: int, component_ids: list[int]) -> PurchaseBundle:
     b = get(session, bundle_id)
     if not active(b):
-        raise DomainError("This bundle was voided")
+        raise DomainError(tr("This bundle was voided"))
     for cid in dict.fromkeys(component_ids):
         comp = session.get(Component, cid)
         if comp is None:
-            raise NotFound(f"Part {cid} not found")
+            raise NotFound(tr("Part {cid} not found", cid=cid))
         _check_member(session, comp, b)
         comp.bundle_id = b.id
     session.flush()
@@ -103,7 +103,7 @@ def remove_member(session: Session, bundle_id: int, component_id: int) -> Purcha
     b = get(session, bundle_id)
     comp = session.get(Component, component_id)
     if comp is None or comp.bundle_id != b.id:
-        raise DomainError("That part is not in this bundle")
+        raise DomainError(tr("That part is not in this bundle"))
     comp.bundle_id = None
     session.flush()
     return b
@@ -112,7 +112,7 @@ def remove_member(session: Session, bundle_id: int, component_id: int) -> Purcha
 def void(session: Session, bundle_id: int, reason: str) -> PurchaseBundle:
     b = get(session, bundle_id)
     if not reason:
-        raise DomainError("Say why this bundle is wrong")
+        raise DomainError(tr("Say why this bundle is wrong"))
     if not b.voided_at:
         b.voided_at, b.void_reason = utc_now(), reason
         session.flush()
@@ -165,7 +165,7 @@ def row(session: Session, b: PurchaseBundle, first_bike: dict[int, int | None] |
             "price_cents": b.price_cents, "notes": b.notes, "voided": bool(b.voided_at), "void_reason": b.void_reason,
             "bike_id": bike_id, "bike": bike.name if bike else None, "members": rows,
             "in_use": sum(1 for r in rows if r["in_use"]), "member_count": len(rows),
-            "share_basis": "reference prices" if has_ref else "split evenly"}
+            "share_basis": tr("reference prices") if has_ref else tr("split evenly")}
 
 
 def list_rows(session: Session, *, bike_id: int | None = None, include_voided: bool = False) -> list[dict]:

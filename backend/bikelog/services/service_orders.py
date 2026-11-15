@@ -25,6 +25,7 @@ from bikelog.services import maintenance as m
 from bikelog.services import settings, worksessions
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.timeutil import parse_when
+from bikelog.i18n import lc, tr
 
 OUTCOMES = {"REPAIRED_PAID": "Repaired (paid)", "REPAIRED_WARRANTY": "Repaired under warranty",
             "REPLACED_WARRANTY": "Replaced under warranty", "NOT_REPAIRED": "Not repaired"}
@@ -33,7 +34,7 @@ OUTCOMES = {"REPAIRED_PAID": "Repaired (paid)", "REPAIRED_WARRANTY": "Repaired u
 def get(session: Session, order_id: int) -> ServiceOrder:
     o = session.get(ServiceOrder, order_id)
     if o is None:
-        raise NotFound("Service order not found")
+        raise NotFound(tr("Service order not found"))
     return o
 
 
@@ -51,17 +52,17 @@ def send_out(session: Session, component_id: int, *, at: str, shop: str | None =
              incident_group: str | None = None) -> dict:
     comp = inv.get_component(session, component_id)
     if comp.status == "RETIRED":
-        raise DomainError(f"{comp.label} is out of use; put it back in stock first")
+        raise DomainError(tr("{label} is out of use; put it back in stock first", label=comp.label))
     if open_order(session, comp.id):
-        raise DomainError(f"{comp.label} is already away for repair")
+        raise DomainError(tr("{label} is already away for repair", label=comp.label))
     if incident_group and not _incident_entries(session, incident_group):
-        raise DomainError("That incident does not exist")
+        raise DomainError(tr("That incident does not exist"))
     loc = inv.location(session, comp)
     inst = inv.open_installation(session, comp.id)
     shop = (shop or "").strip() or None
     reason = (reason or "").strip() or None
     w = parse_when(at, settings.tz(session))
-    title = f"Sent away for repair: {comp.label}" + (f" ({shop})" if shop else "")
+    title = tr("Sent away for repair: {label}", label=comp.label) + (f" ({shop})" if shop else "")
     ws = worksessions.begin(session, at=at, bike_id=loc.get("bike_id"), title=title, notes=reason)
     note = "sent away for repair" + (f" to {shop}" if shop else "")
     if inst is not None:
@@ -84,9 +85,9 @@ def _put_back(session: Session, o: ServiceOrder, comp: Component, *, at: str, ws
     if o.from_bike_id is not None:
         bike = session.get(Bike, o.from_bike_id)
         if bike is None or bike.status != "ACTIVE":
-            raise DomainError(f"{bike.name if bike else 'That bike'} is retired; untick 'put it back'")
+            raise DomainError(tr("{x} is retired; untick 'put it back'", x=bike.name if bike else tr("That bike")))
     elif inv.open_installation(session, o.from_parent_id) is None and session.get(Component, o.from_parent_id).status != "ACTIVE":
-        raise DomainError("The part it was mounted on is out of use; untick 'put it back'")
+        raise DomainError(tr("The part it was mounted on is out of use; untick 'put it back'"))
     occupant = session.scalar(select(Installation).where(
         Installation.voided_at.is_(None), Installation.removed_utc.is_(None), Installation.slot == o.from_slot,
         (Installation.bike_id == o.from_bike_id) if o.from_bike_id is not None
@@ -94,10 +95,10 @@ def _put_back(session: Session, o: ServiceOrder, comp: Component, *, at: str, ws
     if occupant is not None:
         inv.replace(session, occupant.component_id, at=at, new_component_id=comp.id, old_outcome="STORED",
                     reason=f"{comp.label} back from repair", work_session_id=ws_id)
-        return f"back on, {inv.get_component(session, occupant.component_id).label} stored"
+        return tr("back on, {label} stored", label=inv.get_component(session, occupant.component_id).label)
     inv.install(session, comp.id, at=at, bike_id=o.from_bike_id, parent_component_id=o.from_parent_id,
                 slot=o.from_slot, note="back from repair", work_session_id=ws_id)
-    return "back on"
+    return tr("back on")
 
 
 def return_part(session: Session, order_id: int, *, at: str, outcome: str, cost_cents: int | None = None,
@@ -106,19 +107,19 @@ def return_part(session: Session, order_id: int, *, at: str, outcome: str, cost_
                 new_warranty_until: str | None = None) -> dict:
     o = get(session, order_id)
     if o.status != "OUT":
-        raise DomainError("This part is not away any more")
+        raise DomainError(tr("This part is not away any more"))
     if outcome not in OUTCOMES:
-        raise DomainError(f"What came back? Choose one of: {', '.join(OUTCOMES.values())}")
+        raise DomainError(tr("What came back? Choose one of: {items}", items=', '.join(OUTCOMES.values())))
     if cost_cents is not None and cost_cents < 0:
-        raise DomainError("The cost cannot be negative")
+        raise DomainError(tr("The cost cannot be negative"))
     w = parse_when(at, settings.tz(session))
     if w.utc <= parse_when(o.sent_at, settings.tz(session)).utc:
-        raise DomainError(f"It was sent away on {o.sent_on}; it must come back later")
+        raise DomainError(tr("It was sent away on {sent_on}; it must come back later", sent_on=o.sent_on))
     comp = inv.get_component(session, o.component_id)
     receipt_ref = (receipt_ref or "").strip() or None
     notes = (notes or "").strip() or None
     ws = worksessions.begin(session, at=at, bike_id=o.bike_id,
-                            title=f"Back from repair: {comp.label} ({OUTCOMES[outcome].lower()})", notes=notes)
+                            title=tr("Back from repair: {label} ({outcome})", label=comp.label, outcome=lc(tr(OUTCOMES[outcome]))), notes=notes)
     details = "; ".join(x for x in (OUTCOMES[outcome], o.shop, f"receipt {receipt_ref}" if receipt_ref else None,
                                      notes) if x)
     back = comp
@@ -135,7 +136,7 @@ def return_part(session: Session, order_id: int, *, at: str, outcome: str, cost_
         work = f"replaced under warranty by {replacement.label}"
     elif outcome == "NOT_REPAIRED":
         if keep_as not in ("STORED", "DISCARDED"):
-            raise DomainError("Keep it (stored) or discard it")
+            raise DomainError(tr("Keep it (stored) or discard it"))
         after, work = keep_as, "not repaired"
         put_back = False
     else:

@@ -20,6 +20,7 @@ from bikelog.services import allocation, settings
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import get_bike, get_component
 from bikelog.timeutil import parse_when, today_local
+from bikelog.i18n import num, tr
 
 KM_PER_MILE = 1.609344
 EDITABLE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code",
@@ -32,7 +33,7 @@ SOURCE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_
 def get_ride(session: Session, ride_id: int) -> Ride:
     r = session.get(Ride, ride_id)
     if not r:
-        raise NotFound(f"Ride {ride_id} not found")
+        raise NotFound(tr("Ride {ride_id} not found", ride_id=ride_id))
     return r
 
 
@@ -40,12 +41,12 @@ def to_km(value: float | None, unit: str = "km") -> float | None:
     if value is None:
         return None
     if value < 0:
-        raise DomainError("Distance cannot be negative")
+        raise DomainError(tr("Distance cannot be negative"))
     if unit == "km":
         return float(value)
     if unit == "mi":
         return float(value) * KM_PER_MILE
-    raise DomainError("Distance unit must be km or mi")
+    raise DomainError(tr("Distance unit must be km or mi"))
 
 
 def profile_id(session: Session, code: str | None) -> int | None:
@@ -53,7 +54,7 @@ def profile_id(session: Session, code: str | None) -> int | None:
         return None
     pid = session.scalar(select(UsageProfile.id).where(UsageProfile.code == code))
     if pid is None:
-        raise DomainError(f"Unknown usage profile {code!r}")
+        raise DomainError(tr("Unknown usage profile {code}", code=repr(code)))
     return pid
 
 
@@ -75,7 +76,7 @@ def _apply_fields(session: Session, ride: Ride, values: dict) -> None:
     if "duration_s" in values:
         d = values["duration_s"]
         if d is not None and d < 0:
-            raise DomainError("Duration cannot be negative")
+            raise DomainError(tr("Duration cannot be negative"))
         ride.duration_s = d
     if "bike_id" in values:
         if values["bike_id"] is not None:
@@ -86,7 +87,7 @@ def _apply_fields(session: Session, ride: Ride, values: dict) -> None:
     if "notes" in values:
         notes = (values["notes"] or "").strip() or None
         if notes and len(notes) > RIDE_NOTES_MAX:
-            raise DomainError(f"Notes can be up to {RIDE_NOTES_MAX} characters (these are {len(notes)})")
+            raise DomainError(tr("Notes can be up to {RIDE_NOTES_MAX} characters (these are {notes})", RIDE_NOTES_MAX=RIDE_NOTES_MAX, notes=len(notes)))
         values = {**values, "notes": notes}
     for k in ("name", "sport_type", "uncertainty_note", "notes"):
         if k in values:
@@ -95,7 +96,7 @@ def _apply_fields(session: Session, ride: Ride, values: dict) -> None:
         ride.assignment_uncertain = bool(values["assignment_uncertain"])
     if "conditions" in values:
         if values["conditions"] is not None and values["conditions"] not in RIDE_CONDITIONS:
-            raise DomainError(f"conditions must be one of {', '.join(RIDE_CONDITIONS)} (or empty)")
+            raise DomainError(tr("conditions must be one of {items} (or empty)", items=', '.join(RIDE_CONDITIONS)))
         ride.conditions = values["conditions"]
 
 
@@ -111,7 +112,7 @@ def add_manual_ride(session: Session, *, bike_id: int | None, when: str, distanc
                     equipment: dict[str, int | None] | None = None) -> Ride:
     """Bike + date + distance is enough. Date-only rides get no invented clock time."""
     if bike_id is None and not assignment_uncertain:
-        raise DomainError("Pick a bike (or mark the ride as uncertain)")
+        raise DomainError(tr("Pick a bike (or mark the ride as uncertain)"))
     ride = Ride(source_kind="MANUAL", sport_type=sport_type or "Ride")
     values = {"when": when, "distance_km": to_km(distance, unit), "duration_s": duration_s, "bike_id": bike_id,
               "name": name, "assignment_uncertain": assignment_uncertain, "uncertainty_note": uncertainty_note,
@@ -145,7 +146,7 @@ def edit_ride(session: Session, ride_id: int, changes: dict) -> Ride:
     unit = changes.pop("unit", None) or "km"
     unknown = set(changes) - set(EDITABLE_FIELDS)
     if unknown:
-        raise DomainError(f"Cannot edit {', '.join(sorted(unknown))}")
+        raise DomainError(tr("Cannot edit {items}", items=', '.join(sorted(unknown))))
     if changes.get("distance_km") is not None:
         changes["distance_km"] = to_km(changes["distance_km"], unit)
     src = source_values(session, ride)
@@ -187,7 +188,7 @@ def remove_rides(session: Session, ride_ids: list[int], reason: str | None = Non
     """Remove several rides at once (Dirk 2026-11-02, DECISIONS 124). The same soft removal as one ride:
     they move to Removed rides, count no km, are never imported again and can be restored."""
     if not ride_ids:
-        raise DomainError("Pick at least one ride")
+        raise DomainError(tr("Pick at least one ride"))
     removed, km = 0, 0.0
     for rid in dict.fromkeys(ride_ids):
         ride = get_ride(session, rid)
@@ -201,7 +202,7 @@ def remove_rides(session: Session, ride_ids: list[int], reason: str | None = Non
 def restore_rides(session: Session, ride_ids: list[int]) -> dict:
     """Bring several removed rides back (the opposite of remove_rides)."""
     if not ride_ids:
-        raise DomainError("Pick at least one ride")
+        raise DomainError(tr("Pick at least one ride"))
     restored, km = 0, 0.0
     for rid in dict.fromkeys(ride_ids):
         ride = get_ride(session, rid)
@@ -216,9 +217,9 @@ def assign_bike(session: Session, ride_ids: list[int], bike_id: int | None) -> d
     """Set (or clear) the bike of several rides at once. For imported rides this is a local override:
     re-sync and re-read keep it; setting the bike back to the imported value removes the override."""
     if not ride_ids:
-        raise DomainError("Pick at least one ride")
+        raise DomainError(tr("Pick at least one ride"))
     if bike_id is not None and not session.get(Bike, bike_id):
-        raise DomainError("Bike not found")
+        raise DomainError(tr("Bike not found"))
     changed = 0
     for rid in dict.fromkeys(ride_ids):
         ride = get_ride(session, rid)
@@ -242,7 +243,7 @@ def _put_equipment(session: Session, ride: Ride, slot: str, component_id: int | 
         comp = get_component(session, component_id)
         allowed = COMPONENT_TYPES[comp.component_type].slots
         if allowed and slot not in allowed:
-            raise DomainError(f"{comp.label} cannot be used in slot {slot}")
+            raise DomainError(tr("{label} cannot be used in slot {slot}", label=comp.label, slot=slot))
     row = session.get(RideEquipment, (ride.id, slot))
     if row:
         row.component_id, row.note = component_id, note
@@ -292,8 +293,7 @@ def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None,
     dups = possible_duplicates(session, ride) if ride.inclusion == "INCLUDED" else []
     if dups:
         flags.append({"code": "POSSIBLE_DUPLICATE", "slot": None,
-                      "detail": f"Similar ride on the same day and bike (ride {', '.join(map(str, dups))}). "
-                                "Exclude one if it is the same outing."})
+                      "detail": tr("Similar ride on the same day and bike (ride {items}). Exclude one if it is the same outing.", items=', '.join(map(str, dups)))})
     profile = session.get(UsageProfile, ride.usage_profile_id) if ride.usage_profile_id else None
     overridden = list(session.scalars(select(RideOverride.field).where(RideOverride.ride_id == ride.id)))
     src = source_values(session, ride) if ride.source_kind != "MANUAL" else None
@@ -369,12 +369,11 @@ def _counting_note(session: Session, ride: Ride, equipment: list[dict]) -> str |
     start = starting_value(session, bike_id=ride.bike_id)
     if start and ride.sort_utc < start.effective_utc:
         b = session.get(Bike, ride.bike_id)
-        return (f"Before tracking started: {b.name}'s starting value ({'≈' if start.is_estimate else ''}"
-                f"{start.km:,.0f} km on {start.effective_at[:10]}) already includes this ride, so it adds no km.")
+        return (tr("Before tracking started: {name}'s starting value ({x}{km} km on {effective_at}) already includes this ride, so it adds no km.", name=b.name, x='≈' if start.is_estimate else '', km=num(start.km), effective_at=start.effective_at[:10]))
     if equipment and all(e["state"] == "IN_BASELINE" for e in equipment):
-        return "Every part on the bike has a 'km from before' value dated after this ride, which already includes it."
+        return tr("Every part on the bike has a 'km from before' value dated after this ride, which already includes it.")
     if not equipment:
-        return "No parts were on the bike on this day, so only the bike's own total counts it."
+        return tr("No parts were on the bike on this day, so only the bike's own total counts it.")
     return None
 
 

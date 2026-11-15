@@ -23,11 +23,12 @@ from bikelog.models import (
 )
 from bikelog.services.errors import Conflict, DomainError, NotFound
 from bikelog.timeutil import utc_now
+from bikelog.i18n import tr
 
 LISTS: dict[str, dict] = {
     "SHOP": {
         "name": "Shops",
-        "hint": "Where you buy parts, bikes and supplies, where parts go for repair, and who did the work.",
+        "hint": tr("Where you buy parts, bikes and supplies, where parts go for repair, and who did the work."),
         "columns": [(Component, "shop"), (Bike, "shop"), (ConsumableTxn, "shop"), (PurchaseBundle, "merchant"),
                     (ServiceOrder, "shop"), (MaintenanceEvent, "shop")],
     },
@@ -36,7 +37,7 @@ LISTS: dict[str, dict] = {
 
 def _check(code: str) -> dict:
     if code not in LISTS:
-        raise NotFound(f"No list {code!r}")
+        raise NotFound(tr("No list {code}", code=repr(code)))
     return LISTS[code]
 
 
@@ -122,7 +123,7 @@ def overview(session: Session) -> list[dict]:
 def _item(session: Session, item_id: int) -> PickListItem:
     item = session.get(PickListItem, item_id)
     if item is None:
-        raise NotFound(f"List entry {item_id} not found")
+        raise NotFound(tr("List entry {item_id} not found", item_id=item_id))
     return item
 
 
@@ -130,10 +131,10 @@ def add(session: Session, code: str, name: str) -> dict:
     _check(code)
     name = " ".join((name or "").split())
     if not name:
-        raise DomainError("Enter a name")
+        raise DomainError(tr("Enter a name"))
     existing = _find(session, code, name)
     if existing is not None:
-        raise Conflict(f"{existing.name!r} is already on the list" + (" (hidden)" if existing.hidden_at else ""))
+        raise Conflict(tr("{name} is already on the list", name=repr(existing.name)) + (tr(" (hidden)") if existing.hidden_at else ""))
     item = PickListItem(list_code=code, name=name)
     session.add(item)
     session.flush()
@@ -153,13 +154,13 @@ def _move_records(session: Session, code: str, old: str, new: str) -> int:
 def rename(session: Session, item_id: int, name: str) -> dict:
     item = _item(session, item_id)
     if item.merged_into_id:
-        raise DomainError(f"{item.name!r} was merged into another entry; rename that one")
+        raise DomainError(tr("{name} was merged into another entry; rename that one", name=repr(item.name)))
     name = " ".join((name or "").split())
     if not name:
-        raise DomainError("Enter a name")
+        raise DomainError(tr("Enter a name"))
     other = _find(session, item.list_code, name)
     if other is not None and other.id != item.id:
-        raise Conflict(f"{other.name!r} is already on the list. To make them one, use Merge.")
+        raise Conflict(tr("{name} is already on the list. To make them one, use Merge.", name=repr(other.name)))
     old = item.name
     item.name = name               # first, so the hook finds the new name when the records follow
     session.flush()
@@ -179,10 +180,10 @@ def merge(session: Session, item_id: int, into_id: int) -> dict:
     """Duplicates: the records of ``item_id`` move to ``into_id``; the entry stays, marked merged."""
     item, into = _item(session, item_id), _item(session, into_id)
     if item.id == into.id or item.list_code != into.list_code:
-        raise DomainError("Pick another entry of the same list to merge into")
+        raise DomainError(tr("Pick another entry of the same list to merge into"))
     into = _final(session, into)
     if into.id == item.id:
-        raise DomainError("That entry was merged into this one")
+        raise DomainError(tr("That entry was merged into this one"))
     item.merged_into_id = into.id
     item.hidden_at = item.hidden_at or utc_now()
     into.hidden_at = None

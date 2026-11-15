@@ -24,6 +24,7 @@ from bikelog.connectors.strava import sync as strava
 from bikelog.paths import DataPaths
 from bikelog.services.errors import DomainError
 from bikelog.timeutil import utc_now
+from bikelog.i18n import tr
 
 log = logging.getLogger(__name__)
 STATE_TTL_S = 15 * 60
@@ -53,15 +54,15 @@ class StravaWeb:
     def save_credentials(self, client_id: str, client_secret: str | None) -> dict:
         client_id = (client_id or "").strip()
         if not client_id.isdigit():
-            raise DomainError("The Client ID is the number shown on strava.com/settings/api")
+            raise DomainError(tr("The Client ID is the number shown on strava.com/settings/api"))
         updates = {"STRAVA_CLIENT_ID": client_id}
         if client_secret and client_secret.strip():
             secret = client_secret.strip()
             if len(secret) < 20 or not secret.isalnum():
-                raise DomainError("That does not look like a Strava Client Secret (40 letters and digits)")
+                raise DomainError(tr("That does not look like a Strava Client Secret (40 letters and digits)"))
             updates["STRAVA_CLIENT_SECRET"] = secret
         elif not self._env().get("STRAVA_CLIENT_SECRET"):
-            raise DomainError("Enter the Client Secret")
+            raise DomainError(tr("Enter the Client Secret"))
         env = self._env()
         if env.get("STRAVA_CLIENT_ID") and env["STRAVA_CLIENT_ID"] != client_id:
             # tokens belong to the old API app; they cannot be used with the new one
@@ -73,7 +74,7 @@ class StravaWeb:
 
     def forget_credentials(self) -> dict:
         if self._env().get("STRAVA_REFRESH_TOKEN"):
-            raise DomainError("Disconnect Strava first")
+            raise DomainError(tr("Disconnect Strava first"))
         sc.update_env(self.env_file, {"STRAVA_CLIENT_ID": None, "STRAVA_CLIENT_SECRET": None})
         return self.credentials()
 
@@ -91,7 +92,7 @@ class StravaWeb:
     def start_connect(self, base_url: str) -> str:
         env = self._env()
         if not (env.get("STRAVA_CLIENT_ID") and env.get("STRAVA_CLIENT_SECRET")):
-            raise DomainError("Save the Client ID and Client Secret first")
+            raise DomainError(tr("Save the Client ID and Client Secret first"))
         state = secrets.token_urlsafe(24)
         now = time.time()
         with self._lock:
@@ -103,8 +104,7 @@ class StravaWeb:
         with self._lock:
             started = self._states.pop(state or "", None)
         if started is None or time.time() - started > STATE_TTL_S:
-            raise DomainError("This Strava answer does not belong to a connect request from Bike Log (or it "
-                              "expired). Click 'Connect with Strava' again.")
+            raise DomainError(tr("This Strava answer does not belong to a connect request from Bike Log (or it expired). Click 'Connect with Strava' again."))
         if error or not code:
             raise DomainError("Strava access was not granted" + (f" ({error})" if error else ""))
         tok = self.client().exchange_code(code)
@@ -123,10 +123,10 @@ class StravaWeb:
     # -- sync ----------------------------------------------------------------
     def start_sync(self, rescan: bool = False) -> dict:
         if not self._env().get("STRAVA_REFRESH_TOKEN"):
-            raise DomainError("Strava is not connected yet")
+            raise DomainError(tr("Strava is not connected yet"))
         with self._lock:
             if self.job.get("running"):
-                raise DomainError("A Strava sync is already running")
+                raise DomainError(tr("A Strava sync is already running"))
             self.job = {"running": True, "rescan": rescan, "started_at": utc_now(), "page": 0, "counts": {},
                         "error": None, "finished_at": None}
             self._thread = threading.Thread(target=self._run_sync, args=(rescan,), daemon=True,
@@ -157,7 +157,7 @@ class StravaWeb:
     # -- disconnect ----------------------------------------------------------
     def disconnect(self) -> dict:
         if self.job.get("running"):
-            raise DomainError("Wait until the sync has finished")
+            raise DomainError(tr("Wait until the sync has finished"))
         self.client().deauthorize()
         return strava.mark_disconnected(self.factory)
 

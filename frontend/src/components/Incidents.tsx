@@ -13,6 +13,7 @@ import type {
 } from "../types";
 import { FixForm } from "./Repairs";
 import { Empty, ErrorBox, Field, FormError, Loading, Tag } from "./ui";
+import { tr, lc } from '../i18n'
 
 // An incident (flat, shifting problem, empty battery, numb hands ...) is stored as one journal issue per
 // affected part, so each part shows it in its own journal. What can be picked depends on the incident type
@@ -58,8 +59,8 @@ function IncidentEditor({
     if (!f.affected.length)
       return setErr(
         forRider
-          ? "Tick at least one problem."
-          : "Tick at least one affected part (or Whole bike).",
+          ? tr('Tick at least one problem.')
+          : tr('Tick at least one affected part (or Whole bike).'),
       );
     setBusy(true);
     setErr(null);
@@ -73,9 +74,9 @@ function IncidentEditor({
   }
   return (
     <div className="incident-form">
-      <Field label="What happened">
+      <Field label={tr('What happened')}>
         <select
-          aria-label="Incident type"
+          aria-label={tr('Incident type')}
           value={f.incident_type}
           onChange={(e) =>
             setF({ ...f, incident_type: e.target.value, affected: [] })
@@ -97,9 +98,9 @@ function IncidentEditor({
       ) : (
       <fieldset className="incident-affected">
         <legend className="field-label">
-          {forRider ? "Where (tick all that apply)" : "Affected (tick all that apply)"}
+          {forRider ? tr('Where (tick all that apply)') : tr('Affected (tick all that apply)')}
         </legend>
-        <div className="chips" role="group" aria-label="Affected">
+        <div className="chips" role="group" aria-label={tr('Affected')}>
           {options.map((o) => (
             <label
               key={o.key}
@@ -107,7 +108,7 @@ function IncidentEditor({
               title={
                 o.recorded
                   ? undefined
-                  : "No such part recorded on this bike for that day"
+                  : tr('No such part recorded on this bike for that day')
               }
             >
               <input
@@ -121,18 +122,18 @@ function IncidentEditor({
         </div>
         {options.some((o) => !o.recorded) && (
           <span className="field-hint">
-            Names without a part: nothing of that kind is recorded on{" "}
-            {bikeName ?? "the bike"} for this day. You can still pick it.
+            {tr('Names without a part: nothing of that kind is recorded on')}{" "}
+            {bikeName ?? tr('the bike')} {tr('for this day. You can still pick it.')}
           </span>
         )}
       </fieldset>
       )}
-      <Field label="Details (optional)">
+      <Field label={tr('Details (optional)')}>
         <input
-          aria-label="Incident details"
+          aria-label={tr('Incident details')}
           value={f.text}
           onChange={(e) => setF({ ...f, text: e.target.value })}
-          placeholder="e.g. glass shard, plugged and continued"
+          placeholder={tr('e.g. glass shard, plugged and continued')}
         />
       </Field>
       <label className="check">
@@ -141,17 +142,17 @@ function IncidentEditor({
           checked={f.fixed}
           onChange={(e) => setF({ ...f, fixed: e.target.checked })}
         />{" "}
-        Already solved
+        {tr('Already solved')}
       </label>
       <FormError error={err} />
       <div className="form-actions">
         {onCancel && (
           <button className="btn" onClick={onCancel}>
-            Cancel
+            {tr('Cancel')}
           </button>
         )}
         <button className="btn btn-primary" disabled={busy} onClick={submit}>
-          {busy ? "Saving…" : submitLabel}
+          {busy ? tr('Saving…') : submitLabel}
         </button>
       </div>
     </div>
@@ -161,8 +162,8 @@ function IncidentEditor({
 // A flat, per wheel: not affected, the tube only, or the tube and the tire (a tubeless or tubular wheel:
 // the tire). Still one incident; the answer becomes the affected tube and/or tire of that wheel.
 const WHEELS: [string, string][] = [
-  ["FRONT_WHEEL", "Front wheel"],
-  ["REAR_WHEEL", "Rear wheel"],
+  ["FRONT_WHEEL", tr('Front wheel')],
+  ["REAR_WHEEL", tr('Rear wheel')],
 ];
 
 function FlatDamage({
@@ -180,7 +181,7 @@ function FlatDamage({
   );
   return (
     <fieldset className="incident-affected">
-      <legend className="field-label">What was damaged?</legend>
+      <legend className="field-label">{tr('What was damaged?')}</legend>
       {WHEELS.map(([wheel, name]) => {
         const tubes = options.filter((o) => o.wheel === wheel && o.damage === "TUBE");
         const tires = options.filter((o) => o.wheel === wheel && o.damage === "TIRE");
@@ -190,14 +191,14 @@ function FlatDamage({
         const value = hasTube && hasTire ? "both" : hasTube ? "tube" : hasTire ? "tire" : "none";
         const picks: [string, string][] = tubes.length
           ? [
-              ["none", "Not affected"],
-              ["tube", "Tube only"],
-              ["both", "Tube and tire"],
-              ...(value === "tire" ? [["tire", "Tire only"] as [string, string]] : []),
+              ["none", tr('Not affected')],
+              ["tube", tr('Tube only')],
+              ["both", tr('Tube and tire')],
+              ...(value === "tire" ? [["tire", tr('Tire only')] as [string, string]] : []),
             ]
           : [
-              ["none", "Not affected"],
-              ["tire", "Tire"],
+              ["none", tr('Not affected')],
+              ["tire", tr('Tire')],
             ];
         const mine = new Set([...tubes, ...tires].map((o) => o.key));
         const set = (v: string) =>
@@ -212,7 +213,7 @@ function FlatDamage({
             <span className="flat-wheel-name">
               {name}
               {recorded.length > 0 && <span className="small muted"> · {recorded.join(", ")}</span>}
-              {!tubes.length && <span className="small muted"> · tubeless or tubular</span>}
+              {!tubes.length && <span className="small muted"> {tr('· tubeless or tubular')}</span>}
             </span>
             <div className="chips">
               {picks.map(([v, label]) => (
@@ -233,14 +234,14 @@ function FlatDamage({
       })}
       {shown.length > 0 && (
         <p className="small spare-hint">
-          Spares at home:{" "}
+          {tr('Spares at home:')}{" "}
           {shown.map((r, i) => (
             <span key={r.component_type}>
               {i > 0 && " · "}
-              {r.text} {r.low && <Tag tone="warn">low</Tag>}
+              {r.text} {r.low && <Tag tone="warn">{tr('low')}</Tag>}
             </span>
           ))}{" "}
-          <Link to="/inventory?tab=shopping">Shopping list</Link>
+          <Link to="/inventory?tab=shopping">{tr('Shopping list')}</Link>
         </p>
       )}
     </fieldset>
@@ -309,7 +310,7 @@ export function IncidentRows({
     setEditing(null);
     onChanged();
   }
-  const where = showRide ? "" : " from this ride";
+  const where = showRide ? "" : tr(' from this ride');
   const live = incidents.filter((r) => !r.removed);
   const removed = incidents.filter((r) => r.removed);
   return (
@@ -321,7 +322,7 @@ export function IncidentRows({
             fixing === r.group ? (
               <li key={r.group}>
                 <div className="small">
-                  <strong>Fix: {r.label.toLowerCase()}</strong> ·{" "}
+                  <strong>{tr('Fix:')} {lc(r.label)}</strong> ·{" "}
                   {r.affected.map((a) => a.label).join(" + ")}
                 </div>
                 <FixForm
@@ -344,7 +345,7 @@ export function IncidentRows({
                     text: r.text ?? "",
                     fixed: !r.open,
                   }}
-                  submitLabel="Save changes"
+                  submitLabel={tr('Save changes')}
                   onSubmit={(f) => save(r, f)}
                   onCancel={() => setEditing(null)}
                 />
@@ -352,7 +353,7 @@ export function IncidentRows({
             ) : (
               <li key={r.group} className="incident-row">
                 <div className="incident-type">
-                  <Tag tone="bad">{r.label.toLowerCase()}</Tag>
+                  <Tag tone="bad">{lc(r.label)}</Tag>
                   <div className="small muted">{when(r.on)}</div>
                 </div>
                 <div className="incident-what">
@@ -384,7 +385,7 @@ export function IncidentRows({
                       {r.ride_conditions === "WET" && (
                         <>
                           {" "}
-                          <Tag tone="info">wet</Tag>
+                          <Tag tone="info">{tr('wet')}</Tag>
                         </>
                       )}
                     </div>
@@ -392,22 +393,22 @@ export function IncidentRows({
                 </div>
                 <div className="incident-status">
                   {r.open ? (
-                    <Tag tone="warn">open</Tag>
+                    <Tag tone="warn">{tr('open')}</Tag>
                   ) : (
-                    <Tag tone="good">solved {when(r.resolved_on)}</Tag>
+                    <Tag tone="good">{tr('solved')} {when(r.resolved_on)}</Tag>
                   )}
                 </div>
                 <div className="incident-actions">
                   {r.open && r.fixable && (
                     <button
                       className="btn btn-small btn-primary"
-                      title="Say what you did: replaced, patched, or nothing yet"
+                      title={tr('Say what you did: replaced, patched, or nothing yet')}
                       onClick={() => {
                         setEditing(null);
                         setFixing(r.group);
                       }}
                     >
-                      Fix
+                      {tr('Fix')}
                     </button>
                   )}
                   {r.open ? (
@@ -422,7 +423,7 @@ export function IncidentRows({
                           )
                         }
                       >
-                        Solved
+                        {tr('Solved')}
                       </button>
                     </>
                   ) : (
@@ -437,27 +438,27 @@ export function IncidentRows({
                           )
                         }
                       >
-                        Re-open
+                        {tr('Re-open')}
                       </button>
                     </>
                   )}
                   {r.has_fix && (
                     <button
                       className="btn btn-small"
-                      title="Takes back the part change, stock use or patch, and opens the incident again"
+                      title={tr('Takes back the part change, stock use or patch, and opens the incident again')}
                       onClick={() =>
                         run(async () => {
                           await api.post(`/incidents/${r.group}/undo-fix`, {});
-                          toast(`Fix undone. ${r.label} is open again.`);
+                          toast(tr('Fix undone. {label} is open again.', { label: r.label }));
                         })
                       }
                     >
-                      Undo fix
+                      {tr('Undo fix')}
                     </button>
                   )}
                   {r.ride_id && (
                     <button className="btn btn-small" onClick={() => edit(r)}>
-                      Edit
+                      {tr('Edit')}
                     </button>
                   )}
                   <button
@@ -466,12 +467,12 @@ export function IncidentRows({
                       run(async () => {
                         await api.post(`/incidents/${r.group}/remove`, {});
                         toast(
-                          `${r.label} removed${where}. It is kept and can be restored.`,
+                          tr('{label} removed{where}. It is kept and can be restored.', { label: r.label, where }),
                         );
                       })
                     }
                   >
-                    Remove
+                    {tr('Remove')}
                   </button>
                 </div>
               </li>
@@ -481,7 +482,7 @@ export function IncidentRows({
       )}
       {removed.length > 0 && (
         <details className="small">
-          <summary>Removed incidents ({removed.length})</summary>
+          <summary>{tr('Removed incidents (')}{removed.length})</summary>
           <ul className="incident-list">
             {removed.map((r) => (
               <li key={r.group} className="incident-removed muted">
@@ -498,7 +499,7 @@ export function IncidentRows({
                     })
                   }
                 >
-                  Restore
+                  {tr('Restore')}
                 </button>
               </li>
             ))}
@@ -543,18 +544,18 @@ export function RideIncidents({
   }
   const live = data?.incidents.filter((r) => !r.removed) ?? [];
   return (
-    <section className="ride-section incidents" aria-label="Incidents">
+    <section className="ride-section incidents" aria-label={tr('Incidents')}>
       <div className="ride-section-head">
-        <h3>Incidents</h3>
+        <h3>{tr('Incidents')}</h3>
         {!adding && data && (
           <button className="btn btn-small" onClick={() => setAdding(true)}>
-            Add incident
+            {tr('Add incident')}
           </button>
         )}
       </div>
       {error && <ErrorBox error={error} onRetry={reload} />}
       {data && live.length === 0 && !adding && (
-        <p className="small muted">None logged.</p>
+        <p className="small muted">{tr('None logged.')}</p>
       )}
       {data && (
         <IncidentRows
@@ -569,7 +570,7 @@ export function RideIncidents({
           bikeName={ride.bike}
           choices={data.choices}
           initial={{ incident_type: "FLAT", affected: [], text: "", fixed: false }}
-          submitLabel="Add incident"
+          submitLabel={tr('Add incident')}
           onSubmit={add}
           onCancel={() => setAdding(false)}
         />
@@ -596,9 +597,8 @@ export function BikeIncidents({
   if (error) return <ErrorBox error={error} onRetry={reload} />;
   if (!incidents?.length)
     return (
-      <Empty title="No incidents on this bike">
-        Log a flat, a shifting problem or anything else on the ride it
-        happened (Rides → open the ride → Add incident).
+      <Empty title={tr('No incidents on this bike')}>
+        {tr('Log a flat, a shifting problem or anything else on the ride it happened (Rides → open the ride → Add incident).')}
       </Empty>
     );
   return (
@@ -628,11 +628,11 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
     <>
       <div className="row filters">
         <select
-          aria-label="Filter incidents by bike"
+          aria-label={tr('Filter incidents by bike')}
           value={bike}
           onChange={(e) => setBike(e.target.value)}
         >
-          <option value="">All bikes</option>
+          <option value="">{tr('All bikes')}</option>
           {bikes.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -640,11 +640,11 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
           ))}
         </select>
         <select
-          aria-label="Filter incidents by type"
+          aria-label={tr('Filter incidents by type')}
           value={type}
           onChange={(e) => setType(e.target.value)}
         >
-          <option value="">All incidents</option>
+          <option value="">{tr('All incidents')}</option>
           {meta.incident_types.map((t) => (
             <option key={t.code} value={t.code}>
               {t.label}
@@ -657,14 +657,14 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
             checked={openOnly}
             onChange={(e) => setOpenOnly(e.target.checked)}
           />{" "}
-          Open only
+          {tr('Open only')}
         </label>
       </div>
       {loading && !data && <Loading />}
       {error && <ErrorBox error={error} onRetry={reload} />}
       {data && data.length === 0 && (
-        <Empty title="No incidents">
-          Open a ride and use "Add incident" for a flat, a shifting problem, an empty battery or anything else that happened.
+        <Empty title={tr('No incidents')}>
+          {tr('Open a ride and use "Add incident" for a flat, a shifting problem, an empty battery or anything else that happened.')}
         </Empty>
       )}
       {data && data.length > 0 && (

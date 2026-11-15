@@ -15,6 +15,7 @@ from bikelog.services import settings
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import get_bike, get_component, location
 from bikelog.timeutil import parse_when, utc_now
+from bikelog.i18n import tr
 
 KINDS = {"NOTE": "Note", "ISSUE": "Issue"}
 
@@ -33,24 +34,24 @@ def add(session: Session, *, text: str | None, on: str | None = None, bike_id: i
     if ride_id is not None:
         ride = session.get(Ride, ride_id)
         if ride is None:
-            raise NotFound("Ride not found")
+            raise NotFound(tr("Ride not found"))
         on = on or ride.ride_date
         if bike_id is None and component_id is None:
             bike_id = ride.bike_id
             if bike_id is None:
-                raise DomainError("This ride has no bike; pick the bike or the part that was affected")
+                raise DomainError(tr("This ride has no bike; pick the bike or the part that was affected"))
     if incident_type is not None:
         if incident_type not in INCIDENT_TYPES:
-            raise DomainError(f"incident_type must be one of {', '.join(INCIDENT_TYPES)}")
+            raise DomainError(tr("incident_type must be one of {items}", items=', '.join(INCIDENT_TYPES)))
         kind = "ISSUE"
     kind = kind or "NOTE"
     text = (text or "").strip() or (INCIDENT_TYPES[incident_type] if incident_type else "")
     if not text:
-        raise DomainError("Write something in the note")
+        raise DomainError(tr("Write something in the note"))
     if not on:
-        raise DomainError("Give the date")
+        raise DomainError(tr("Give the date"))
     if kind not in KINDS:
-        raise DomainError(f"kind must be one of {', '.join(KINDS)}")
+        raise DomainError(tr("kind must be one of {items}", items=', '.join(KINDS)))
     if component_id is not None:
         comp = get_component(session, component_id)
         if bike_id is None:
@@ -58,7 +59,7 @@ def add(session: Session, *, text: str | None, on: str | None = None, bike_id: i
     elif bike_id is not None:
         get_bike(session, bike_id)
     else:
-        raise DomainError("A journal entry belongs to a bike or a part")
+        raise DomainError(tr("A journal entry belongs to a bike or a part"))
     e = JournalEntry(bike_id=bike_id, component_id=component_id, entry_on=_date(session, on), kind=kind, text=text,
                      resolved_on=_date(session, resolved_on) if resolved_on and kind == "ISSUE" else None,
                      ride_id=ride_id, incident_type=incident_type, affected=(affected or "").strip() or None,
@@ -71,28 +72,28 @@ def add(session: Session, *, text: str | None, on: str | None = None, bike_id: i
 def get(session: Session, entry_id: int) -> JournalEntry:
     e = session.get(JournalEntry, entry_id)
     if not e:
-        raise NotFound("Journal entry not found")
+        raise NotFound(tr("Journal entry not found"))
     return e
 
 
 def update(session: Session, entry_id: int, **fields) -> JournalEntry:
     e = get(session, entry_id)
     if e.voided_at:
-        raise DomainError("This entry was removed; it can no longer be edited")
+        raise DomainError(tr("This entry was removed; it can no longer be edited"))
     if "text" in fields:
         text = (fields["text"] or "").strip()
         if not text:
-            raise DomainError("Write something in the note")
+            raise DomainError(tr("Write something in the note"))
         e.text = text
     if fields.get("on"):
         e.entry_on = _date(session, fields["on"])
     if "kind" in fields and fields["kind"]:
         if fields["kind"] not in KINDS:
-            raise DomainError(f"kind must be one of {', '.join(KINDS)}")
+            raise DomainError(tr("kind must be one of {items}", items=', '.join(KINDS)))
         e.kind = fields["kind"]
     if "incident_type" in fields:
         if fields["incident_type"] is not None and fields["incident_type"] not in INCIDENT_TYPES:
-            raise DomainError(f"incident_type must be one of {', '.join(INCIDENT_TYPES)}")
+            raise DomainError(tr("incident_type must be one of {items}", items=', '.join(INCIDENT_TYPES)))
         e.incident_type = fields["incident_type"]
         if e.incident_type:
             e.kind = "ISSUE"
@@ -139,7 +140,7 @@ def row(session: Session, e: JournalEntry) -> dict:
 
 
 def _event_row(session: Session, ev: MaintenanceEvent) -> dict | None:
-    parts = [p for p in (ev.symptom and f"Symptom: {ev.symptom}", ev.work_done and f"Work done: {ev.work_done}",
+    parts = [p for p in (ev.symptom and tr("Symptom: {symptom}", symptom=ev.symptom), ev.work_done and tr("Work done: {work_done}", work_done=ev.work_done),
                          ev.notes) if p]
     if not parts:
         return None
@@ -161,7 +162,7 @@ def entries(session: Session, *, bike_id: int | None = None, component_id: int |
             q = q.where(JournalEntry.voided_at.is_(None))
         return sorted((row(session, e) for e in session.scalars(q)), key=lambda r: r["id"], reverse=True)
     if (bike_id is None) == (component_id is None):
-        raise DomainError("Show the journal of one bike or one part")
+        raise DomainError(tr("Show the journal of one bike or one part"))
     target = (JournalEntry.bike_id == bike_id) if bike_id is not None else (JournalEntry.component_id == component_id)
     q = select(JournalEntry).where(target)
     if not include_voided:

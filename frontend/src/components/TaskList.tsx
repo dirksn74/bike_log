@@ -6,6 +6,7 @@ import { today } from '../format'
 import type { Task } from '../types'
 import LogMaintenance from './LogMaintenance'
 import { Empty, Sheet, StatusBadge } from './ui'
+import { tr, trn } from '../i18n'
 
 // The explanation says how the reminder was worked out. It shows two lines; "more" unfolds the rest
 // (the button appears only when the text is really cut off at this screen width).
@@ -29,7 +30,7 @@ function Why({ text }: { text: string }) {
       </div>
       {(cut || open) && (
         <button type="button" className="linklike" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'less' : 'more'}
+          {open ? tr('less') : tr('more')}
         </button>
       )}
     </div>
@@ -42,13 +43,13 @@ const NOW = ['OVERDUE', 'DUE', 'ATTENTION']
  * Reminders in the same order on every screen: what is due now stays open, then coming up soon,
  * and the rest folds away (snoozed, "need a first entry", up to date).
  */
-export function GroupedTasks({ tasks, onChange, foldSoon = false, before, nothingDue = 'Nothing due right now.' }: { tasks: Task[]; onChange: () => void; foldSoon?: boolean; before?: ReactNode; nothingDue?: string | null }) {
+export function GroupedTasks({ tasks, onChange, foldSoon = false, before, nothingDue = tr('Nothing due right now.') }: { tasks: Task[]; onChange: () => void; foldSoon?: boolean; before?: ReactNode; nothingDue?: string | null }) {
   const now = tasks.filter((t) => NOW.includes(t.status))
   const soon = tasks.filter((t) => t.status === 'DUE_SOON')
   const snoozed = tasks.filter((t) => t.status === 'SNOOZED')
   const first = tasks.filter((t) => t.status === 'INSUFFICIENT_INFO')
   const fine = tasks.filter((t) => !NOW.includes(t.status) && !['DUE_SOON', 'SNOOZED', 'INSUFFICIENT_INFO'].includes(t.status))
-  const plural = (n: number) => `${n} reminder${n === 1 ? '' : 's'}`
+  const plural = (n: number) => trn('{n} reminder', '{n} reminders', n)
   const fold = (key: string, title: string, hint: string, rows: Task[]) =>
     rows.length > 0 && (
       <details className="task-group" data-group={key}>
@@ -63,16 +64,16 @@ export function GroupedTasks({ tasks, onChange, foldSoon = false, before, nothin
     <>
       {openNow.length ? <TaskList tasks={openNow} onChange={onChange} /> : nothingDue && <p className="small muted">{nothingDue}</p>}
       {before}
-      {foldSoon && fold('soon', 'Coming up soon', plural(soon.length), soon)}
-      {fold('snoozed', 'Snoozed', plural(snoozed.length), snoozed)}
-      {fold('first', 'Need a first entry', `${plural(first.length)} start counting once you log the last time it was done`, first)}
-      {fold('ok', 'Up to date', plural(fine.length), fine)}
+      {foldSoon && fold('soon', tr('Coming up soon'), plural(soon.length), soon)}
+      {fold('snoozed', tr('Snoozed'), plural(snoozed.length), snoozed)}
+      {fold('first', tr('Need a first entry'), tr('{plural} start counting once you log the last time it was done', { plural: plural(first.length) }), first)}
+      {fold('ok', tr('Up to date'), plural(fine.length), fine)}
     </>
   )
 }
 
 /** Due tasks with the reason for each, plus one-tap log and snooze (snoozing records no maintenance). */
-export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by recorded usage.' }: { tasks: Task[]; onChange: () => void; emptyText?: string }) {
+export default function TaskList({ tasks, onChange, emptyText = tr('Nothing due by recorded usage.') }: { tasks: Task[]; onChange: () => void; emptyText?: string }) {
   const { toast, meta } = useApp()
   const [logging, setLogging] = useState<Task | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -82,7 +83,7 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
     try {
       const who = t.component_id ? { component_id: t.component_id } : { bike_id: t.bike_id }
       await api.post('/maintenance/snooze', { ...who, rule_code: t.rule_code, ...body })
-      toast(`Snoozed "${t.name}" for ${t.component ?? t.bike}. No maintenance recorded.`)
+      toast(tr('Snoozed "{name}" for {x}. No maintenance recorded.', { name: t.name, x: t.component ?? t.bike }))
       onChange()
     } catch (e) {
       setError((e as Error).message)
@@ -118,11 +119,11 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
                   {t.component_id ? (
                     <>
                       {t.name} · <Link to={`/inventory/${t.component_id}`}>{t.component}</Link>
-                      {t.bike && <span className="muted"> on {t.bike}</span>}
+                      {t.bike && <span className="muted"> {tr('on')} {t.bike}</span>}
                     </>
                   ) : (
                     <>
-                      {t.name} · <Link to={`/bikes/${t.bike_id}`}>{t.bike}</Link> <span className="muted">(whole bike)</span>
+                      {t.name} · <Link to={`/bikes/${t.bike_id}`}>{t.bike}</Link> <span className="muted">{tr('(whole bike)')}</span>
                     </>
                   )}
                 </div>
@@ -133,32 +134,32 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
             <div className="task-actions">
               {t.rotation?.to && (
                 <button className="btn btn-small btn-primary" onClick={() => swap(t)}>
-                  Swap to {t.rotation.to_label}
+                  {tr('Swap to')} {t.rotation.to_label}
                 </button>
               )}
               {t.rotation?.kind === 'WAX' && (
                 <Link className="btn btn-small btn-primary" to={`/bikes/${t.rotation.bike_id}`}>
-                  Wax chains
+                  {tr('Wax chains')}
                 </Link>
               )}
               {!t.rotation && (t.status !== 'ATTENTION' || !t.component_id) && t.status !== 'NOT_APPLICABLE' && (
                 <button className="btn btn-small btn-primary" onClick={() => setLogging(t)}>
-                  Log done
+                  {tr('Log done')}
                 </button>
               )}
               {t.status === 'SNOOZED' ? (
                 <button className="btn btn-small" onClick={() => unsnooze(t)}>
-                  Unsnooze
+                  {tr('Unsnooze')}
                 </button>
               ) : (
                 ['DUE', 'OVERDUE', 'DUE_SOON'].includes(t.status) && (
                   <>
                     <button className="btn btn-small" onClick={() => snooze(t, { until_date: inDays(7) })}>
-                      Snooze 7 days
+                      {tr('Snooze 7 days')}
                     </button>
                     {t.used_km !== undefined && t.used_km !== null && (
                       <button className="btn btn-small" onClick={() => snooze(t, { extra_km: 100 })}>
-                        +100 km
+                        {tr('+100 km')}
                       </button>
                     )}
                   </>
@@ -169,7 +170,7 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
         ))}
       </ul>
       {logging && (
-        <Sheet title={`Log: ${logging.name}`} onClose={() => setLogging(null)}>
+        <Sheet title={tr('Log: {name}', { name: logging.name })} onClose={() => setLogging(null)}>
           <LogMaintenance
             componentId={logging.component_id}
             bikeId={logging.component_id ? null : logging.bike_id}

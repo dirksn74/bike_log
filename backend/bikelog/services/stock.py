@@ -19,6 +19,7 @@ from bikelog.catalog import COMPONENT_TYPES, LETTER_TYPES, SAME_NAME_TYPES, STOC
 from bikelog.models import Component, Consumable, ConsumableTxn, Product
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import create_component, open_installation
+from bikelog.i18n import tr, unit_word
 
 TXN_SIGN = {"PURCHASE": 1, "ADJUST": 1, "USE": -1, "RETURN": -1}
 
@@ -26,7 +27,7 @@ TXN_SIGN = {"PURCHASE": 1, "ADJUST": 1, "USE": -1, "RETURN": -1}
 def get(session: Session, consumable_id: int) -> Consumable:
     c = session.get(Consumable, consumable_id)
     if not c:
-        raise NotFound("Stock item not found")
+        raise NotFound(tr("Stock item not found"))
     return c
 
 
@@ -43,28 +44,28 @@ def add_consumable(session: Session, *, kind: str = "OTHER", name: str | None = 
     """A stock line. For spare parts pass component_type (and ideally product_id); name, unit and
     unit note then default from the product and catalog.STOCK_UNITS."""
     if tracking_mode not in TRACKING_MODES:
-        raise DomainError(f"tracking_mode must be one of {', '.join(TRACKING_MODES)}")
+        raise DomainError(tr("tracking_mode must be one of {items}", items=', '.join(TRACKING_MODES)))
     if component_type is not None:
         if component_type not in COMPONENT_TYPES:
-            raise DomainError(f"Unknown component type {component_type!r}")
+            raise DomainError(tr("Unknown component type {component_type}", component_type=repr(component_type)))
         tracking_mode, kind = "COUNTED", "PART"
     if product_id is not None:
         prod = session.get(Product, product_id)
         if not prod:
-            raise NotFound("Product not found")
+            raise NotFound(tr("Product not found"))
         if component_type and prod.component_type != component_type:
-            raise DomainError(f"{prod.model} is a {prod.component_type}, not a {component_type}")
+            raise DomainError(tr("{model} is a {component_type}, not a {component_type2}", model=prod.model, component_type=prod.component_type, component_type2=component_type))
         component_type = component_type or prod.component_type
         tracking_mode, kind = "COUNTED", "PART"
     if not name:
         if not component_type:
-            raise DomainError("Name the product")
+            raise DomainError(tr("Name the product"))
         name = " — ".join(x for x in (COMPONENT_TYPES[component_type].name, _product_name(session, product_id)) if x)
     default_unit, default_note = STOCK_UNITS.get(component_type or "", ("pcs" if tracking_mode == "COUNTED" else "ml", None))
     if session.scalar(select(Consumable).where(Consumable.name == name)):
-        raise DomainError(f"{name!r} already exists")
+        raise DomainError(tr("{name} already exists", name=repr(name)))
     if min_stock is not None and min_stock < 0:
-        raise DomainError("Minimum stock cannot be negative")
+        raise DomainError(tr("Minimum stock cannot be negative"))
     c = Consumable(kind=kind, name=name, maker=maker, unit=unit or default_unit,
                    track_stock=True if tracking_mode == "COUNTED" else track_stock, notes=notes,
                    tracking_mode=tracking_mode, component_type=component_type, product_id=product_id,
@@ -95,10 +96,10 @@ def level(session: Session, c: Consumable) -> dict:
 def _whole(c: Consumable, qty: float | None, what: str) -> float:
     if qty is None:
         if c.tracking_mode == "COUNTED":
-            raise DomainError(f"Say how many {c.unit}s were {what}")
+            raise DomainError(tr("Say how many {unit}s were {what}", unit=c.unit, what=what))
         return qty
     if c.tracking_mode == "COUNTED" and float(qty) != int(qty):
-        raise DomainError(f"{c.name} is counted in whole {c.unit}s")
+        raise DomainError(tr("{name} is counted in whole {unit}s", name=c.name, unit=c.unit))
     return qty
 
 
@@ -108,18 +109,18 @@ def consumable_txn(session: Session, consumable_id: int, *, kind: str, qty: floa
     """PURCHASE (+), RETURN to the shop (−), ADJUST (signed correction after a count), USE (−)."""
     c = get(session, consumable_id)
     if kind not in TXN_SIGN:
-        raise DomainError(f"kind must be one of {', '.join(TXN_SIGN)}")
+        raise DomainError(tr("kind must be one of {items}", items=', '.join(TXN_SIGN)))
     if kind == "USE":
         return use(session, consumable_id, qty=qty, on=on, note=note, work_session_id=work_session_id)
     qty = _whole(c, qty, {"PURCHASE": "bought", "RETURN": "returned", "ADJUST": "corrected"}[kind])
     if kind in ("PURCHASE", "RETURN") and qty is not None and qty <= 0:
-        raise DomainError("Quantity must be positive")
+        raise DomainError(tr("Quantity must be positive"))
     if kind == "RETURN" and c.track_stock:
         have = level(session, c)["qty"]
         if qty > have:
-            raise DomainError(f"Only {have:g} {c.unit}(s) in stock; cannot return {qty:g}")
+            raise DomainError(tr("Only {have} {unit}(s) in stock; cannot return {qty}", have=format(have, 'g'), unit=c.unit, qty=format(qty, 'g')))
     if kind == "ADJUST" and not note:
-        raise DomainError("Say why the stock is corrected (e.g. 'counted drawer')")
+        raise DomainError(tr("Say why the stock is corrected (e.g. 'counted drawer')"))
     t = ConsumableTxn(consumable_id=c.id, kind=kind, qty=qty, occurred_on=on[:10], packages=packages,
                       cost_cents=cost_cents if kind in ("PURCHASE", "RETURN") else None, note=note,
                       work_session_id=work_session_id,
@@ -136,12 +137,11 @@ def use(session: Session, consumable_id: int, *, qty: float | None, on: str, not
     c = get(session, consumable_id)
     qty = _whole(c, qty, "used")
     if qty is not None and qty <= 0:
-        raise DomainError("Quantity used must be positive")
+        raise DomainError(tr("Quantity used must be positive"))
     if c.tracking_mode == "COUNTED":
         have = level(session, c)["qty"]
         if qty > have:
-            raise DomainError(f"Only {have:g} {c.unit}(s) of {c.name} in stock. Record the purchase or a stock "
-                              "correction first.")
+            raise DomainError(tr("Only {have} {unit}(s) of {name} in stock. Record the purchase or a stock correction first.", have=format(have, 'g'), unit=c.unit, name=c.name))
     t = ConsumableTxn(consumable_id=c.id, kind="USE", qty=qty, occurred_on=on[:10], note=note,
                       work_session_id=work_session_id, maintenance_event_id=maintenance_event_id,
                       component_id=component_id)
@@ -155,7 +155,7 @@ def draw_component(session: Session, consumable_id: int, *, on: str, label: str 
     """Take one unit out of counted stock and give it its own identity (to install it)."""
     c = get(session, consumable_id)
     if c.tracking_mode != "COUNTED" or not c.component_type:
-        raise DomainError(f"{c.name} is not stock of a part type")
+        raise DomainError(tr("{name} is not stock of a part type", name=c.name))
     txn = use(session, c.id, qty=1, on=on, note="taken from stock to install", work_session_id=work_session_id)
     comp = create_component(session, component_type=c.component_type, label=label or _stock_label(session, c),
                             product_id=c.product_id, prior_usage="NEW", work_session_id=work_session_id,
@@ -235,7 +235,7 @@ def spare_check(session: Session) -> list[dict]:
         out.append({"component_type": ctype, "type_name": COMPONENT_TYPES[ctype].name, "unit": unit,
                     "have": have, "in_stock": int(in_stock), "individual": individual, "minimum": minimum,
                     "low": have < minimum,
-                    "text": f"{have} spare {unit if have == 1 else unit + 's'}, keep at least {minimum}"})
+                    "text": tr("{have} spare {x}, keep at least {minimum}", have=have, x=unit_word(unit, have), minimum=minimum)})
     return out
 
 
@@ -247,17 +247,16 @@ def shopping_list(session: Session) -> list[dict]:
         if row["low"]:
             need = row["minimum"] - row["have"]
             spares.append({"consumable_id": None, "component_type": row["component_type"],
-                        "name": f"Spare {row['unit']}s", "unit": row["unit"], "available": row["have"],
+                        "name": tr("Spare {units}", units=unit_word(row['unit'], 2)), "unit": row["unit"], "available": row["have"],
                         "min_stock": row["minimum"], "suggested_qty": need,
-                        "text": f"Buy {need} {row['unit']}{'' if need == 1 else 's'}: {row['text']}"})
+                        "text": tr("Buy {need} {unit}: {text}", need=need, unit=unit_word(row['unit'], need), text=row['text'])})
     for row in consumable_stock(session):
         if row["low"]:
             need = row["min_stock"] - row["available_total"]
             out.append({"consumable_id": row["id"], "name": row["name"], "unit": row["unit"],
                         "available": row["available_total"], "min_stock": row["min_stock"],
                         "suggested_qty": need if row["tracking_mode"] != "COUNTED" else int(-(-need // 1)),
-                        "text": f"Buy {need:g} {row['unit']}(s) of {row['name']}: {row['available_total']:g} "
-                                f"available, minimum {row['min_stock']:g}"})
+                        "text": tr("Buy {need} {row}(s) of {row2}: {row3} available, minimum {row4}", need=format(need, 'g'), row=row['unit'], row2=row['name'], row3=format(row['available_total'], 'g'), row4=format(row['min_stock'], 'g'))})
     return out + spares
 
 

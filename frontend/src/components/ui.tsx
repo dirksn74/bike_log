@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from 'react'
 import { STATUS_LABEL } from '../format'
 import type { Change, Status } from '../types'
+import { tr } from '../i18n'
 
 export function StatusBadge({ status }: { status: Status }) {
   return <span className={`badge st-${status.toLowerCase()}`}>{STATUS_LABEL[status] ?? status}</span>
@@ -14,7 +15,7 @@ export function Tag({ children, tone = 'neutral', title }: { children: ReactNode
   )
 }
 
-export function Loading({ what = 'Loading' }: { what?: string }) {
+export function Loading({ what = tr('Loading') }: { what?: string }) {
   return (
     <div className="state state-loading" role="status">
       <span className="spinner" aria-hidden /> {what}…
@@ -25,10 +26,10 @@ export function Loading({ what = 'Loading' }: { what?: string }) {
 export function ErrorBox({ error, onRetry }: { error: string; onRetry?: () => void }) {
   return (
     <div className="state state-error" role="alert">
-      <strong>Something went wrong.</strong> {error}
+      <strong>{tr('Something went wrong.')}</strong> {error}
       {onRetry && (
         <button className="btn btn-small" onClick={onRetry}>
-          Try again
+          {tr('Try again')}
         </button>
       )}
     </div>
@@ -79,7 +80,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <header className="sheet-head">
           <h2>{title}</h2>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Close">
+          <button className="btn btn-ghost" onClick={onClose} aria-label={tr('Close')}>
             ✕
           </button>
         </header>
@@ -93,7 +94,7 @@ export function FormError({ error, form = true }: { error: string | null; form?:
   if (!error) return null
   return (
     <div className="form-error" role="alert">
-      {error} {form && <span className="muted">Your entries are kept; fix and save again.</span>}
+      {error} {form && <span className="muted">{tr('Your entries are kept; fix and save again.')}</span>}
     </div>
   )
 }

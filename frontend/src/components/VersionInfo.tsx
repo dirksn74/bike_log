@@ -1,5 +1,6 @@
 import { useApp } from '../context'
 import { versionProblem } from '../version'
+import { tr } from '../i18n'
 
 export default function VersionInfo() {
   const { meta } = useApp()
@@ -12,9 +13,8 @@ export default function VersionInfo() {
         </p>
       )}
       <p className="small muted">
-        <strong>Bike Log {meta.full_version}</strong>
-        {meta.release ? ' (release)' : ' (build between releases; the part after + is the commit)'} · database schema {meta.schema} · app commit <code>{meta.commit}</code> · screens
-        commit <code>{meta.ui_commit}</code>
+        <strong>{tr('Bike Log')} {meta.full_version}</strong>
+        {meta.release ? tr(' (release)') : tr(' (build between releases; the part after + is the commit)')} {tr('· database schema')} {meta.schema} {tr('· app commit')} <code>{meta.commit}</code> {tr('· screens commit')} <code>{meta.ui_commit}</code>
       </p>
     </>
   )

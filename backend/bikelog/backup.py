@@ -24,6 +24,7 @@ from pathlib import Path
 
 from bikelog import __version__, buildinfo
 from bikelog.paths import DataPaths
+from bikelog.i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -85,11 +86,11 @@ def store_uploaded_backup(paths: DataPaths, data: bytes, file_name: str | None =
     Bike Log schema. Restoring it is a separate step (reset.restore_backup), which writes a safety backup first."""
     from bikelog.services.errors import DomainError
     if not data:
-        raise DomainError("The file is empty")
+        raise DomainError(tr("The file is empty"))
     if len(data) > MAX_UPLOAD_BYTES:
-        raise DomainError("The file is larger than 1 GB; that is not a Bike Log backup")
+        raise DomainError(tr("The file is larger than 1 GB; that is not a Bike Log backup"))
     if not data.startswith(b"SQLite format 3\x00"):
-        raise DomainError("This is not a Bike Log backup file (pick a bikelog-....db file)")
+        raise DomainError(tr("This is not a Bike Log backup file (pick a bikelog-....db file)"))
     dest = paths.backups / f"bikelog-{_stamp()}-uploaded.db"
     paths.backups.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(".part")
@@ -102,7 +103,7 @@ def store_uploaded_backup(paths: DataPaths, data: bytes, file_name: str | None =
         ok, has_schema = False, None
     if not ok or not has_schema:
         tmp.unlink(missing_ok=True)
-        raise DomainError("This file is damaged or not a Bike Log database")
+        raise DomainError(tr("This file is damaged or not a Bike Log database"))
     tmp.replace(dest)
     log.info("Backup uploaded%s: %s", f" from {file_name}" if file_name else "", dest.name)
     return {"name": dest.name, "size": len(data)}
@@ -287,11 +288,11 @@ def store_uploaded_export(paths: DataPaths, data: bytes, file_name: str | None =
     step (reset.restore_export), which backs up the current data first."""
     from bikelog.services.errors import DomainError
     if not data:
-        raise DomainError("The file is empty")
+        raise DomainError(tr("The file is empty"))
     if len(data) > MAX_EXPORT_BYTES:
-        raise DomainError("The file is larger than 2 GB; that is not a Bike Log export")
+        raise DomainError(tr("The file is larger than 2 GB; that is not a Bike Log export"))
     if not data.startswith(b"PK"):
-        raise DomainError("This is not a Bike Log full export (pick a bikelog-export-....zip file)")
+        raise DomainError(tr("This is not a Bike Log full export (pick a bikelog-export-....zip file)"))
     paths.exports.mkdir(parents=True, exist_ok=True)
     dest = _free(paths.exports / f"bikelog-export-{_stamp()}-uploaded.zip")
     tmp = dest.with_name(dest.name + ".part")

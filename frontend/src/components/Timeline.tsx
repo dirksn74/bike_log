@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { euro, when } from '../format'
 import { useApi } from '../hooks'
 import { Card, Empty, ErrorBox, Loading, Tag } from './ui'
+import { tr, locale, lc } from '../i18n'
 
 // Timeline of a bike or of one part (services/timeline.py, DECISIONS 142): everything done to it, newest
 // first, with the km at that moment. The km come from the backend (never added up here) and carry a status:
@@ -52,16 +53,16 @@ interface TimelineData {
 }
 
 function kmText(v: number | null, status: KmStatus): string {
-  if (v === null || status === 'MISSING') return 'km unknown'
+  if (v === null || status === 'MISSING') return tr('km unknown')
   const prefix = status === 'ESTIMATED' ? '≈' : status === 'MINIMUM' ? '≥' : ''
-  return `${prefix}${v.toLocaleString(undefined, { maximumFractionDigits: 0 })} km`
+  return `${prefix}${v.toLocaleString(locale, { maximumFractionDigits: 0 })} km`
 }
 
 const STATUS_HINT: Record<string, string> = {
-  KNOWN: 'known',
-  ESTIMATED: 'estimated (estimated starting value, counted back, or rides with an uncertain part)',
-  MINIMUM: 'a minimum (use before tracking unknown, or rides without a distance)',
-  MISSING: 'not known: before tracking started',
+  KNOWN: tr('known'),
+  ESTIMATED: tr('estimated (estimated starting value, counted back, or rides with an uncertain part)'),
+  MINIMUM: tr('a minimum (use before tracking unknown, or rides without a distance)'),
+  MISSING: tr('not known: before tracking started'),
 }
 
 function dayText(r: TimelineRow): string {
@@ -109,34 +110,34 @@ export default function Timeline({ bikeId, componentId, className = 'span-2' }: 
   const d = data.data
 
   const filterSummary = [
-    kinds.length ? d?.kinds.filter((k) => kinds.includes(k.code)).map((k) => k.label.toLowerCase()).join(', ') : 'all entries',
-    from || to ? `${from ? when(from) : 'start'} → ${to ? when(to) : 'today'}` : null,
-    voided ? 'with deleted entries' : null,
+    kinds.length ? d?.kinds.filter((k) => kinds.includes(k.code)).map((k) => lc(k.label)).join(', ') : tr('all entries'),
+    from || to ? `${from ? when(from) : tr('start')} → ${to ? when(to) : tr('today')}` : null,
+    voided ? tr('with deleted entries') : null,
   ]
     .filter(Boolean)
     .join(' · ')
 
   return (
     <Card
-      title="Timeline"
+      title={tr('Timeline')}
       className={`${className} timeline-card`}
       actions={
         <a className="btn btn-small" href={csvHref} download data-testid="timeline-csv">
-          Export CSV
+          {tr('Export CSV')}
         </a>
       }
     >
       <p className="small muted">
         {onBike
-          ? 'Everything done on this bike, newest first, with the bike’s km at that moment (and the part’s own km).'
-          : 'Everything that happened to this part, newest first, with its own km at that moment (all bikes together).'}{' '}
-        ≈ estimated, ≥ at least.
+          ? tr('Everything done on this bike, newest first, with the bike’s km at that moment (and the part’s own km).')
+          : tr('Everything that happened to this part, newest first, with its own km at that moment (all bikes together).')}{' '}
+        {tr('≈ estimated, ≥ at least.')}
       </p>
       <details className="timeline-filters">
         <summary className="small">
-          Filter: <strong>{filterSummary}</strong>
+          {tr('Filter:')} <strong>{filterSummary}</strong>
         </summary>
-        <div className="chips mt" role="group" aria-label="Entry types">
+        <div className="chips mt" role="group" aria-label={tr('Entry types')}>
           {(d?.kinds ?? []).map((k) => (
             <button key={k.code} type="button" className={`chip ${kinds.includes(k.code) ? 'chip-on' : ''}`} aria-pressed={kinds.includes(k.code)} onClick={() => toggle(k.code)}>
               {k.label} <span className="muted">{k.count}</span>
@@ -145,32 +146,32 @@ export default function Timeline({ bikeId, componentId, className = 'span-2' }: 
         </div>
         <div className="filters mt">
           <label className="inline-field">
-            From <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From date" />
+            {tr('From')} <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={tr('From date')} />
           </label>
           <label className="inline-field">
-            To <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To date" />
+            {tr('To')} <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label={tr('To date')} />
           </label>
           <label className="chip-check small">
             <input type="checkbox" checked={voided} onChange={(e) => setVoided(e.target.checked)} />
-            Show deleted and corrected entries{d ? ` (${d.voided_count})` : ''}
+            {tr('Show deleted and corrected entries')}{d ? ` (${d.voided_count})` : ''}
           </label>
           <label className="inline-field small">
-            CSV for{' '}
-            <select value={style} onChange={(e) => setStyle(e.target.value as 'excel' | 'standard')} aria-label="CSV format">
-              <option value="excel">Excel (semicolon, decimal comma)</option>
-              <option value="standard">Other tools (comma, decimal point)</option>
+            {tr('CSV for')}{' '}
+            <select value={style} onChange={(e) => setStyle(e.target.value as 'excel' | 'standard')} aria-label={tr('CSV format')}>
+              <option value="excel">{tr('Excel (semicolon, decimal comma)')}</option>
+              <option value="standard">{tr('Other tools (comma, decimal point)')}</option>
             </select>
           </label>
           {filtered && (
             <button type="button" className="btn btn-small" onClick={() => { setFrom(''); setTo(''); setKinds([]); setVoided(false) }}>
-              Clear filter
+              {tr('Clear filter')}
             </button>
           )}
         </div>
       </details>
       {data.error && <ErrorBox error={data.error} onRetry={data.reload} />}
-      {!d && data.loading && <Loading what="Loading the timeline" />}
-      {d && d.rows.length === 0 && <Empty title={d.total ? 'Nothing matches the filter' : 'Nothing recorded yet'} />}
+      {!d && data.loading && <Loading what={tr('Loading the timeline')} />}
+      {d && d.rows.length === 0 && <Empty title={d.total ? tr('Nothing matches the filter') : tr('Nothing recorded yet')} />}
       {d && d.rows.length > 0 && (
         <ul className="list timeline" data-testid="timeline">
           {blocks(d.rows).map((b) =>
@@ -180,8 +181,8 @@ export default function Timeline({ bikeId, componentId, className = 'span-2' }: 
               <li key={b.rows[0].ref} className="timeline-group">
                 <details>
                   <summary>
-                    <span className="tl-date">{dayText(b.rows[0])}</span> <strong>{b.rows.length} part changes</strong>{' '}
-                    <span className="small muted">{b.rows.filter((r) => r.type !== 'REMOVED').length} on, {b.rows.filter((r) => r.type !== 'INSTALLED').length} off</span>
+                    <span className="tl-date">{dayText(b.rows[0])}</span> <strong>{b.rows.length} {tr('part changes')}</strong>{' '}
+                    <span className="small muted">{tr('{on} on, {off} off', { on: b.rows.filter((r) => r.type !== 'REMOVED').length, off: b.rows.filter((r) => r.type !== 'INSTALLED').length })}</span>
                   </summary>
                   <ul className="list">
                     {b.rows.map((r) => (
@@ -194,7 +195,7 @@ export default function Timeline({ bikeId, componentId, className = 'span-2' }: 
           )}
         </ul>
       )}
-      {d && d.rows.length > 0 && <p className="footnote">{d.rows.length === d.total ? `${d.total} entries` : `${d.rows.length} of ${d.total} entries`}. The CSV has the same entries, oldest first, with stable record ids.</p>}
+      {d && d.rows.length > 0 && <p className="footnote">{d.rows.length === d.total ? `${d.total} entries` : tr('{length} of {total} entries', { length: d.rows.length, total: d.total })}{tr('. The CSV has the same entries, oldest first, with stable record ids.')}</p>}
     </Card>
   )
 }
@@ -222,7 +223,7 @@ function TimelineItem({ r, onBike }: { r: TimelineRow; onBike: boolean }) {
           </>
         )}
         {!onBike && r.bike && r.bike_id && (
-          <span className="small muted"> · on <Link to={`/bikes/${r.bike_id}`}>{r.bike}</Link></span>
+          <span className="small muted"> {tr('· on')} <Link to={`/bikes/${r.bike_id}`}>{r.bike}</Link></span>
         )}
         {r.detail && <span className="small muted tl-detail">{r.detail}</span>}
         {r.voided && <Tag tone="bad">{r.void_reason ?? 'deleted'}</Tag>}
@@ -234,7 +235,7 @@ function TimelineItem({ r, onBike }: { r: TimelineRow; onBike: boolean }) {
             {otherKm[0]} {kmText(otherKm[1], otherKm[2])}
           </span>
         )}
-        {r.same_day_km ? <span className="small muted" title="Recorded with a date only: it counts from the start of that day, and this much was ridden later that day">+ up to {kmText(r.same_day_km, 'KNOWN')} that day</span> : null}
+        {r.same_day_km ? <span className="small muted" title={tr('Recorded with a date only: it counts from the start of that day, and this much was ridden later that day')}>{tr('+ up to')} {kmText(r.same_day_km, 'KNOWN')} {tr('that day')}</span> : null}
         {r.cost_cents !== null && <span className="small muted">{euro(r.cost_cents)}</span>}
       </span>
     </li>
@@ -246,7 +247,7 @@ export function FoldedTimeline({ componentId }: { componentId: number }) {
   const [open, setOpen] = useState(false)
   return (
     <details className="span-2 timeline-fold" data-testid="part-timeline" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
-      <summary className="btn">Timeline with km · CSV export</summary>
+      <summary className="btn">{tr('Timeline with km · CSV export')}</summary>
       {open && <Timeline componentId={componentId} className="" />}
     </details>
   )

@@ -4,36 +4,37 @@
 // back button) cuts the trail there; a main menu item starts a new trail. Opened directly (a bookmark, a
 // fresh start), a page gets the trail of where it lives. Pages name themselves with useCrumb().
 import { useEffect, useSyncExternalStore } from 'react'
+import { tr } from './i18n'
 
 export const MAIN: Record<string, string> = {
-  '/': 'Overview',
-  '/bikes': 'Bikes',
-  '/maintenance': 'Maintenance',
-  '/rides': 'Rides',
-  '/inventory': 'Inventory',
-  '/settings': 'Settings',
+  '/': tr('Overview'),
+  '/bikes': tr('Bikes'),
+  '/maintenance': tr('Maintenance'),
+  '/rides': tr('Rides'),
+  '/inventory': tr('Inventory'),
+  '/settings': tr('Settings'),
 }
 
 export const INVENTORY_TABS: [string, string][] = [
-  ['available', 'Available spares'],
-  ['service', 'Needs prep / repair'],
-  ['installed', 'Installed'],
-  ['shopping', 'Shopping list'],
-  ['history', 'History'],
-  ['life', 'Part life'],
-  ['chains', 'Chains'],
-  ['supplies', 'Supplies'],
-  ['all', 'All parts'],
+  ['available', tr('Available spares')],
+  ['service', tr('Needs prep / repair')],
+  ['installed', tr('Installed')],
+  ['shopping', tr('Shopping list')],
+  ['history', tr('History')],
+  ['life', tr('Part life')],
+  ['chains', tr('Chains')],
+  ['supplies', tr('Supplies')],
+  ['all', tr('All parts')],
 ]
 
 export const BIKE_TABS: [string, string][] = [
-  ['overview', 'Parts and service'],
-  ['rides', 'Rides'],
-  ['incidents', 'Incidents'],
-  ['maintenance', 'Maintenance'],
-  ['timeline', 'Timeline'],
-  ['costs', 'Costs'],
-  ['history', 'Journal and history'],
+  ['overview', tr('Parts and service')],
+  ['rides', tr('Rides')],
+  ['incidents', tr('Incidents')],
+  ['maintenance', tr('Maintenance')],
+  ['timeline', tr('Timeline')],
+  ['costs', tr('Costs')],
+  ['history', tr('Journal and history')],
 ]
 
 // the tab a page was on is a crumb of its own (Inventory › Installed), so going back opens that tab again

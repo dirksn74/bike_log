@@ -39,6 +39,7 @@ from bikelog.migrate import (
 )
 from bikelog.paths import DataPaths
 from bikelog.services.errors import DomainError
+from bikelog.i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -67,9 +68,9 @@ def _keep_strava_connection(factory: sessionmaker[Session], connected: bool) -> 
 def reset_database(factory: sessionmaker[Session], paths: DataPaths, *, confirm: str, clear_strava: bool = False,
                    strava_web=None) -> dict:
     if (confirm or "").strip() != CONFIRM_WORD:
-        raise DomainError(f"Type {CONFIRM_WORD} to confirm the fresh start")
+        raise DomainError(tr("Type {CONFIRM_WORD} to confirm the fresh start", CONFIRM_WORD=CONFIRM_WORD))
     if strava_web is not None and strava_web.job.get("running"):
-        raise DomainError("A Strava sync is running; wait until it has finished")
+        raise DomainError(tr("A Strava sync is running; wait until it has finished"))
     with _lock:
         backup = backup_database(paths, f"{KEPT_MARK}reset")
         engine = factory.kw["bind"]
@@ -120,14 +121,14 @@ def _strava_after_reset(factory: sessionmaker[Session], strava_web, clear: bool)
 def _backup_file(paths: DataPaths, name: str) -> Path:
     f = (paths.backups / name).resolve()
     if f.parent != paths.backups.resolve() or not f.name.endswith(".db") or not f.exists():
-        raise DomainError("No such backup")
+        raise DomainError(tr("No such backup"))
     return f
 
 
 def _export_file(paths: DataPaths, name: str) -> Path:
     f = (paths.exports / name).resolve()
     if f.parent != paths.exports.resolve() or not f.name.endswith(".zip") or not f.exists():
-        raise DomainError("No such export")
+        raise DomainError(tr("No such export"))
     return f
 
 
@@ -157,7 +158,7 @@ def _upgraded_copy(src: Path, workdir: Path) -> Path:
     with closing(sqlite3.connect(copy)) as c:
         c.execute("PRAGMA journal_mode = DELETE")
         if c.execute("PRAGMA integrity_check").fetchone()[0] != "ok" or c.execute("PRAGMA foreign_key_check").fetchall():
-            raise DomainError("The restored data did not pass the database checks; nothing was changed")
+            raise DomainError(tr("The restored data did not pass the database checks; nothing was changed"))
     return copy
 
 
@@ -173,22 +174,22 @@ def _swap_in(factory: sessionmaker[Session], upgraded: Path, paths: DataPaths) -
 
 def _check_revision(rev: str | None, what: str) -> None:
     if rev is None:
-        raise DomainError(f"{what} is not a Bike Log database this version can read")
+        raise DomainError(tr("{what} is not a Bike Log database this version can read", what=what))
     if rev not in known_revisions():
-        raise DomainError(f"{what} was made by a newer Bike Log (database schema {rev}). Install the newer version first.")
+        raise DomainError(tr("{what} was made by a newer Bike Log (database schema {rev}). Install the newer version first.", what=what, rev=rev))
 
 
 def restore_backup(factory: sessionmaker[Session], paths: DataPaths, name: str, strava_web=None) -> dict:
     src = _backup_file(paths, name)
     if strava_web is not None and strava_web.job.get("running"):
-        raise DomainError("A Strava sync is running; wait until it has finished")
+        raise DomainError(tr("A Strava sync is running; wait until it has finished"))
     with closing(sqlite3.connect(f"file:{src.as_posix()}?mode=ro", uri=True)) as c:
         try:
             ok = c.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         except sqlite3.DatabaseError:
             ok = False
         if not ok:
-            raise DomainError(f"{name} is damaged or not a database; pick another backup")
+            raise DomainError(tr("{name} is damaged or not a database; pick another backup", name=name))
         try:
             rev = c.execute("SELECT version_num FROM alembic_version").fetchone()
         except sqlite3.Error:
@@ -218,7 +219,7 @@ def restore_export(factory: sessionmaker[Session], paths: DataPaths, name: str, 
     pruned) and swap the new data in. Importing the same file again gives the same result (idempotent)."""
     archive = _export_file(paths, name)
     if strava_web is not None and strava_web.job.get("running"):
-        raise DomainError("A Strava sync is running; wait until it has finished")
+        raise DomainError(tr("A Strava sync is running; wait until it has finished"))
     info = check_export(paths, name)
     with _lock, tempfile.TemporaryDirectory() as tmp:
         try:

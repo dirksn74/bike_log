@@ -9,6 +9,7 @@ import { useApi } from '../hooks'
 import type { FixOptions, FixPartOption, FixSourceOptions } from '../types'
 import { ReplaceForm } from './PartChange'
 import { Empty, ErrorBox, Field, FormError, Loading } from './ui'
+import { tr, unitWord } from '../i18n'
 
 type Source = { kind: 'stock' | 'spare'; id: number } | { kind: 'same' | 'new' }
 type PartFix = { action: 'NONE' | 'REPLACED' | 'REPAIRED'; source: Source | null; old_outcome: string }
@@ -25,10 +26,10 @@ function defaultSource(o: FixSourceOptions | null): Source | null {
 // Where the new tube or tire comes from: stock, a stored spare, or a new one.
 function SourcePick({ name, options, isPart, value, onChange, newLabel }: { name: string; options: FixSourceOptions; isPart: boolean; value: Source | null; onChange: (s: Source) => void; newLabel?: string }) {
   const picks: [Source, string, string][] = [
-    ...options.stock.map((s): [Source, string, string] => [{ kind: 'stock', id: s.id }, `One from stock: ${s.name}`, `${s.qty} ${s.unit}${s.qty === 1 ? '' : 's'} left`]),
-    ...options.spares.map((s): [Source, string, string] => [{ kind: 'spare', id: s.id }, s.label, 'stored spare']),
-    ...(isPart ? [[{ kind: 'same' }, 'New item, same product', 'a new physical part'] as [Source, string, string]] : []),
-    [{ kind: 'new' }, newLabel ?? (isPart || options.tracks_new ? 'Newly bought item' : 'A new one'), newLabel ? 'not taken from stock' : isPart || options.tracks_new ? 'tracked from now on' : 'not taken from stock, not tracked'],
+    ...options.stock.map((s): [Source, string, string] => [{ kind: 'stock', id: s.id }, tr('One from stock: {name}', { name: s.name }), tr('{qty} {unit} left', { qty: s.qty, unit: unitWord(s.unit, s.qty) })]),
+    ...options.spares.map((s): [Source, string, string] => [{ kind: 'spare', id: s.id }, s.label, tr('stored spare')]),
+    ...(isPart ? [[{ kind: 'same' }, tr('New item, same product'), tr('a new physical part')] as [Source, string, string]] : []),
+    [{ kind: 'new' }, newLabel ?? (isPart || options.tracks_new ? tr('Newly bought item') : tr('A new one')), newLabel ? tr('not taken from stock') : isPart || options.tracks_new ? tr('tracked from now on') : tr('not taken from stock, not tracked')],
   ]
   return (
     <div className="pick-list">
@@ -81,7 +82,7 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
         old_outcome: f.old_outcome || null,
       }))
       const r = await api.post<{ solved: boolean; texts: string[] }>(`/incidents/${group}/fix`, { at, parts, note: note || null }, opId)
-      toast(`${r.texts.join('; ')}.${r.solved ? ' Incident solved.' : ' The incident stays open for the rest.'}`)
+      toast(`${r.texts.join('; ')}.${r.solved ? tr(' Incident solved.') : tr(' The incident stays open for the rest.')}`)
       onDone()
     } catch (e) {
       setErr((e as Error).message)
@@ -93,13 +94,13 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
   return (
     <div className="form fix-form">
       <fieldset className="field">
-        <legend className="field-label">When</legend>
+        <legend className="field-label">{tr('When')}</legend>
         <div className="chips">
           {(
             [
-              ['road', `On the road (${when(d.ride_date)})`],
-              ['home', 'At home (today)'],
-              ['other', 'Another day'],
+              ['road', tr('On the road ({ride_date})', { ride_date: when(d.ride_date) })],
+              ['home', tr('At home (today)')],
+              ['other', tr('Another day')],
             ] as const
           ).map(([k, label]) => (
             <label key={k} className={`chip ${where === k ? 'chip-on' : ''}`}>
@@ -108,7 +109,7 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
             </label>
           ))}
         </div>
-        {where === 'other' && <input type="date" aria-label="Fix date" value={other} min={d.ride_date} onChange={(e) => setOther(e.target.value)} />}
+        {where === 'other' && <input type="date" aria-label={tr('Fix date')} value={other} min={d.ride_date} onChange={(e) => setOther(e.target.value)} />}
       </fieldset>
       {d.parts
         .filter((p) => p.repair)
@@ -117,19 +118,19 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
             ✓ <strong>{p.label}</strong>: {p.repair_text}
           </p>
         ))}
-      {todo.length === 0 && <Empty title="Everything in this incident is fixed already" />}
+      {todo.length === 0 && <Empty title={tr('Everything in this incident is fixed already')} />}
       {todo.map((p) => {
         const f = fixes[p.entry_id]
         if (!f) return null
         const actions: [PartFix['action'], string][] = [
-          ...(p.options?.replace ? [['REPLACED', p.kind === 'SPOKE' ? 'Replaced spoke' : 'Replaced'] as [PartFix['action'], string]] : []),
-          ['REPAIRED', p.repair_label ?? 'Repaired'],
-          ['NONE', 'Nothing yet'],
+          ...(p.options?.replace ? [['REPLACED', p.kind === 'SPOKE' ? tr('Replaced spoke') : tr('Replaced')] as [PartFix['action'], string]] : []),
+          ['REPAIRED', p.repair_label ?? tr('Repaired')],
+          ['NONE', tr('Nothing yet')],
         ]
         return (
           <fieldset key={p.entry_id} className="field fix-part">
             <legend className="field-label">{p.label}</legend>
-            <div className="chips" role="radiogroup" aria-label={`Fix ${p.label}`}>
+            <div className="chips" role="radiogroup" aria-label={tr('Fix {label}', { label: p.label })}>
               {actions.map(([a, label]) => (
                 <label key={a} className={`chip ${f.action === a ? 'chip-on' : ''}`}>
                   <input type="radio" className="sr-only" name={`fix-${p.entry_id}`} checked={f.action === a} onChange={() => set(p, { action: a })} />
@@ -137,18 +138,18 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
                 </label>
               ))}
             </div>
-            {f.action === 'REPLACED' && p.options && p.kind === 'SPOKE' && <SourcePick name={`src-${p.entry_id}`} options={p.options} isPart={false} newLabel="Spoke not from stock" value={f.source} onChange={(s) => set(p, { source: s })} />}
+            {f.action === 'REPLACED' && p.options && p.kind === 'SPOKE' && <SourcePick name={`src-${p.entry_id}`} options={p.options} isPart={false} newLabel={tr('Spoke not from stock')} value={f.source} onChange={(s) => set(p, { source: s })} />}
             {f.action === 'REPLACED' && p.options && p.kind !== 'OTHER' && p.kind !== 'SPOKE' && (
               <>
                 <SourcePick name={`src-${p.entry_id}`} options={p.options} isPart={p.kind === 'PART'} value={f.source} onChange={(s) => set(p, { source: s })} />
-                {p.kind === 'POSITION' && p.damage === 'TIRE' && !p.options.wheel_label && <p className="small muted">No wheel recorded at this position, so stored spares cannot be put on it here.</p>}
+                {p.kind === 'POSITION' && p.damage === 'TIRE' && !p.options.wheel_label && <p className="small muted">{tr('No wheel recorded at this position, so stored spares cannot be put on it here.')}</p>}
                 {p.kind === 'PART' && p.options.outcomes && (
-                  <Field label={`What happened to ${p.label}?`}>
+                  <Field label={tr('What happened to {label}?', { label: p.label })}>
                     <select value={f.old_outcome} onChange={(e) => set(p, { old_outcome: e.target.value })}>
                       {p.options.outcomes.map((o) => (
                         <option key={o.code} value={o.code}>
                           {o.label}
-                          {o.code === p.options?.suggested_outcome ? ' (suggested)' : ''}
+                          {o.code === p.options?.suggested_outcome ? tr(' (suggested)') : ''}
                         </option>
                       ))}
                     </select>
@@ -160,19 +161,19 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
         )
       })}
       {todo.length > 0 && (
-        <Field label="Note (optional)">
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. glass shard still in the tire" />
+        <Field label={tr('Note (optional)')}>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tr('e.g. glass shard still in the tire')} />
         </Field>
       )}
-      <p className="small muted">The old part keeps its km. When every part is fixed, the incident is solved; otherwise it stays open in Upcoming tasks.</p>
+      <p className="small muted">{tr('The old part keeps its km. When every part is fixed, the incident is solved; otherwise it stays open in Upcoming tasks.')}</p>
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn" onClick={onCancel}>
-          Cancel
+          {tr('Cancel')}
         </button>
         {todo.length > 0 && (
           <button className="btn btn-primary" disabled={busy} onClick={save}>
-            {busy ? 'Saving…' : 'Save fix'}
+            {busy ? tr('Saving…') : tr('Save fix')}
           </button>
         )}
       </div>
@@ -207,11 +208,11 @@ export function SwapTube({ bikeId, onDone }: { bikeId: number; onDone: (text: st
   }
   return (
     <div className="form">
-      <div className="chips" role="radiogroup" aria-label="Which wheel">
+      <div className="chips" role="radiogroup" aria-label={tr('Which wheel')}>
         {(
           [
-            ['FRONT_WHEEL', 'Front wheel'],
-            ['REAR_WHEEL', 'Rear wheel'],
+            ['FRONT_WHEEL', tr('Front wheel')],
+            ['REAR_WHEEL', tr('Rear wheel')],
           ] as const
         ).map(([k, label]) => (
           <label key={k} className={`chip ${wheel === k ? 'chip-on' : ''}`}>
@@ -230,17 +231,17 @@ export function SwapTube({ bikeId, onDone }: { bikeId: number; onDone: (text: st
         opts.data && (
           <>
             <fieldset className="field">
-              <legend className="field-label">New tube</legend>
+              <legend className="field-label">{tr('New tube')}</legend>
               <SourcePick name="swap-tube-src" options={{ ...opts.data, replace: true }} isPart={false} value={source} onChange={setSource} />
             </fieldset>
-            {opts.data.stock.length === 0 && <p className="small muted">No tubes in stock. Add them under Inventory → Stock so the count drops when you use one.</p>}
-            <Field label="Swapped on">
+            {opts.data.stock.length === 0 && <p className="small muted">{tr('No tubes in stock. Add them under Inventory → Stock so the count drops when you use one.')}</p>}
+            <Field label={tr('Swapped on')}>
               <input type="date" value={at} onChange={(e) => setAt(e.target.value)} />
             </Field>
             <FormError error={err} />
             <div className="form-actions">
               <button className="btn btn-primary" disabled={busy || !source} onClick={save}>
-                Swap tube
+                {tr('Swap tube')}
               </button>
             </div>
           </>

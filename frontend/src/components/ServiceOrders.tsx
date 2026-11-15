@@ -6,6 +6,7 @@ import type { ServiceOrder } from '../types'
 import { useApp } from '../context'
 import { Card, Field, FormError, Sheet, Tag } from './ui'
 import ShopPicker from './ShopPicker'
+import { tr } from '../i18n'
 
 // Sent after that day's rides: a date alone would be the start of the day and take that day's rides away.
 const afterRides = (date: string) => (date === today() ? new Date().toISOString() : `${date}T23:59`)
@@ -27,27 +28,27 @@ export function SendOutForm({ componentId, label, incidents, onDone }: { compone
     setErr(null)
     try {
       await api.post(`/components/${componentId}/send-out`, { at: afterRides(f.at), shop: f.shop || null, reason: f.reason || null, incident_group: f.incident || null }, opId)
-      onDone(`${label} is away for repair. Record "Back from repair" when it returns.`)
+      onDone(tr('{label} is away for repair. Record "Back from repair" when it returns.', { label }))
     } catch (e) {
       setErr((e as Error).message)
     }
   }
   return (
     <div className="form">
-      <p className="small muted">It comes off the bike after that day's rides and collects no km while it is away. Parts mounted on it go along.</p>
+      <p className="small muted">{tr('It comes off the bike after that day\'s rides and collects no km while it is away. Parts mounted on it go along.')}</p>
       <div className="row">
-        <Field label="Sent on">
+        <Field label={tr('Sent on')}>
           <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
         </Field>
-        <ShopPicker label="Shop or maker" value={f.shop} onChange={(v) => setF({ ...f, shop: v })} />
+        <ShopPicker label={tr('Shop or maker')} value={f.shop} onChange={(v) => setF({ ...f, shop: v })} />
       </div>
-      <Field label="What is wrong">
+      <Field label={tr('What is wrong')}>
         <textarea rows={2} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} />
       </Field>
       {incidents.length > 0 && (
-        <Field label="Because of this incident" hint="Its fix is recorded when the part comes back.">
+        <Field label={tr('Because of this incident')} hint={tr('Its fix is recorded when the part comes back.')}>
           <select value={f.incident} onChange={(e) => setF({ ...f, incident: e.target.value })}>
-            <option value="">No incident</option>
+            <option value="">{tr('No incident')}</option>
             {incidents.map((i) => (
               <option key={i.group} value={i.group}>
                 {when(i.on)} · {i.label} · {i.affected}
@@ -59,7 +60,7 @@ export function SendOutForm({ componentId, label, incidents, onDone }: { compone
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={send}>
-          Send away
+          {tr('Send away')}
         </button>
       </div>
     </div>
@@ -67,10 +68,10 @@ export function SendOutForm({ componentId, label, incidents, onDone }: { compone
 }
 
 const OUTCOMES: [string, string, string][] = [
-  ['REPAIRED_PAID', 'Repaired, I paid', 'The cost counts in the bike and part costs.'],
-  ['REPAIRED_WARRANTY', 'Repaired under warranty', 'Free; enter a cost only for something like shipping.'],
-  ['REPLACED_WARRANTY', 'Replaced under warranty', 'The old part is "returned under warranty" and keeps its km; the new one starts at 0 km.'],
-  ['NOT_REPAIRED', 'Not repaired', 'It comes back as it went (or you discard it).'],
+  ['REPAIRED_PAID', tr('Repaired, I paid'), tr('The cost counts in the bike and part costs.')],
+  ['REPAIRED_WARRANTY', tr('Repaired under warranty'), tr('Free; enter a cost only for something like shipping.')],
+  ['REPLACED_WARRANTY', tr('Replaced under warranty'), tr('The old part is "returned under warranty" and keeps its km; the new one starts at 0 km.')],
+  ['NOT_REPAIRED', tr('Not repaired'), tr('It comes back as it went (or you discard it).')],
 ]
 
 export function ReturnForm({ order, onDone }: { order: ServiceOrder; onDone: (msg: string) => void }) {
@@ -80,10 +81,10 @@ export function ReturnForm({ order, onDone }: { order: ServiceOrder; onDone: (ms
   async function save() {
     setErr(null)
     const cost = toCents(f.cost)
-    if (Number.isNaN(cost)) return setErr('Cost: enter an amount such as 500 or 49,90')
+    if (Number.isNaN(cost)) return setErr(tr('Cost: enter an amount such as 500 or 49,90'))
     try {
       await api.post(`/service-orders/${order.id}/return`, { at: f.at === today() ? new Date().toISOString() : f.at, outcome: f.outcome, cost_cents: cost, receipt_ref: f.receipt || null, notes: f.notes || null, put_back: f.putBack, keep_as: f.keepAs, new_label: f.newLabel || null, new_serial: f.newSerial || null, new_warranty_until: f.newWarranty || null }, opId)
-      onDone(`${order.label}: back from repair.`)
+      onDone(tr('{label}: back from repair.', { label: order.label }))
     } catch (e) {
       setErr((e as Error).message)
     }
@@ -91,11 +92,11 @@ export function ReturnForm({ order, onDone }: { order: ServiceOrder; onDone: (ms
   return (
     <div className="form">
       <p className="small muted">
-        Sent {when(order.sent_on)}
-        {order.shop ? ` to ${order.shop}` : ''}
+        {tr('Sent')} {when(order.sent_on)}
+        {order.shop ? tr(' to {shop}', { shop: order.shop }) : ''}
         {order.reason ? ` · ${order.reason}` : ''}
       </p>
-      <div role="radiogroup" aria-label="What came back">
+      <div role="radiogroup" aria-label={tr('What came back')}>
         {OUTCOMES.map(([code, label, hint]) => (
           <label key={code} className="check">
             <input type="radio" name="outcome" checked={f.outcome === code} onChange={() => setF({ ...f, outcome: code })} /> {label} <span className="small muted">{hint}</span>
@@ -103,51 +104,51 @@ export function ReturnForm({ order, onDone }: { order: ServiceOrder; onDone: (ms
         ))}
       </div>
       <div className="row">
-        <Field label="Back on">
+        <Field label={tr('Back on')}>
           <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
         </Field>
-        <Field label="Cost (optional)">
+        <Field label={tr('Cost (optional)')}>
           <input inputMode="decimal" value={f.cost} onChange={(e) => setF({ ...f, cost: e.target.value })} placeholder="€" />
         </Field>
       </div>
       {f.outcome === 'REPLACED_WARRANTY' && (
         <>
-          <Field label="Name of the new part" hint="Empty: a name is made from the old one.">
+          <Field label={tr('Name of the new part')} hint={tr('Empty: a name is made from the old one.')}>
             <input value={f.newLabel} onChange={(e) => setF({ ...f, newLabel: e.target.value })} />
           </Field>
           <div className="row">
-            <Field label="Serial number">
+            <Field label={tr('Serial number')}>
               <input value={f.newSerial} onChange={(e) => setF({ ...f, newSerial: e.target.value })} />
             </Field>
-            <Field label="Warranty until">
+            <Field label={tr('Warranty until')}>
               <input type="date" value={f.newWarranty} onChange={(e) => setF({ ...f, newWarranty: e.target.value })} />
             </Field>
           </div>
         </>
       )}
       <div className="row">
-        <Field label="Receipt or reference">
-          <input value={f.receipt} onChange={(e) => setF({ ...f, receipt: e.target.value })} placeholder="e.g. invoice number" />
+        <Field label={tr('Receipt or reference')}>
+          <input value={f.receipt} onChange={(e) => setF({ ...f, receipt: e.target.value })} placeholder={tr('e.g. invoice number')} />
         </Field>
-        <Field label="Notes">
-          <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="what was done" />
+        <Field label={tr('Notes')}>
+          <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder={tr('what was done')} />
         </Field>
       </div>
       {f.outcome === 'NOT_REPAIRED' ? (
         <label className="check">
-          <input type="checkbox" checked={f.keepAs === 'DISCARDED'} onChange={(e) => setF({ ...f, keepAs: e.target.checked ? 'DISCARDED' : 'STORED' })} /> Discard it (otherwise it is stored)
+          <input type="checkbox" checked={f.keepAs === 'DISCARDED'} onChange={(e) => setF({ ...f, keepAs: e.target.checked ? 'DISCARDED' : 'STORED' })} /> {tr('Discard it (otherwise it is stored)')}
         </label>
       ) : (
         order.from_slot && (
           <label className="check">
-            <input type="checkbox" checked={f.putBack} onChange={(e) => setF({ ...f, putBack: e.target.checked })} /> Put {f.outcome === 'REPLACED_WARRANTY' ? 'the new part' : 'it'} back on {order.from} (a part fitted there meanwhile is stored)
+            <input type="checkbox" checked={f.putBack} onChange={(e) => setF({ ...f, putBack: e.target.checked })} /> {tr(f.outcome === 'REPLACED_WARRANTY' ? 'Put the new part back on {from} (a part fitted there meanwhile is stored)' : 'Put it back on {from} (a part fitted there meanwhile is stored)', { from: order.from })}
           </label>
         )
       )}
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={save}>
-          Save
+          {tr('Save')}
         </button>
       </div>
     </div>
@@ -163,23 +164,23 @@ export function OrderLine({ o, showPart = false }: { o: ServiceOrder; showPart?:
           {' · '}
         </>
       )}
-      Sent {when(o.sent_on)}
-      {o.shop ? ` to ${o.shop}` : ''}
+      {tr('Sent')} {when(o.sent_on)}
+      {o.shop ? tr(' to {shop}', { shop: o.shop }) : ''}
       {o.reason ? ` · ${o.reason}` : ''}
       {o.status === 'OUT' ? (
         <>
           {' '}
-          <Tag tone="warn">away</Tag>
+          <Tag tone="warn">{tr('away')}</Tag>
         </>
       ) : (
         <>
-          {` · back ${when(o.returned_on)}: ${o.outcome_text}`}
+          {tr(' · back {returned_on}: {outcome_text}', { returned_on: when(o.returned_on), outcome_text: o.outcome_text })}
           {o.cost_cents ? ` · ${euro(o.cost_cents)}` : ''}
-          {o.receipt_ref ? ` · receipt ${o.receipt_ref}` : ''}
+          {o.receipt_ref ? tr(' · receipt {receipt_ref}', { receipt_ref: o.receipt_ref }) : ''}
           {o.notes ? ` · ${o.notes}` : ''}
           {o.replacement_id && (
             <>
-              {' · new part '}
+              {tr(' · new part ')}
               <Link to={`/inventory/${o.replacement_id}`}>{o.replacement}</Link>
             </>
           )}
@@ -188,7 +189,7 @@ export function OrderLine({ o, showPart = false }: { o: ServiceOrder; showPart?:
       {o.incident && (
         <>
           {' · '}
-          {o.incident.ride_id ? <Link to={`/rides?open=${o.incident.ride_id}`}>{o.incident.label}</Link> : o.incident.label} {when(o.incident.on)} {o.incident.open ? <Tag tone="warn">open</Tag> : <Tag tone="good">solved</Tag>}
+          {o.incident.ride_id ? <Link to={`/rides?open=${o.incident.ride_id}`}>{o.incident.label}</Link> : o.incident.label} {when(o.incident.on)} {o.incident.open ? <Tag tone="warn">{tr('open')}</Tag> : <Tag tone="good">{tr('solved')}</Tag>}
         </>
       )}
     </>
@@ -199,15 +200,15 @@ export function OrderLine({ o, showPart = false }: { o: ServiceOrder; showPart?:
 export function RepairsCard({ orders, componentId, onBack }: { orders: ServiceOrder[]; componentId: number; onBack: (o: ServiceOrder) => void }) {
   if (orders.length === 0) return null
   return (
-    <Card title="Sent away for repair">
+    <Card title={tr('Sent away for repair')}>
       <ul className="list">
         {orders.map((o) => (
           <li key={o.id} className="small">
-            {o.component_id !== componentId && <>Replacement for <Link to={`/inventory/${o.component_id}`}>{o.label}</Link>: </>}
+            {o.component_id !== componentId && <>{tr('Replacement for')} <Link to={`/inventory/${o.component_id}`}>{o.label}</Link>: </>}
             <OrderLine o={o} />{' '}
             {o.status === 'OUT' && o.component_id === componentId && (
               <button className="btn btn-small btn-primary" onClick={() => onBack(o)}>
-                Back from repair
+                {tr('Back from repair')}
               </button>
             )}
           </li>
@@ -223,19 +224,19 @@ export function AwayCard({ orders, onChanged }: { orders: ServiceOrder[]; onChan
   const [back, setBack] = useState<ServiceOrder | null>(null)
   if (orders.length === 0) return null
   return (
-    <Card title="Away for repair">
+    <Card title={tr('Away for repair')}>
       <ul className="list">
         {orders.map((o) => (
           <li key={o.id} className="small">
             <OrderLine o={o} showPart />{' '}
             <button className="btn btn-small btn-primary" onClick={() => setBack(o)}>
-              Back from repair
+              {tr('Back from repair')}
             </button>
           </li>
         ))}
       </ul>
       {back && (
-        <Sheet title={`Back from repair: ${back.label}`} onClose={() => setBack(null)}>
+        <Sheet title={tr('Back from repair: {label}', { label: back.label })} onClose={() => setBack(null)}>
           <ReturnForm order={back} onDone={(msg) => { setBack(null); toast(msg); onChanged() }} />
         </Sheet>
       )}

@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from bikelog.models import Bike, Component, Ride, UsageAdjustment, UsageContribution
+from bikelog.i18n import num, tr, trn
 
 
 def _round(x: float) -> float:
@@ -64,17 +65,16 @@ def component_usage(session: Session, comp: Component) -> dict:
         certainty = "KNOWN"
     parts = []
     if start:
-        parts.append(f"{'≈' if start.is_estimate else ''}{start_km:,.0f} km {'estimated ' if start.is_estimate else ''}"
-                     f"starting value as of {start.effective_at[:10]}")
+        parts.append(tr("{x}{start_km} km {x2}starting value as of {effective_at}", x='≈' if start.is_estimate else '', start_km=num(start_km), x2='estimated ' if start.is_estimate else '', effective_at=start.effective_at[:10]))
     elif comp.prior_usage == "UNKNOWN":
-        parts.append("usage before tracking is unknown (total is a minimum)")
-    parts.append(f"{ride_km_certain + ride_km_uncertain:,.1f} km from {ride_count} ride{'s' if ride_count != 1 else ''}")
+        parts.append(tr("usage before tracking is unknown (total is a minimum)"))
+    parts.append(trn("{x} km from {n} ride", "{x} km from {n} rides", ride_count, x=num(ride_km_certain + ride_km_uncertain, 1)))
     if ride_km_uncertain:
-        parts.append(f"{ride_km_uncertain:,.1f} km of it uncertain")
+        parts.append(tr("{ride_km_uncertain} km of it uncertain", ride_km_uncertain=num(ride_km_uncertain, 1)))
     if corrections:
-        parts.append(f"{corr_km:+,.1f} km corrections")
+        parts.append(tr("{corr_km} km corrections", corr_km=format(corr_km, '+,.1f')))
     if missing_distance:
-        parts.append(f"{missing_distance} ride(s) with missing distance")
+        parts.append(tr("{missing_distance} ride(s) with missing distance", missing_distance=missing_distance))
     return {
         "total_km": _round(total),
         "ride_km": _round(ride_km_certain + ride_km_uncertain),
@@ -103,7 +103,7 @@ def component_ledger(session: Session, comp: Component) -> list[dict]:
             UsageAdjustment.component_id == comp.id, UsageAdjustment.voided_at.is_(None))):
         entries.append({"kind": a.kind, "sort": a.effective_utc, "date": a.effective_at[:10], "km": a.km,
                         "counted": True, "certain": not a.is_estimate, "is_estimate": a.is_estimate,
-                        "detail": a.note or ("Starting value" if a.kind == "STARTING" else "Correction")})
+                        "detail": a.note or (tr("Starting value") if a.kind == "STARTING" else tr("Correction"))})
     for c, r, bike_name in rows:
         entries.append({"kind": "RIDE", "sort": c.sort_utc, "date": r.ride_date, "km": c.km, "ride_id": r.id,
                         "ride_name": r.name, "bike": bike_name, "slot": c.slot, "basis": c.basis,

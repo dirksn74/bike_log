@@ -16,12 +16,13 @@ from bikelog.services import incidents, journal, repairs
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
 from bikelog.services.errors import DomainError
+from bikelog.i18n import tr
 
 
 def _wheel(session: Session, wheel_id: int):
     wheel = inv.get_component(session, wheel_id)
     if wheel.component_type not in WHEEL_TYPES:
-        raise DomainError("A broken spoke is logged on a front or rear wheel")
+        raise DomainError(tr("A broken spoke is logged on a front or rear wheel"))
     return wheel
 
 
@@ -34,9 +35,9 @@ def log_broken(session: Session, wheel_id: int, *, broke_on: str, replaced_on: s
     """A spoke broke on ``broke_on``; with ``replaced_on`` it was also replaced (a spoke from stock or not)."""
     wheel = _wheel(session, wheel_id)
     if not broke_on:
-        raise DomainError("Give the day the spoke broke")
+        raise DomainError(tr("Give the day the spoke broke"))
     if replaced_on and replaced_on[:10] < broke_on[:10]:
-        raise DomainError("The spoke cannot be replaced before it broke")
+        raise DomainError(tr("The spoke cannot be replaced before it broke"))
     group = new_uuid()
     e = journal.add(session, text=(note or "").strip() or None, on=broke_on[:10], component_id=wheel.id,
                     incident_type="SPOKE", incident_group=group)
@@ -52,11 +53,11 @@ def mark_replaced(session: Session, wheel_id: int, group: str, *, replaced_on: s
     wheel = _wheel(session, wheel_id)
     e = next((b for b in m.spoke_breaks(session, wheel) if b["group"] == group), None)
     if e is None:
-        raise DomainError("That broken spoke is not on this wheel")
+        raise DomainError(tr("That broken spoke is not on this wheel"))
     if e["repair"]:
-        raise DomainError("That spoke is already marked as replaced")
+        raise DomainError(tr("That spoke is already marked as replaced"))
     if not replaced_on or replaced_on[:10] < e["broke_on"]:
-        raise DomainError("Give the day it was replaced (not before it broke)")
+        raise DomainError(tr("Give the day it was replaced (not before it broke)"))
     repairs.fix(session, group, at=replaced_on,
                 parts=[{"entry_id": e["entry_id"], "action": "REPLACED", "source": _source(stock_line_id)}])
     session.flush()
@@ -68,7 +69,7 @@ def remove_broken(session: Session, wheel_id: int, group: str) -> dict:
     wheel = _wheel(session, wheel_id)
     e = next((b for b in m.spoke_breaks(session, wheel) if b["group"] == group), None)
     if e is None:
-        raise DomainError("That broken spoke is not on this wheel")
+        raise DomainError(tr("That broken spoke is not on this wheel"))
     if e["repair"]:
         repairs.undo_fix(session, group)
     incidents.remove(session, group)

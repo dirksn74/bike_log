@@ -737,6 +737,28 @@ you disagree. Dates are 2026-10-24 unless noted.
     `php/app/timeline.php` + route `timeline` (bike= / part=, &format=csv), dates only, so an entry counts from
     the start of its day; a PHP bike has no starting odometer, so its km are a minimum (≥).
 
+143. **English and German in the Python app** (Dirk 2026-11-15: "we need a german version of the app. in the
+    settings should be an option to change the language"). Same approach as the PHP version (140): the English
+    text in the code is the key, `locales/de.json` maps it to German, a missing entry shows English (never an
+    error), placeholders in `{braces}` are filled after translating, `trn(one, many, n)` picks singular or
+    plural. Screens: `frontend/src/i18n.ts` (`tr`, `trn`, `lc`, `codeText` for codes via `code:XXX` entries,
+    `unitWord` via `unit:` / `plural:` entries, `locale` for German number and date formats) with
+    `frontend/src/locales/de.json`. Backend: `bikelog/i18n.py` (`tr`, `trn`, `num` 1.234,5, `dec`, `lc`,
+    `code_text`, `unit_word`) with `bikelog/locales/de.json` (bundled in the Windows build); every JSON answer
+    also goes through `translate_payload`, which translates a string under a label-like key ("name", "label",
+    "explanation", "notes" …) only when it is exactly a dictionary key, so the catalog (part types, actions,
+    default rules and their notes) stays English in the code and in the database. The choice is ONE setting
+    for the whole app: app_setting key `language` ("en"/"de"); no row = English, so no migration is needed and
+    every older database reads English (tested in test_upgrade_real_data). The backend reads it at start and
+    at the start of every request, and writes it into the page (`<meta name="bikelog-lang">`), so the screens
+    know it before the first one is drawn; changing it in Settings → Language saves it and reloads the page.
+    English output is unchanged byte for byte. Not translated: text stored in records stays in the language
+    it was written in (work-session titles and notes written while German is on are German); user data
+    (names, labels, notes you typed) is never changed; CSV column headers and record ids stay English and
+    stable (the CSV's entry titles follow the language); log files stay English. A default rule whose German
+    name is shown in its edit form and then saved keeps that German name. `scripts/i18n_check.py` (also run
+    by test_i18n.py) fails when a tr()/trn() text has no German entry or other placeholders.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

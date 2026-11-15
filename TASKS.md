@@ -21,7 +21,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
       which bike, brake overview, restore a voided maintenance entry, charge history. Feature match done
       (Strava left out on purpose).
 - [x] English and German for the whole web version (Dirk 2026-11-03), switch in the top bar, saved per user,
-      DECISIONS 140. The Python desktop app is still English only.
+      DECISIONS 140. The Python app got English and German on 2026-11-15 (Settings → Language, DECISIONS 143).
 - [ ] Try it locally on Windows with XAMPP (Dirk, guide php/LOCAL_TEST_WINDOWS.md).
 - [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
 

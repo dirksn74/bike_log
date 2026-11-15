@@ -8,6 +8,7 @@ import { today, usageText } from '../format'
 import { useApi } from '../hooks'
 import type { Change, OpResult } from '../types'
 import { ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Tag } from './ui'
+import { tr } from '../i18n'
 
 export interface Disposition {
   code: string
@@ -49,10 +50,10 @@ interface ReplaceOptions {
 }
 
 const FIT_TEXT: Record<SpareRow['fit'], [string, 'good' | 'info' | 'warn' | 'neutral']> = {
-  VERIFIED: ['verified fit for this bike', 'good'],
-  UNVERIFIED: ['listed for this bike, not verified', 'warn'],
-  SAME_PRODUCT: ['same product as the old part', 'info'],
-  UNKNOWN: ['compatibility not recorded', 'neutral'],
+  VERIFIED: [tr('verified fit for this bike'), 'good'],
+  UNVERIFIED: [tr('listed for this bike, not verified'), 'warn'],
+  SAME_PRODUCT: [tr('same product as the old part'), 'info'],
+  UNKNOWN: [tr('compatibility not recorded'), 'neutral'],
 }
 
 export function FitTag({ fit }: { fit: SpareRow['fit'] }) {
@@ -63,17 +64,17 @@ export function FitTag({ fit }: { fit: SpareRow['fit'] }) {
 export function OutcomeChoice({ outcomes, value, suggested, onChange, name }: { outcomes: Disposition[]; value: string; suggested: string; onChange: (v: string) => void; name: string }) {
   return (
     <fieldset className="field">
-      <legend className="field-label">What happened to the old item?</legend>
+      <legend className="field-label">{tr('What happened to the old item?')}</legend>
       <div className="chips">
         {outcomes.map((o) => (
           <label key={o.code} className={`chip ${value === o.code ? 'chip-on' : ''}`}>
             <input type="radio" name={name} value={o.code} checked={value === o.code} onChange={() => onChange(o.code)} className="sr-only" />
             {o.label}
-            {o.code === suggested && <span className="muted small"> · suggested</span>}
+            {o.code === suggested && <span className="muted small"> {tr('· suggested')}</span>}
           </label>
         ))}
       </div>
-      <span className="field-hint">Its record, mileage and history are always kept, also when discarded.</span>
+      <span className="field-hint">{tr('Its record, mileage and history are always kept, also when discarded.')}</span>
     </fieldset>
   )
 }
@@ -141,20 +142,20 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
   return (
     <div className="form">
       <p className="small">
-        Outgoing: <strong>{d.component.label}</strong> {d.component.product && <span className="muted">({d.component.product})</span>} · {d.location.text}
+        {tr('Outgoing:')} <strong>{d.component.label}</strong> {d.component.product && <span className="muted">({d.component.product})</span>} · {d.location.text}
       </p>
       <fieldset className="field">
-        <legend className="field-label">Install instead</legend>
+        <legend className="field-label">{tr('Install instead')}</legend>
         <div className="pick-list">
           {d.stock.map((s) => (
             <label key={`s${s.id}`} className={`pick ${is('stock', s.id) ? 'pick-on' : ''}`}>
               <input type="radio" name="src" checked={is('stock', s.id)} onChange={() => setSource({ kind: 'stock', id: s.id })} />
               <span>
-                <strong>One from stock: {s.name}</strong>
+                <strong>{tr('One from stock:')} {s.name}</strong>
                 <span className="small muted">
                   {' '}
                   {s.stock?.qty ?? 0} {s.unit}
-                  {(s.stock?.qty ?? 0) === 1 ? '' : 's'} left{s.storage_location ? ` · ${s.storage_location}` : ''}
+                  {tr('left')}{s.storage_location ? ` · ${s.storage_location}` : ''}
                 </span>
                 <br />
                 <FitTag fit={s.fit} />
@@ -168,45 +169,45 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
                 <strong>{s.label}</strong> <span className="small muted">{s.product ?? ''}</span>
                 <br />
                 <span className="small">
-                  {s.state_text} · {s.readiness_text} · {usageText(s.usage)} lifetime
-                  {s.mounted.length > 0 && ` · comes with ${s.mounted.map((m) => m.label).join(', ')}`}
+                  {s.state_text} · {s.readiness_text} · {usageText(s.usage)} {tr('lifetime')}
+                  {s.mounted.length > 0 && tr(' · comes with {join}', { join: s.mounted.map((m) => m.label).join(', ') })}
                 </span>{' '}
                 <FitTag fit={s.fit} />
-                {s.readiness !== 'READY' && <Tag tone="warn">not ready</Tag>}
+                {s.readiness !== 'READY' && <Tag tone="warn">{tr('not ready')}</Tag>}
               </span>
             </label>
           ))}
           <label className={`pick ${is('same') ? 'pick-on' : ''}`}>
             <input type="radio" name="src" checked={is('same')} onChange={() => setSource({ kind: 'same' })} />
             <span>
-              <strong>New item, same product</strong>
-              <span className="small muted"> · a new physical part{d.component.product ? ` (${d.component.product})` : ''}</span>
+              <strong>{tr('New item, same product')}</strong>
+              <span className="small muted"> {tr('· a new physical part')}{d.component.product ? ` (${d.component.product})` : ''}</span>
             </span>
           </label>
           <label className={`pick ${is('new') ? 'pick-on' : ''}`}>
             <input type="radio" name="src" checked={is('new')} onChange={() => setSource({ kind: 'new' })} />
             <span>
-              <strong>Newly bought item</strong>
-              <span className="small muted"> · name, product and price are optional</span>
+              <strong>{tr('Newly bought item')}</strong>
+              <span className="small muted"> {tr('· name, product and price are optional')}</span>
             </span>
           </label>
         </div>
       </fieldset>
       {source.kind === 'same' && (
         <div className="row">
-          <Field label="Price € (optional)">
+          <Field label={tr('Price € (optional)')}>
             <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
           </Field>
         </div>
       )}
       {source.kind === 'new' && (
         <div className="row">
-          <Field label="Name (optional)">
+          <Field label={tr('Name (optional)')}>
             <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder={`${d.component.label} (2)`} />
           </Field>
-          <Field label="Product (optional)">
+          <Field label={tr('Product (optional)')}>
             <select value={f.product_id} onChange={(e) => setF({ ...f, product_id: e.target.value })}>
-              <option value="">Not recorded</option>
+              <option value="">{tr('Not recorded')}</option>
               {products.data?.map((p) => (
                 <option key={p.id} value={p.id}>
                   {[p.maker, p.model].filter(Boolean).join(' ')}
@@ -214,28 +215,28 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
               ))}
             </select>
           </Field>
-          <Field label="Price € (optional)">
+          <Field label={tr('Price € (optional)')}>
             <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
           </Field>
         </div>
       )}
       <div className="row">
-        <Field label="Installed on">
+        <Field label={tr('Installed on')}>
           <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
         </Field>
-        <Field label="Removal reason (optional)">
-          <input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder="puncture, worn, rotation…" />
+        <Field label={tr('Removal reason (optional)')}>
+          <input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder={tr('puncture, worn, rotation…')} />
         </Field>
       </div>
       <OutcomeChoice name="replace-outcome" outcomes={d.outcomes} value={f.outcome} suggested={d.suggested_outcome} onChange={(v) => setF({ ...f, outcome: v })} />
       {d.children.length > 0 && (
         <fieldset className="field">
-          <legend className="field-label">Parts on {d.component.label}: move them to the new one?</legend>
+          <legend className="field-label">{tr('Parts on {label}: move them to the new one?', { label: d.component.label })}</legend>
           {d.children.map((c) => (
             <label key={c.component_id} className="check">
               <input
                 type="checkbox"
-                aria-label={`Move ${c.label} to the new part`}
+                aria-label={tr('Move {label} to the new part', { label: c.label })}
                 checked={carry?.has(c.component_id) ?? false}
                 onChange={(e) => {
                   const next = new Set(carry ?? [])
@@ -244,21 +245,21 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
                   setCarry(next)
                 }}
               />{' '}
-              {c.label} <span className="small muted">({c.type_name}){c.note ? ` · ${c.note}` : ''}{taken.has(c.slot) ? ` · ${spare?.label} already has ${taken.get(c.slot)} there` : ''}</span>
+              {c.label} <span className="small muted">({c.type_name}){c.note ? ` · ${c.note}` : ''}{taken.has(c.slot) ? tr(' · {label} already has {get} there', { label: spare?.label, get: taken.get(c.slot) }) : ''}</span>
             </label>
           ))}
-          <p className="small muted">Ticked parts move over and keep their own km. Unticked parts stay with the old part.</p>
-          {taken.size > 0 && <p className="small muted">{spare?.label} comes with its own parts, so the parts on {d.component.label} stay with it.</p>}
+          <p className="small muted">{tr('Ticked parts move over and keep their own km. Unticked parts stay with the old part.')}</p>
+          {taken.size > 0 && <p className="small muted">{tr('{spare} comes with its own parts, so the parts on {label} stay with it.', { spare: spare?.label, label: d.component.label })}</p>}
         </fieldset>
       )}
       <ChangeNotice change={preview} />
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn" disabled={busy} onClick={() => run(true)}>
-          Preview
+          {tr('Preview')}
         </button>
         <button className="btn btn-primary" disabled={busy} onClick={() => run(false)}>
-          Replace
+          {tr('Replace')}
         </button>
       </div>
     </div>
@@ -284,10 +285,10 @@ export function RemoveForm({ componentId, suggested, onDone }: { componentId: nu
   return (
     <div className="form">
       <div className="row">
-        <Field label="Removed on">
+        <Field label={tr('Removed on')}>
           <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
         </Field>
-        <Field label="Reason (optional)">
+        <Field label={tr('Reason (optional)')}>
           <input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} />
         </Field>
       </div>
@@ -296,10 +297,10 @@ export function RemoveForm({ componentId, suggested, onDone }: { componentId: nu
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn" onClick={() => run(true)}>
-          Preview
+          {tr('Preview')}
         </button>
         <button className="btn btn-primary" onClick={() => run(false)}>
-          Remove
+          {tr('Remove')}
         </button>
       </div>
     </div>
@@ -322,7 +323,7 @@ export function MoveForm({ componentId, onDone }: { componentId: number; onDone:
   const [opId] = useState(newOpId)
   if (targets.loading && !targets.data) return <Loading />
   if (targets.error) return <ErrorBox error={targets.error} onRetry={targets.reload} />
-  if (!targets.data?.length) return <Empty title="No other position on this bike">Use Replace or Remove instead.</Empty>
+  if (!targets.data?.length) return <Empty title={tr('No other position on this bike')}>{tr('Use Replace or Remove instead.')}</Empty>
   const t = targets.data[pick]
   async function run() {
     setError(null)
@@ -335,24 +336,24 @@ export function MoveForm({ componentId, onDone }: { componentId: number; onDone:
   }
   return (
     <div className="form">
-      <p className="small muted">A position change keeps the part's identity and its kilometres.</p>
-      <Field label="Move to">
+      <p className="small muted">{tr('A position change keeps the part\'s identity and its kilometres.')}</p>
+      <Field label={tr('Move to')}>
         <select value={pick} onChange={(e) => setPick(Number(e.target.value))}>
           {targets.data.map((x, i) => (
             <option key={i} value={i}>
               {x.text}
-              {x.occupied_by ? ` (swap with ${x.occupied_by})` : ''}
+              {x.occupied_by ? tr(' (swap with {occupied_by})', { occupied_by: x.occupied_by }) : ''}
             </option>
           ))}
         </select>
       </Field>
-      <Field label="On">
+      <Field label={tr('On')}>
         <input type="date" value={at} onChange={(e) => setAt(e.target.value)} />
       </Field>
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={run}>
-          {t.occupied_by ? 'Swap positions' : 'Move'}
+          {t.occupied_by ? tr('Swap positions') : tr('Move')}
         </button>
       </div>
     </div>
@@ -377,17 +378,17 @@ export function DispositionForm({ componentId, current, onDone }: { componentId:
     <div className="form">
       <OutcomeChoice name="disp" outcomes={meta.dispositions.filter((d) => d.code !== 'IN_USE')} value={f.disposition} suggested={current} onChange={(v) => setF({ ...f, disposition: v })} />
       <div className="row">
-        <Field label="On">
+        <Field label={tr('On')}>
           <input type="date" value={f.on} onChange={(e) => setF({ ...f, on: e.target.value })} />
         </Field>
-        <Field label="Note (optional)">
+        <Field label={tr('Note (optional)')}>
           <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         </Field>
       </div>
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={run}>
-          Save
+          {tr('Save')}
         </button>
       </div>
     </div>

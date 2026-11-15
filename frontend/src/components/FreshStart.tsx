@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useApp } from '../context'
 import { Card, Field, FormError } from './ui'
+import { tr } from '../i18n'
 
 interface ResetResult {
   backup: string | null
@@ -47,7 +48,7 @@ export default function FreshStart({ onChanged }: { onChanged: () => void }) {
     setErr(null)
     try {
       await api.post(`/backups/${encodeURIComponent(done.backup)}/restore`)
-      toast('Fresh start undone: your data is back.')
+      toast(tr('Fresh start undone: your data is back.'))
       setDone(null)
       reloadMeta()
       onChanged()
@@ -59,39 +60,37 @@ export default function FreshStart({ onChanged }: { onChanged: () => void }) {
   }
   return (
     <div ref={ref} id="fresh-start">
-      <Card title="Fresh start">
+      <Card title={tr('Fresh start')}>
       {done ? (
         <div className="notice">
           <p>
-            <strong>The database is empty now.</strong> Everything from before is in the backup <code>{done.backup_path}</code>; it is kept and never deleted
-            automatically.
+            <strong>{tr('The database is empty now.')}</strong> {tr('Everything from before is in the backup')} <code>{done.backup_path}</code>{tr('; it is kept and never deleted automatically.')}
           </p>
-          <p className="small">Strava: {done.strava}{done.strava === 'kept (connected)' ? '. Press Sync in the Strava section to import your rides again.' : '.'}</p>
+          <p className="small">{tr('Strava:')} {done.strava}{done.strava === 'kept (connected)' ? tr('. Press Sync in the Strava section to import your rides again.') : '.'}</p>
           <div className="form-actions">
             <button className="btn" disabled={busy} onClick={undo}>
-              Undo: restore that backup
+              {tr('Undo: restore that backup')}
             </button>
           </div>
         </div>
       ) : (
         <div className="form">
           <p className="small">
-            Start over with an empty database: no bikes, parts, rides or maintenance. Settings and the default service rules start fresh as well. A full backup is
-            made first and kept, so you can go back with <em>Restore</em>.
+            {tr('Start over with an empty database: no bikes, parts, rides or maintenance. Settings and the default service rules start fresh as well. A full backup is made first and kept, so you can go back with')} <em>{tr('Restore')}</em>.
           </p>
           <label className="check">
-            <input type="checkbox" checked={clearStrava} onChange={(e) => setClearStrava(e.target.checked)} /> Also clear the Strava connection (app details and login)
+            <input type="checkbox" checked={clearStrava} onChange={(e) => setClearStrava(e.target.checked)} /> {tr('Also clear the Strava connection (app details and login)')}
           </label>
           <p className="small muted">
-            {clearStrava ? 'You will have to enter the Strava app details and connect again.' : 'Strava stays connected; one Sync fills the new database with your rides.'}
+            {clearStrava ? tr('You will have to enter the Strava app details and connect again.') : tr('Strava stays connected; one Sync fills the new database with your rides.')}
           </p>
-          <Field label="Type RESET to confirm">
-            <input aria-label="Type RESET to confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
+          <Field label={tr('Type RESET to confirm')}>
+            <input aria-label={tr('Type RESET to confirm')} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
           </Field>
           <FormError error={err} />
           <div className="form-actions">
             <button className="btn btn-danger" disabled={busy || confirm.trim() !== 'RESET'} onClick={reset}>
-              {busy ? 'Working…' : 'Reset database'}
+              {busy ? tr('Working…') : tr('Reset database')}
             </button>
           </div>
         </div>

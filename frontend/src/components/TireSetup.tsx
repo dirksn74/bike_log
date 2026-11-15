@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import { useApp } from '../context'
 import type { TireSetup } from '../types'
+import { tr } from '../i18n'
 
 // Tube or tubeless is set on the wheel, so it moves with the wheel (wheelset) to another bike.
 // The tire and tube on the wheel follow it; the sealant reminder only runs for tubeless.
@@ -20,8 +21,8 @@ export function TireSetupSelect({ wheelId, value, onSaved }: { wheelId: number; 
     }
   }
   return (
-    <select aria-label="Tire setup" className="select-small" disabled={busy} value={value ?? ''} onChange={(e) => save(e.target.value)} onClick={(e) => e.stopPropagation()}>
-      <option value="">tube or tubeless?</option>
+    <select aria-label={tr('Tire setup')} className="select-small" disabled={busy} value={value ?? ''} onChange={(e) => save(e.target.value)} onClick={(e) => e.stopPropagation()}>
+      <option value="">{tr('tube or tubeless?')}</option>
       {meta.tire_setups.map((s) => (
         <option key={s.code} value={s.code}>
           {s.label}
@@ -51,16 +52,16 @@ export function PressureNote({ tireId, value, onSaved }: { tireId: number; value
   }
   if (!editing)
     return (
-      <button type="button" className="btn btn-small" title="Tire pressure (note only)" onClick={() => { setText(value ?? ''); setEditing(true) }}>
-        {value ? `Pressure: ${value}` : 'Add pressure'}
+      <button type="button" className="btn btn-small" title={tr('Tire pressure (note only)')} onClick={() => { setText(value ?? ''); setEditing(true) }}>
+        {value ? tr('Pressure: {value}', { value }) : tr('Add pressure')}
       </button>
     )
   return (
     <span className="inline-form">
-      <input aria-label="Tire pressure" className="input-small" maxLength={80} value={text} placeholder="e.g. 4.8 bar" autoFocus
+      <input aria-label={tr('Tire pressure')} className="input-small" maxLength={80} value={text} placeholder={tr('e.g. 4.8 bar')} autoFocus
         onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }} />
-      <button type="button" className="btn btn-small btn-primary" disabled={busy} onClick={save}>Save</button>
-      <button type="button" className="btn btn-small" onClick={() => setEditing(false)}>Cancel</button>
+      <button type="button" className="btn btn-small btn-primary" disabled={busy} onClick={save}>{tr('Save')}</button>
+      <button type="button" className="btn btn-small" onClick={() => setEditing(false)}>{tr('Cancel')}</button>
     </span>
   )
 }

@@ -25,6 +25,7 @@ from bikelog.catalog import ACTIONS
 from bikelog.models import (
     Bike, Component, Consumable, ConsumableTxn, Installation, MaintenanceEvent, PurchaseBundle,
 )
+from bikelog.i18n import tr
 
 
 def _first_bike(session: Session, component_id: int, depth: int = 0) -> int | None:
@@ -124,7 +125,7 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
         from bikelog.services.assemblies import in_groupset
         gs = any(in_groupset(c.component_type) for c in comps)
         items.append({"kind": "BUNDLE", "date": b.purchased_on, "bundle_id": b.id, "cents": b.price_cents,
-                      "text": f"{b.name} ({len(comps)} parts{', ' + b.merchant if b.merchant else ''})",
+                      "text": tr("{name} ({comps} parts{x})", name=b.name, comps=len(comps), x=', ' + b.merchant if b.merchant else ''),
                       "estimated": False, "groupset": gs,
                       "component_id": None if gs or not comps else comps[0].id})
     for cid, bid in first_bike.items():

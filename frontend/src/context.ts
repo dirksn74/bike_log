@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { Meta } from './types'
+import { tr } from './i18n'
 
 export interface AppCtx {
   meta: Meta
@@ -11,6 +12,6 @@ export const Ctx = createContext<AppCtx | null>(null)
 
 export function useApp(): AppCtx {
   const c = useContext(Ctx)
-  if (!c) throw new Error('App context missing')
+  if (!c) throw new Error(tr('App context missing'))
   return c
 }

@@ -25,6 +25,7 @@ from bikelog.models import Component, Product
 from bikelog.product_specs import SpecField, fields_for
 from bikelog.services import inventory as inv
 from bikelog.services.errors import DomainError
+from bikelog.i18n import tr
 
 FORMAT = "bikelog.product.v1"
 LIST_FORMAT = "bikelog.products.v1"
@@ -111,7 +112,7 @@ def templates() -> list[dict]:
 def _ctype(code: str):
     t = COMPONENT_TYPES.get(code)
     if not t:
-        raise DomainError(f"Unknown component type {code!r}")
+        raise DomainError(tr("Unknown component type {code}", code=repr(code)))
     return t
 
 
@@ -122,13 +123,13 @@ def _products(doc) -> list:
         return doc
     if isinstance(doc, dict) and "products" in doc:
         if doc.get("format", LIST_FORMAT) != LIST_FORMAT:
-            raise DomainError(f"Unsupported format {doc.get('format')!r}; expected {LIST_FORMAT!r}")
+            raise DomainError(tr("Unsupported format {get}; expected {LIST_FORMAT}", get=repr(doc.get('format')), LIST_FORMAT=repr(LIST_FORMAT)))
         if not isinstance(doc["products"], list):
-            raise DomainError("'products' must be a list")
+            raise DomainError(tr("'products' must be a list"))
         return doc["products"]
     if isinstance(doc, dict):
         return [doc]
-    raise DomainError("The file must contain a JSON object or a list of objects")
+    raise DomainError(tr("The file must contain a JSON object or a list of objects"))
 
 
 def _is_date(v) -> bool:
@@ -147,22 +148,22 @@ def _coerce(f: SpecField, v, where: str, errors: list, warnings: list):
         return None
     if f.kind in ("number", "integer"):
         if isinstance(v, bool):
-            errors.append(f"{where}: expected a number, got true/false")
+            errors.append(tr("{where}: expected a number, got true/false", where=where))
             return None
         if isinstance(v, str):
             try:
                 v2 = float(v.strip().replace(",", "."))
             except ValueError:
-                errors.append(f"{where}: expected a number{f' in {f.unit}' if f.unit else ''}, got {v!r}")
+                errors.append(tr("{where}: expected a number{x}, got {v}", where=where, x=f' in {f.unit}' if f.unit else '', v=repr(v)))
                 return None
-            warnings.append(f"{where}: text {v!r} read as a number")
+            warnings.append(tr("{where}: text {v} read as a number", where=where, v=repr(v)))
             v = v2
         if not isinstance(v, (int, float)):
-            errors.append(f"{where}: expected a number, got {type(v).__name__}")
+            errors.append(tr("{where}: expected a number, got {name__}", where=where, name__=type(v).__name__))
             return None
         if f.kind == "integer":
             if float(v) != int(v):
-                errors.append(f"{where}: expected a whole number, got {v}")
+                errors.append(tr("{where}: expected a whole number, got {v}", where=where, v=v))
                 return None
             return int(v)
         return v if isinstance(v, int) else float(v)
@@ -170,18 +171,18 @@ def _coerce(f: SpecField, v, where: str, errors: list, warnings: list):
         if isinstance(v, bool):
             return v
         if isinstance(v, str) and v.strip().lower() in ("true", "yes", "false", "no"):
-            warnings.append(f"{where}: text {v!r} read as true/false")
+            warnings.append(tr("{where}: text {v} read as true/false", where=where, v=repr(v)))
             return v.strip().lower() in ("true", "yes")
-        errors.append(f"{where}: expected true or false, got {v!r}")
+        errors.append(tr("{where}: expected true or false, got {v}", where=where, v=repr(v)))
         return None
     if not isinstance(v, (str, int, float)) or isinstance(v, bool):
-        errors.append(f"{where}: expected text, got {type(v).__name__}")
+        errors.append(tr("{where}: expected text, got {name__}", where=where, name__=type(v).__name__))
         return None
     v = str(v).strip()
     if f.kind == "enum" and v not in f.values:
         match = next((x for x in f.values if x.lower() == v.lower()), None)
         if match is None:
-            errors.append(f"{where}: {v!r} is not one of {', '.join(f.values)}")
+            errors.append(tr("{where}: {v} is not one of {items}", where=where, v=repr(v), items=', '.join(f.values)))
             return None
         v = match
     return v
@@ -191,7 +192,7 @@ def _money(v, where: str, errors: list) -> int | None:
     if v is None:
         return None
     if isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0:
-        errors.append(f"{where}: expected an amount in euro such as 49.9")
+        errors.append(tr("{where}: expected an amount in euro such as 49.9", where=where))
         return None
     return round(v * 100)
 
@@ -214,29 +215,28 @@ def validate(doc) -> dict:
         at = f"products[{n}]" if multi else "file"
         before = len(errors)
         if not isinstance(p, dict):
-            errors.append(f"{at}: expected an object")
+            errors.append(tr("{at}: expected an object", at=at))
             continue
         unknown = set(p) - TOP_KEYS
         if unknown:
-            errors.append(f"{at}: unknown fields {', '.join(sorted(unknown))} (put product data under 'specs')")
+            errors.append(tr("{at}: unknown fields {items} (put product data under 'specs')", at=at, items=', '.join(sorted(unknown))))
         if p.get("format", FORMAT) != FORMAT:
-            errors.append(f"{at}.format: expected {FORMAT!r}")
+            errors.append(tr("{at}.format: expected {FORMAT}", at=at, FORMAT=repr(FORMAT)))
         ctype = p.get("component_type")
         if ctype not in COMPONENT_TYPES:
-            errors.append(f"{at}.component_type: {ctype!r} is not a Bike Log part type "
-                          f"(one of {', '.join(COMPONENT_TYPES)})")
+            errors.append(tr("{at}.component_type: {ctype} is not a Bike Log part type (one of {items})", at=at, ctype=repr(ctype), items=', '.join(COMPONENT_TYPES)))
         maker = p.get("maker")
         model = p.get("model")
         for key, val in (("maker", maker), ("model", model)):
             if not isinstance(val, str) or not val.strip():
-                errors.append(f"{at}.{key}: required text")
+                errors.append(tr("{at}.{key}: required text", at=at, key=key))
         if p.get("currency", "EUR") != "EUR":
-            errors.append(f"{at}.currency: only EUR is supported; convert prices before importing")
+            errors.append(tr("{at}.currency: only EUR is supported; convert prices before importing", at=at))
         list_price = _money(p.get("list_price"), f"{at}.list_price", errors)
         specs_in = p.get("specs") or {}
         specs: dict = {}
         if not isinstance(specs_in, dict):
-            errors.append(f"{at}.specs: expected an object")
+            errors.append(tr("{at}.specs: expected an object", at=at))
             specs_in = {}
         known = {f.key: f for f in fields_for(ctype)} if ctype in COMPONENT_TYPES else {}
         extra = []
@@ -250,51 +250,51 @@ def validate(doc) -> dict:
                 if v is not None:
                     specs[k] = v
             else:
-                errors.append(f"{at}.specs.{k}: values must be text, numbers or true/false")
+                errors.append(tr("{at}.specs.{k}: values must be text, numbers or true/false", at=at, k=k))
         if extra:
-            warnings.append(f"{at}.specs: kept fields not in the template: {', '.join(extra)}")
+            warnings.append(tr("{at}.specs: kept fields not in the template: {items}", at=at, items=', '.join(extra)))
         source = p.get("source") or {}
         if not isinstance(source, dict):
-            errors.append(f"{at}.source: expected an object")
+            errors.append(tr("{at}.source: expected an object", at=at))
             source = {}
         if set(source) - SOURCE_KEYS:
-            errors.append(f"{at}.source: unknown fields {', '.join(sorted(set(source) - SOURCE_KEYS))}")
+            errors.append(tr("{at}.source: unknown fields {items}", at=at, items=', '.join(sorted(set(source) - SOURCE_KEYS))))
         if source.get("retrieved_at") is not None and not _is_date(source.get("retrieved_at")):
-            errors.append(f"{at}.source.retrieved_at: expected a date like 2026-10-25")
+            errors.append(tr("{at}.source.retrieved_at: expected a date like 2026-10-25", at=at))
         verified = p.get("verified", False)
         if not isinstance(verified, bool):
-            errors.append(f"{at}.verified: expected true or false")
+            errors.append(tr("{at}.verified: expected true or false", at=at))
         items = []
         for i, it in enumerate(p.get("items") or []):
             iat = f"{at}.items[{i}]"
             if not isinstance(it, dict):
-                errors.append(f"{iat}: expected an object")
+                errors.append(tr("{iat}: expected an object", iat=iat))
                 continue
             if set(it) - ITEM_KEYS:
-                errors.append(f"{iat}: unknown fields {', '.join(sorted(set(it) - ITEM_KEYS))}")
+                errors.append(tr("{iat}: unknown fields {items}", iat=iat, items=', '.join(sorted(set(it) - ITEM_KEYS))))
             label = it.get("label")
             if not isinstance(label, str) or not label.strip():
-                errors.append(f"{iat}.label: required text, e.g. 'Spare chain 1'")
+                errors.append(tr("{iat}.label: required text, e.g. 'Spare chain 1'", iat=iat))
                 continue
             key = (ctype, label.strip().lower())
             if key in labels:
-                errors.append(f"{iat}.label: {label!r} is used twice in this file (also {labels[key]})")
+                errors.append(tr("{iat}.label: {label} is used twice in this file (also {labels})", iat=iat, label=repr(label), labels=labels[key]))
             labels[key] = iat
             if it.get("purchase_date") is not None and not _is_date(it["purchase_date"]):
-                errors.append(f"{iat}.purchase_date: expected a date like 2026-10-25")
+                errors.append(tr("{iat}.purchase_date: expected a date like 2026-10-25", iat=iat))
             if it.get("prior_usage", "NEW") not in ("NEW", "UNKNOWN"):
-                errors.append(f"{iat}.prior_usage: NEW or UNKNOWN")
+                errors.append(tr("{iat}.prior_usage: NEW or UNKNOWN", iat=iat))
             items.append({"label": label.strip(), "price_cents": _money(it.get("price"), f"{iat}.price", errors),
                           "purchase_date": it.get("purchase_date"), "prior_usage": it.get("prior_usage", "NEW"),
                           "serial_number": it.get("serial_number"), "storage_location": it.get("storage_location"),
                           "notes": it.get("notes")})
         if isinstance(p.get("items"), (str, dict)):
-            errors.append(f"{at}.items: expected a list")
+            errors.append(tr("{at}.items: expected a list", at=at))
         if len(errors) > before:
             continue
         ident = (ctype, maker.strip().lower(), model.strip().lower())
         if ident in seen:
-            errors.append(f"{at}: same product as {seen[ident]} ({maker} {model})")
+            errors.append(tr("{at}: same product as {seen} ({maker} {model})", at=at, seen=seen[ident], maker=maker, model=model))
             continue
         seen[ident] = at
         out.append({"at": at, "component_type": ctype, "maker": maker.strip(), "model": model.strip(),
@@ -309,7 +309,7 @@ def _spec_version(p: dict) -> str:
     src = p["source"]
     when = src.get("retrieved_at") or date.today().isoformat()
     tool = f" by {src['tool']}" if src.get("tool") else ""
-    return f"JSON import {when}{tool}; {'verified' if p['verified'] else 'unverified'}"
+    return tr("JSON import {when}{tool}; {x}", when=when, tool=tool, x='verified' if p['verified'] else 'unverified')
 
 
 def import_products(session: Session, doc, *, dry_run: bool = False) -> dict:
@@ -362,8 +362,7 @@ def import_products(session: Session, doc, *, dry_run: bool = False) -> dict:
                 Component.component_type == p["component_type"], func.lower(Component.label) == it["label"].lower()))
             if existing is not None:
                 if prod is not None and existing.product_id not in (None, prod.id):
-                    raise DomainError(f"{p['at']}: a part labelled {it['label']!r} already exists for another "
-                                      "product; choose a different label")
+                    raise DomainError(tr("{p}: a part labelled {it} already exists for another product; choose a different label", p=p['at'], it=repr(it['label'])))
                 row["items"].append({"label": it["label"], "status": "EXISTS", "component_id": existing.id})
                 report["counts"]["ITEMS_EXISTING"] += 1
                 continue
@@ -388,11 +387,11 @@ def parse(content: bytes | str) -> object:
         try:
             content = content.decode("utf-8-sig")
         except UnicodeDecodeError as e:
-            raise DomainError("The file is not UTF-8 text") from e
+            raise DomainError(tr("The file is not UTF-8 text")) from e
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
-        raise DomainError(f"Not valid JSON: {e.msg} at line {e.lineno}, column {e.colno}") from e
+        raise DomainError(tr("Not valid JSON: {msg} at line {lineno}, column {colno}", msg=e.msg, lineno=e.lineno, colno=e.colno)) from e
 
 
 @from_source("PRODUCT_IMPORT")

@@ -37,6 +37,7 @@ from bikelog.services import settings
 from bikelog.services.errors import DomainError
 from bikelog.services.inventory import get_bike, get_component
 from bikelog.timeutil import parse_utc, parse_when
+from bikelog.i18n import code_text, lc, num, tr
 
 # filter groups shown on screen, in this order
 KINDS: dict[str, str] = {
@@ -56,7 +57,8 @@ def _round(x: float | None) -> float | None:
 
 
 def _slot_name(slot: str | None) -> str:
-    return (slot or "").replace("_", " ").capitalize()
+    t = code_text(slot)
+    return t[:1].upper() + t[1:]
 
 
 # ---------------------------------------------------------------- km at an instant
@@ -253,17 +255,17 @@ def _event_detail(s: Session, e: MaintenanceEvent) -> str:
     if e.measurement_value is not None:
         bits.append(f"{e.measurement_value:g} {e.measurement_unit or ''}".strip())
     if e.outcome:
-        bits.append(e.outcome.replace("_", " ").lower())
+        bits.append(code_text(e.outcome))
     if e.consumable_id:
         c = s.get(Consumable, e.consumable_id)
         qty = f"{e.consumable_qty:g} {c.unit} " if c and e.consumable_qty is not None else ""
-        bits.append(f"used {qty}{c.name if c else 'supply'}")
+        bits.append(tr("used {qty}{name}", qty=qty, name=c.name if c else tr("supply")))
     if e.symptom:
-        bits.append(f"symptom: {e.symptom}")
+        bits.append(tr("symptom: {symptom}", symptom=e.symptom))
     if e.work_done:
-        bits.append(f"work done: {e.work_done}")
+        bits.append(tr("work done: {work_done}", work_done=e.work_done))
     if e.shop:
-        bits.append(f"at {e.shop}")
+        bits.append(tr("at {shop}", shop=e.shop))
     if e.notes:
         bits.append(e.notes)
     return " · ".join(bits)
@@ -273,7 +275,7 @@ def _add_events(b: _Builder, q) -> None:
     for e in b.s.scalars(q):
         a = ACTIONS.get(e.action_code)
         b.add(ref=f"maintenance_event:{e.id}", uuid=e.uuid, kind=_event_kind(e.action_code), type_code=e.action_code,
-              title=a.name if a else e.action_code, raw_when=e.performed_at, sort_utc=e.sort_utc,
+              title=tr(a.name) if a else e.action_code, raw_when=e.performed_at, sort_utc=e.sort_utc,
               bike_id=e.bike_id, component_id=e.component_id, detail=_event_detail(b.s, e), cost_cents=e.cost_cents,
               voided=bool(e.voided_at), void_reason=e.void_reason, group=e.batch_ref or (
                   f"ws:{e.work_session_id}" if e.work_session_id else None))
@@ -313,17 +315,17 @@ def _add_installations(b: _Builder, installs: list[Installation], *, merge_repla
         if old is not None and old.id != i.id:
             merged.add(old.id)
             okm, ostat = b.part_odo(old.component_id).at(old.removed_utc)
-            okm_txt = "" if okm is None else f" at {_km_text(okm, ostat)}"
-            detail = f"{b._labels.get(old.component_id)} off{okm_txt}" + (
+            okm_txt = "" if okm is None else tr(" at {km}", km=_km_text(okm, ostat))
+            detail = tr("{label} off{at}", label=b._labels.get(old.component_id), at=okm_txt) + (
                 f" ({old.removal_reason})" if old.removal_reason else "")
             b.add(ref=f"installation:{i.id}", uuid=i.uuid, kind="PARTS", type_code="REPLACED",
-                  title=f"Replaced: {b._labels.get(old.component_id)} → {b._labels.get(i.component_id)}",
+                  title=tr("Replaced: {old} → {new}", old=b._labels.get(old.component_id), new=b._labels.get(i.component_id)),
                   raw_when=i.installed_at, sort_utc=i.installed_utc, bike_id=bike_of_install,
                   component_id=i.component_id, other_component_id=old.component_id,
                   detail=f"{_where(b, i)} · {detail}", group=f"ws:{i.install_session_id}" if i.install_session_id else None)
             continue
         b.add(ref=f"installation:{i.id}", uuid=i.uuid, kind="PARTS", type_code="INSTALLED",
-              title=f"Installed: {b._labels.get(i.component_id)}", raw_when=i.installed_at, sort_utc=i.installed_utc,
+              title=tr("Installed: {label}", label=b._labels.get(i.component_id)), raw_when=i.installed_at, sort_utc=i.installed_utc,
               bike_id=bike_of_install, component_id=i.component_id,
               detail=" · ".join(p for p in (_where(b, i), i.note) if p),
               voided=bool(i.voided_at), void_reason=i.void_reason,
@@ -333,20 +335,20 @@ def _add_installations(b: _Builder, installs: list[Installation], *, merge_repla
             continue
         bike_of_removal = i.bike_id or (b.bike.id if b.bike else _root_bike(b.s, i.component_id, i.removed_utc, at_end=True))
         outcome = i.removal_outcome
-        out_txt = "moved" if outcome == "MOVED" else (DISPOSITIONS.get(outcome, "") if outcome else "")
+        out_txt = tr("moved") if outcome == "MOVED" else (tr(DISPOSITIONS.get(outcome, "")) if outcome else "")
         b.add(ref=f"installation:{i.id}:removed", uuid=i.uuid, kind="PARTS", type_code="REMOVED",
-              title=f"Removed: {b._labels.get(i.component_id)}", raw_when=i.removed_at, sort_utc=i.removed_utc,
+              title=tr("Removed: {label}", label=b._labels.get(i.component_id)), raw_when=i.removed_at, sort_utc=i.removed_utc,
               bike_id=bike_of_removal, component_id=i.component_id,
-              detail=" · ".join(p for p in (_where(b, i), out_txt.lower() if out_txt else None, i.removal_reason) if p),
+              detail=" · ".join(p for p in (_where(b, i), lc(out_txt) if out_txt else None, i.removal_reason) if p),
               voided=bool(i.voided_at), void_reason=i.void_reason,
               group=f"ws:{i.removal_session_id}" if i.removal_session_id else None)
 
 
 def _km_text(value: float | None, status: str | None) -> str:
     if value is None:
-        return "km unknown"
+        return tr("km unknown")
     prefix = {"ESTIMATED": "≈", "MINIMUM": "≥"}.get(status or "", "")
-    return f"{prefix}{value:,.0f} km"
+    return f"{prefix}{num(value)} km"
 
 
 def _add_journal(b: _Builder, q) -> None:
@@ -358,40 +360,40 @@ def _add_journal(b: _Builder, q) -> None:
         utc = parse_when(e.entry_on, b.tz).utc
         b.add(ref=f"journal_entry:{e.id}", uuid=e.uuid, kind="INCIDENT" if e.incident_type else "NOTE",
               type_code=e.incident_type or e.kind,
-              title=INCIDENT_TYPES.get(e.incident_type, e.incident_type) if e.incident_type else (
-                  "Issue" if e.kind == "ISSUE" else "Note"),
+              title=tr(INCIDENT_TYPES.get(e.incident_type, e.incident_type)) if e.incident_type else (
+                  tr("Issue") if e.kind == "ISSUE" else tr("Note")),
               raw_when=e.entry_on, sort_utc=utc, bike_id=e.bike_id, component_id=e.component_id,
               detail=" · ".join(p for p in (e.text, e.affected,
-                                            (f"solved {e.resolved_on}" if e.resolved_on else ("open" if e.kind == "ISSUE" else None))) if p),
+                                            (tr("solved {resolved_on}", resolved_on=e.resolved_on) if e.resolved_on else (tr("open") if e.kind == "ISSUE" else None))) if p),
               voided=bool(e.voided_at), void_reason=e.void_reason, ride_id=e.ride_id)
     for gid, entries in groups.items():
         first = min(entries, key=lambda x: x.id)
         live = [x for x in entries if not x.voided_at] or entries
         affected = ", ".join(dict.fromkeys(
-            (b._labels.get(x.component_id) if x.component_id else (x.affected or "whole bike")) for x in live))
+            (b._labels.get(x.component_id) if x.component_id else (x.affected or tr("whole bike"))) for x in live))
         fixes = [f"{b._labels.get(x.component_id) or x.affected or 'bike'}: {x.repair.lower()}"
                  + (f" ({x.repair_text})" if x.repair_text else "") for x in live if x.repair]
         resolved = next((x.resolved_on for x in live if x.resolved_on), None)
         on_part = b.comp is not None
         utc = parse_when(first.entry_on, b.tz).utc
         b.add(ref=f"incident:{gid}", uuid=gid, kind="INCIDENT", type_code=first.incident_type,
-              title=INCIDENT_TYPES.get(first.incident_type, first.incident_type), raw_when=first.entry_on, sort_utc=utc,
+              title=tr(INCIDENT_TYPES.get(first.incident_type, first.incident_type)), raw_when=first.entry_on, sort_utc=utc,
               bike_id=first.bike_id, component_id=b.comp.id if on_part else (live[0].component_id if len(live) == 1 else None),
-              detail=" · ".join(p for p in (f"affected: {affected}" if affected else None, first.text,
+              detail=" · ".join(p for p in (tr("affected: {affected}", affected=affected) if affected else None, first.text,
                                             "; ".join(fixes) if fixes else None,
-                                            f"solved {resolved}" if resolved else "open") if p),
+                                            tr("solved {resolved_on}", resolved_on=resolved) if resolved else tr("open")) if p),
               voided=all(x.voided_at for x in entries), void_reason=first.void_reason, ride_id=first.ride_id)
 
 
 def _add_adjustments(b: _Builder, q, *, unit: str) -> None:
     for a in b.s.scalars(q):
-        est = " (estimate)" if a.is_estimate else ""
-        title = (f"Starting value: {a.km:,.0f} km{est}" if a.kind == "STARTING"
-                 else f"Km correction: {a.km:+,.1f} km")
+        est = tr(" (estimate)") if a.is_estimate else ""
+        title = (tr("Starting value: {km} km{est}", km=num(a.km), est=est) if a.kind == "STARTING"
+                 else tr("Km correction: {km} km", km=("+" if a.km >= 0 else "") + num(a.km, 1)))
         b.add(ref=f"usage_adjustment:{a.id}", uuid=a.uuid, kind="OTHER", type_code=a.kind, title=title,
               raw_when=a.effective_at, sort_utc=a.effective_utc, bike_id=a.bike_id,
-              component_id=a.component_id, detail=a.note or (unit if a.kind == "STARTING" else None),
-              voided=bool(a.voided_at), void_reason="replaced or removed" if a.voided_at else None)
+              component_id=a.component_id, detail=a.note or (tr(unit) if a.kind == "STARTING" else None),
+              voided=bool(a.voided_at), void_reason=tr("replaced or removed") if a.voided_at else None)
 
 
 # ---------------------------------------------------------------- public
@@ -419,12 +421,12 @@ def _check_args(date_from: str | None, date_to: str | None, kinds: list[str] | N
             try:
                 date.fromisoformat(v)
             except ValueError as e:
-                raise DomainError(f"Not a date: {v!r} (use YYYY-MM-DD)") from e
+                raise DomainError(tr("Not a date: {v} (use YYYY-MM-DD)", v=repr(v))) from e
     if date_from and date_to and date_from > date_to:
-        raise DomainError("The start date is after the end date")
+        raise DomainError(tr("The start date is after the end date"))
     bad = [k for k in kinds or [] if k not in KINDS]
     if bad:
-        raise DomainError(f"Unknown entry type: {', '.join(bad)}")
+        raise DomainError(tr("Unknown entry type: {items}", items=', '.join(bad)))
 
 
 def _result(rows: list[dict], *, date_from, date_to, kinds, include_voided, subject: dict) -> dict:
@@ -450,9 +452,9 @@ def bike_timeline(session: Session, bike_id: int, *, date_from: str | None = Non
     bike = get_bike(session, bike_id)
     b = _Builder(session, bike=bike)
     if bike.purchase_date:
-        b.add(ref=f"bike:{bike.id}:bought", uuid=bike.uuid, kind="OTHER", type_code="BOUGHT", title="Bike bought",
+        b.add(ref=f"bike:{bike.id}:bought", uuid=bike.uuid, kind="OTHER", type_code="BOUGHT", title=tr("Bike bought"),
               raw_when=bike.purchase_date, sort_utc=parse_when(bike.purchase_date, b.tz).utc, bike_id=bike.id,
-              component_id=None, cost_cents=bike.purchase_price_cents, detail=bike.shop and f"at {bike.shop}")
+              component_id=None, cost_cents=bike.purchase_price_cents, detail=bike.shop and tr("at {shop}", shop=bike.shop))
     _add_events(b, select(MaintenanceEvent).where(MaintenanceEvent.bike_id == bike.id))
     # parts directly on the bike, plus parts put on / taken off a part while that part was on this bike
     direct = list(session.scalars(select(Installation).where(Installation.bike_id == bike.id)))
@@ -488,9 +490,9 @@ def component_timeline(session: Session, component_id: int, *, date_from: str | 
     comp = get_component(session, component_id)
     b = _Builder(session, comp=comp)
     if comp.purchase_date:
-        b.add(ref=f"component:{comp.id}:bought", uuid=comp.uuid, kind="OTHER", type_code="BOUGHT", title="Bought",
+        b.add(ref=f"component:{comp.id}:bought", uuid=comp.uuid, kind="OTHER", type_code="BOUGHT", title=tr("Bought"),
               raw_when=comp.purchase_date, sort_utc=parse_when(comp.purchase_date, b.tz).utc, bike_id=None,
-              component_id=comp.id, cost_cents=comp.price_cents, detail=comp.shop and f"at {comp.shop}")
+              component_id=comp.id, cost_cents=comp.price_cents, detail=comp.shop and tr("at {shop}", shop=comp.shop))
     _add_events(b, select(MaintenanceEvent).where(MaintenanceEvent.component_id == comp.id))
     installs = list(session.scalars(select(Installation).where(Installation.component_id == comp.id)))
     _add_installations(b, installs, merge_replacements=False)
@@ -503,9 +505,9 @@ def component_timeline(session: Session, component_id: int, *, date_from: str | 
                 not d.work_session_id and d.effective_on in removal_days):
             continue    # the "Removed" row already says it
         b.add(ref=f"component_disposition:{d.id}", uuid=None, kind="OTHER", type_code=d.disposition,
-              title=DISPOSITIONS.get(d.disposition, d.disposition), raw_when=d.effective_on,
+              title=tr(DISPOSITIONS.get(d.disposition, d.disposition)), raw_when=d.effective_on,
               sort_utc=parse_when(d.effective_on, b.tz).utc, bike_id=None, component_id=comp.id, detail=d.note,
-              voided=bool(d.voided_at), void_reason="undone" if d.voided_at else None)
+              voided=bool(d.voided_at), void_reason=tr("undone") if d.voided_at else None)
     _add_journal(b, select(JournalEntry).where(JournalEntry.component_id == comp.id))
     _add_adjustments(b, select(UsageAdjustment).where(UsageAdjustment.component_id == comp.id), unit="lifetime km")
     return _result(b.rows, date_from=date_from, date_to=date_to, kinds=kinds, include_voided=include_voided,
@@ -525,7 +527,7 @@ def to_csv(result: dict, *, style: str = "excel") -> str:
     Windows); ``standard``: comma and decimal point. Text with a byte order mark so Excel reads UTF-8.
     Dates are local dates; ``time`` is empty for entries recorded with a date only (no invented time)."""
     if style not in ("excel", "standard"):
-        raise DomainError("CSV style must be excel or standard")
+        raise DomainError(tr("CSV style must be excel or standard"))
     sep, dec = (";", ",") if style == "excel" else (",", ".")
 
     def num(v: float | None, places: int = 1) -> str:
@@ -535,8 +537,8 @@ def to_csv(result: dict, *, style: str = "excel") -> str:
     w = csv.writer(buf, delimiter=sep, lineterminator="\r\n")
     w.writerow(CSV_COLUMNS)
     for r in sorted(result["rows"], key=lambda r: (r["sort_utc"], r["ref"])):
-        w.writerow([r["date"], r["time"] or "", "yes" if r["date_only"] else "no", KINDS[r["kind"]], r["type"],
-                    r["title"], r["detail"] or "", r["bike"] or "", r["bike_id"] or "", r["component"] or "",
+        w.writerow([r["date"], r["time"] or "", "yes" if r["date_only"] else "no", tr(KINDS[r["kind"]]), r["type"],
+                    tr(r["title"]), r["detail"] or "", r["bike"] or "", r["bike_id"] or "", r["component"] or "",
                     r["component_id"] or "", r["component_type"] or "", r["other_component"] or "",
                     r["other_component_id"] or "", num(r["bike_km"]), r["bike_km_status"] or "",
                     num(r["part_km"]), r["part_km_status"] or "", num(r["same_day_km"]),

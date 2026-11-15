@@ -21,6 +21,7 @@ from bikelog.services import maintenance as m
 from bikelog.services import spares as spares_svc
 from bikelog.services import stock, worksessions
 from bikelog.services.errors import DomainError, NotFound
+from bikelog.i18n import tr
 
 REPAIRS = {"REPLACED": "replaced", "REPAIRED": "repaired"}
 DAMAGE_TYPES = {"TUBE": "INNER_TUBE", "TIRE": "TIRE"}
@@ -36,7 +37,7 @@ def _entries(session: Session, group: str) -> list[JournalEntry]:
                                                            JournalEntry.voided_at.is_(None))
                                 .order_by(JournalEntry.id)))
     if not rows:
-        raise NotFound("Incident not found")
+        raise NotFound(tr("Incident not found"))
     return rows
 
 
@@ -66,7 +67,7 @@ def describe(session: Session, e: JournalEntry) -> dict:
     """What an affected entry is: a recorded part, a tube/tire position without a recorded part, or
     something else (a body area, the whole bike, a part not in Bike Log)."""
     comp = session.get(Component, e.component_id) if e.component_id else None
-    out = {"entry_id": e.id, "label": comp.label if comp else (e.affected or "Whole bike"),
+    out = {"entry_id": e.id, "label": comp.label if comp else (e.affected or tr("Whole bike")),
            "component_id": e.component_id, "damage": None, "wheel": None, "installed": False,
            "repair": e.repair, "repair_text": e.repair_text, "repaired_on": e.repaired_on}
     if e.incident_type == "SPOKE":       # a broken spoke: repaired on the wheel, counted there
@@ -127,7 +128,7 @@ def fix_options(session: Session, group: str) -> dict:
                 w = wheel_on_bike(session, bike_id, d["wheel"])
                 d["wheel_id"] = w.id if w else None
             d["options"] = {"replace": True, "spoke": True, "stock": _stock_lines(session, "SPOKES"), "spares": []}
-            d["repair_label"] = "Trued / re-tensioned"
+            d["repair_label"] = tr("Trued / re-tensioned")
             parts.append(d)
             continue
         if d["kind"] == "PART" and d["installed"]:
@@ -140,7 +141,7 @@ def fix_options(session: Session, group: str) -> dict:
             d["options"] = {"replace": True, **position_options(session, bike_id, d["wheel"], d["damage"])}
         else:
             d["options"] = {"replace": d["kind"] == "OTHER", "spares": [], "stock": []}
-        d["repair_label"] = "Patched" if d["damage"] == "TUBE" else "Repaired or adjusted"
+        d["repair_label"] = tr("Patched") if d["damage"] == "TUBE" else tr("Repaired or adjusted")
         parts.append(d)
     return {"group": group, "label": INCIDENT_TYPES.get(first.incident_type, first.incident_type),
             "ride_date": ride.ride_date if ride else first.entry_on, "bike_id": bike_id, "parts": parts}
@@ -164,27 +165,26 @@ def replace_at_position(session: Session, *, bike_id: int | None, wheel: str, da
     if kind == "stock":
         line = stock.get(session, int(source["id"]))
         if line.component_type != ctype:
-            raise DomainError(f"{line.name} is not stock of {what}s")
+            raise DomainError(tr("{name} is not stock of {what}s", name=line.name, what=what))
         if w is not None:      # a recorded wheel: the tube or tire gets its own record and counts km from here
             comp = stock.draw_component(session, line.id, on=at, work_session_id=work_session_id)
             inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                         work_session_id=work_session_id)
             left = stock.level(session, line)["qty"]
-            return f"replaced with {comp.label} from stock ({line.name}, {left:g} left)"
+            return tr("replaced with {label} from stock ({name}, {left} left)", label=comp.label, name=line.name, left=format(left, 'g'))
         stock.use(session, line.id, qty=1, on=at, note=f"{reason}: {WHEEL_NAMES[wheel]} {what}",
                   work_session_id=work_session_id)
         left = stock.level(session, line)["qty"]
-        return f"replaced with one from stock ({line.name}, {left:g} left)"
+        return tr("replaced with one from stock ({name}, {left} left)", name=line.name, left=format(left, 'g'))
     if kind == "spare":
         if w is None:
-            raise DomainError(f"No {WHEEL_NAMES[wheel]} wheel recorded on this bike to put {what} on. "
-                              "Take one from stock, or install the wheel first.")
+            raise DomainError(tr("No {WHEEL_NAMES} wheel recorded on this bike to put {what} on. Take one from stock, or install the wheel first.", WHEEL_NAMES=WHEEL_NAMES[wheel], what=what))
         comp = inv.get_component(session, int(source["id"]))
         if comp.component_type != ctype:
-            raise DomainError(f"{comp.label} is not a {what}")
+            raise DomainError(tr("{label} is not a {what}", label=comp.label, what=what))
         inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                     work_session_id=work_session_id)
-        return f"replaced with {comp.label}"
+        return tr("replaced with {label}", label=comp.label)
     if kind == "new" and w is not None:
         comp = inv.create_component(session, component_type=ctype,
                                     label=(source.get("label") or "").strip()
@@ -192,10 +192,10 @@ def replace_at_position(session: Session, *, bike_id: int | None, wheel: str, da
                                     prior_usage="NEW", purchase_date=at[:10], work_session_id=work_session_id)
         inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                     work_session_id=work_session_id)
-        return f"replaced with {comp.label}"
+        return tr("replaced with {label}", label=comp.label)
     if kind in ("new", "untracked"):
-        return f"replaced with a new {what} (not tracked)"
-    raise DomainError("Pick where the new part came from: stock, a spare or a new one")
+        return tr("replaced with a new {what} (not tracked)", what=what)
+    raise DomainError(tr("Pick where the new part came from: stock, a spare or a new one"))
 
 
 def _replace_part(session: Session, comp: Component, *, at: str, source: dict, outcome: str | None,
@@ -211,10 +211,10 @@ def _replace_part(session: Session, comp: Component, *, at: str, source: dict, o
     elif kind in ("new", "untracked"):
         kw["new"] = {"label": (source.get("label") or "").strip() or None}
     else:
-        raise DomainError("Pick where the new part came from: a spare, stock or a new one")
+        raise DomainError(tr("Pick where the new part came from: a spare, stock or a new one"))
     children = [c["component_id"] for c in spares_svc.replace_options(session, comp.id)["children"] if c["carry_over"]]
     res = inv.replace(session, comp.id, carry_over=children, **kw)
-    return f"replaced with {res['new_label']}"
+    return tr("replaced with {res}", res=res['new_label'])
 
 
 def _fix_spoke(session: Session, d: dict, bike_id: int | None, p: dict, *, at: str, note: str | None,
@@ -227,22 +227,22 @@ def _fix_spoke(session: Session, d: dict, bike_id: int | None, p: dict, *, at: s
         if wheel is not None:
             m.log_event(session, action_code="WHEEL_TRUE", at=at, component_id=wheel.id, notes=note,
                         work_session_id=ws_id)
-        return "wheel trued / re-tensioned"
+        return tr("wheel trued / re-tensioned")
     source = p.get("source") or {}
     line_id = int(source["id"]) if source.get("kind") == "stock" else None
     if line_id is not None and stock.get(session, line_id).component_type != "SPOKES":
-        raise DomainError("Pick spare spokes from stock, or a spoke not from stock")
+        raise DomainError(tr("Pick spare spokes from stock, or a spoke not from stock"))
     if wheel is None:
         if line_id is not None:
             stock.use(session, line_id, qty=1, on=at, note="broken spoke", work_session_id=ws_id)
-        return "spoke replaced (wheel not recorded, not counted)"
+        return tr("spoke replaced (wheel not recorded, not counted)")
     m.log_event(session, action_code="SPOKE_REPLACE", at=at, component_id=wheel.id, notes=note,
                 consumable_id=line_id, consumable_qty=1 if line_id else None, work_session_id=ws_id)
     entry.repair_session_id = ws_id      # so the count sees this event as the incident's replacement
     info = m.spoke_info(session, wheel)
-    text = f"spoke replaced ({info['broken']} of {info['relace_after']} before a re-lace)"
+    text = tr("spoke replaced ({info} of {info2} before a re-lace)", info=info['broken'], info2=info['relace_after'])
     if line_id is not None:
-        text += f", one from stock ({stock.level(session, stock.get(session, line_id))['qty']:g} left)"
+        text += tr(", one from stock ({x} left)", x=format(stock.level(session, stock.get(session, line_id))['qty'], 'g'))
     return text
 
 
@@ -254,22 +254,22 @@ def fix(session: Session, group: str, *, at: str, parts: list[dict], note: str |
     ride = session.get(Ride, first.ride_id) if first.ride_id else None
     bike_id = ride.bike_id if ride else first.bike_id
     if ride is not None and at[:10] < ride.ride_date:
-        raise DomainError("The fix cannot be before the ride")
+        raise DomainError(tr("The fix cannot be before the ride"))
     todo = [p for p in parts if p.get("action") in REPAIRS]
     bad = [p for p in parts if p.get("action") not in (*REPAIRS, "NONE", None)]
     if bad:
-        raise DomainError("For each part say: replaced, repaired (patched), or nothing yet")
+        raise DomainError(tr("For each part say: replaced, repaired (patched), or nothing yet"))
     if not todo:
-        raise DomainError("Say what you did for at least one part (or leave the incident open)")
+        raise DomainError(tr("Say what you did for at least one part (or leave the incident open)"))
     label = INCIDENT_TYPES.get(first.incident_type, first.incident_type)
-    ws = worksessions.begin(session, at=at, bike_id=bike_id, title=f"Fix: {label}", notes=note)
+    ws = worksessions.begin(session, at=at, bike_id=bike_id, title=tr("Fix: {label}", label=label), notes=note)
     texts = []
     for p in todo:
         e = rows.get(int(p["entry_id"]))
         if e is None:
-            raise DomainError("That part is not in this incident")
+            raise DomainError(tr("That part is not in this incident"))
         if e.repair:
-            raise DomainError(f"{describe(session, e)['label']} is already {REPAIRS[e.repair]}; undo that fix first")
+            raise DomainError(tr("{x} is already {REPAIRS}; undo that fix first", x=describe(session, e)['label'], REPAIRS=REPAIRS[e.repair]))
         d = describe(session, e)
         comp = session.get(Component, e.component_id) if e.component_id else None
         if d["kind"] == "SPOKE":
@@ -279,21 +279,21 @@ def fix(session: Session, group: str, *, at: str, parts: list[dict], note: str |
                 m.log_event(session, action_code="TUBE_PATCH", at=at, component_id=comp.id, notes=note,
                             work_session_id=ws.id)
                 n = _patches(session, comp.id)
-                text = f"patched (patch {n} on this tube)"
+                text = tr("patched (patch {n} on this tube)", n=n)
             else:
-                text = "patched" if d["damage"] == "TUBE" else "repaired or adjusted"
+                text = "patched" if d["damage"] == "TUBE" else tr("repaired or adjusted")
         else:
             source = p.get("source") or {}
             if comp is not None:
                 if not d["installed"]:
-                    raise DomainError(f"{comp.label} is not installed any more; it was changed already")
+                    raise DomainError(tr("{label} is not installed any more; it was changed already", label=comp.label))
                 text = _replace_part(session, comp, at=at, source=source, outcome=p.get("old_outcome"),
                                      work_session_id=ws.id, reason=label.lower())
             elif d["kind"] == "POSITION":
                 text = replace_at_position(session, bike_id=bike_id, wheel=d["wheel"], damage=d["damage"], at=at,
                                            source=source, work_session_id=ws.id, reason=label.lower())
             else:
-                text = "replaced (not tracked)"
+                text = tr("replaced (not tracked)")
         e.repair, e.repair_text, e.repaired_on, e.repair_session_id = p["action"], text, at[:10], ws.id
         texts.append(f"{d['label']}: {text}")
     live = list(rows.values())
@@ -310,7 +310,7 @@ def undo_fix(session: Session, group: str) -> dict:
     back) and the incident is open again."""
     sessions = {e.repair_session_id for e in _entries(session, group) if e.repair_session_id}
     if not sessions:
-        raise DomainError("Nothing to undo: no fix recorded for this incident")
+        raise DomainError(tr("Nothing to undo: no fix recorded for this incident"))
     for ws_id in sorted(sessions, reverse=True):
         ws = worksessions.get(session, ws_id)
         if not ws.undone_at:

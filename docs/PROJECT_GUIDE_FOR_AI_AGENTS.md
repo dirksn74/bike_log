@@ -550,6 +550,23 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
 
 ---
 
+### Languages (English and German, DECISIONS 143)
+
+- **Every new user-facing text needs a German entry.** Screens: wrap it in `tr('...')` (or
+  `trn('{n} ride', '{n} rides', n)`) from `frontend/src/i18n.ts` and add the English text as key in
+  `frontend/src/locales/de.json`. Backend messages (errors, explanations, notices): `tr("...")` / `trn(...)`
+  from `bikelog/i18n.py`, key in `backend/bikelog/locales/de.json`. Never build a sentence from pieces
+  ("part" + "s", " or " joins): use one template with `{placeholders}`, `trn` for plurals, `tr(' or ')` for joins.
+- Numbers in backend texts: `num(v, digits)` (thousands separator) or `dec(v)`, never `f"{v:,.0f}"`.
+  Screens: `toLocaleString(locale)`. Codes shown as words: `codeText(code)` / `code_text(code)` with a
+  `code:XXX` entry.
+- Catalog names (part types, actions, default rules and notes) stay English in `catalog.py`; they are
+  translated on the way out by `translate_payload` (label-like keys only, exact match only). A new catalog
+  text: add it to `catalog_texts()` in `scripts/i18n_check.py` if it is not there yet, plus the German entry.
+- Run `python scripts/i18n_check.py` before every push (also part of the test suite: `tests/test_i18n.py`).
+  It must say 0 without German and 0 with other placeholders.
+- Do not translate stored codes or strings that code compares ("undone", "starting stock", void reasons).
+
 ## 10. Git and working rules
 
 - Repository: `github.com/dirksachse74/bike_log` (**private**). Work only on the feature branch

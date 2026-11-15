@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { slotName, usageText } from '../format'
 import type { PartNode } from '../types'
 import { Tag } from './ui'
+import { tr, trn } from '../i18n'
 
 const count = (n: PartNode): number => n.children.reduce((s, c) => s + 1 + count(c), 0)
 
@@ -13,12 +14,12 @@ function NodeLine({ n }: { n: PartNode }) {
       <span className="muted small">{slotName(n.slot)}</span> <Link to={`/inventory/${n.component_id}`}>{n.label}</Link>{' '}
       <span className="muted small">
         {usageText(n.usage)}
-        {n.on ? ` · on ${n.on}` : ''}
+        {n.on ? tr(' · on {on}', { on: n.on }) : ''}
       </span>
       {n.due > 0 && (
         <>
           {' '}
-          <Tag tone="warn">{n.due} need attention</Tag>
+          <Tag tone="warn">{n.due} {tr('need attention')}</Tag>
         </>
       )}
     </>
@@ -33,7 +34,7 @@ export default function PartTree({ nodes, open = false }: { nodes: PartNode[]; o
           {n.children.length ? (
             <details open={open}>
               <summary>
-                <NodeLine n={n} /> <span className="muted small">· {count(n)} part{count(n) === 1 ? '' : 's'} on it</span>
+                <NodeLine n={n} /> <span className="muted small">· {trn('{n} part on it', '{n} parts on it', count(n))}</span>
               </summary>
               <PartTree nodes={n.children} />
             </details>
