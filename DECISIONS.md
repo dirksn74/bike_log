@@ -802,6 +802,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     them under "Not for this setup (n)". Rules are not deleted or switched off, so a wheel set to tubeless
     later gets them back with its history. The queue already hid NOT_APPLICABLE. No schema change.
 
+147. **Part changes in the bike's journal** (Dirk 2026-11-15: "the tire swap should appear in the journal as
+    well"). `journal.entries(bike_id=…)` adds read-only rows (source PARTS, kind PART_CHANGE, badge "part
+    change") from `timeline.bike_timeline(kinds=["PARTS"])`: installed, removed, replaced, moved, also parts on
+    its wheels and other parts. Derived from the installation records, nothing stored, so older changes show
+    too and corrections (void) disappear. A work session with three or more changes on one day (a groupset
+    fitted, tires rotated) becomes one line "N part changes: …", so the journal stays readable. A part's own
+    journal is unchanged (it has its installation history). No schema change.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

@@ -8,6 +8,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Part changes in the bike's Journal** (Dirk 2026-11-15). Journal and history → Journal now also lists
+  parts put on, taken off, replaced and moved, including tires and tubes on the wheels (badge *part change*,
+  read-only, like maintenance entries). Older changes show too. A job with several changes on one day
+  (a groupset fitted, tires rotated) shows as one line.
 - **Add several identical spares at once** (Dirk 2026-11-15: "15 inner tubes in one go"). Inventory → Add
   part → **How many?** (Wie viele?): enter e.g. 15 and every tube becomes its own spare with its own km and
   history. Name, shop, purchase date, properties and notes are shared; the price is **per piece** or **for all

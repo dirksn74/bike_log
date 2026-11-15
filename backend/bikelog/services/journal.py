@@ -155,7 +155,8 @@ def _event_row(session: Session, ev: MaintenanceEvent) -> dict | None:
 
 
 def entries(session: Session, *, bike_id: int | None = None, component_id: int | None = None,
-            ride_id: int | None = None, include_voided: bool = False, include_maintenance: bool = True) -> list[dict]:
+            ride_id: int | None = None, include_voided: bool = False, include_maintenance: bool = True,
+            include_parts: bool = True) -> list[dict]:
     if ride_id is not None:
         q = select(JournalEntry).where(JournalEntry.ride_id == ride_id)
         if not include_voided:
@@ -180,8 +181,44 @@ def entries(session: Session, *, bike_id: int | None = None, component_id: int |
             r = _event_row(session, ev)
             if r:
                 rows.append(r)
+    if bike_id is not None and include_parts:
+        rows += _part_change_rows(session, bike_id)
     rows.sort(key=lambda r: (r["on"], r["source"] == "JOURNAL", r["id"]), reverse=True)
     return rows
+
+
+def _part_change_rows(session: Session, bike_id: int) -> list[dict]:
+    """Parts put on, taken off, replaced or moved on the bike (also tires and tubes on its wheels), read-only,
+    so the journal tells the whole story (Dirk 2026-11-15: "the tire swap should appear in the journal").
+    Derived from the installation records via the bike timeline, nothing is stored. One work session with
+    three or more changes on a day (a groupset fitted, tires rotated) becomes one line."""
+    from bikelog.services import timeline
+    found = timeline.bike_timeline(session, bike_id, kinds=["PARTS"])["rows"]
+    blocks: list[list[dict]] = []
+    for r in found:
+        last = blocks[-1] if blocks else None
+        if last and r.get("group") and last[0].get("group") == r["group"] and last[0]["date"] == r["date"]:
+            last.append(r)
+        else:
+            blocks.append([r])
+    out = []
+    for b in blocks:
+        rows = b if len(b) < 3 else [b[0]]
+        for r in rows:
+            first = int(str(r["ref"]).split(":")[1])
+            if len(b) >= 3:
+                text = tr("{n} part changes: {items}", n=len(b), items="; ".join(x["title"] for x in b))
+                comp_id, comp_label = None, None
+            else:
+                text = r["title"] + (f" · {r['detail']}" if r.get("detail") else "")
+                comp_id, comp_label = r.get("component_id"), None
+            out.append({"id": first, "ref": r["ref"], "source": "PARTS", "on": r["date"], "kind": "PART_CHANGE",
+                        "text": text, "resolved_on": None, "open_issue": False, "bike_id": bike_id, "bike": None,
+                        "component_id": comp_id, "component_label": comp_label, "component_type": None,
+                        "ride_id": None, "ride_label": None, "ride_conditions": None, "incident_type": None,
+                        "incident_label": None, "incident_group": None, "affected": None, "edited": False,
+                        "voided": False})
+    return out
 
 
 def incidents(session: Session, *, bike_id: int | None = None, component_id: int | None = None,

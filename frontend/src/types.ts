@@ -59,10 +59,11 @@ export interface BikeCosts {
 }
 
 export interface JournalRow {
+  ref?: string // part changes: the installation record they come from
   id: number
-  source: 'JOURNAL' | 'MAINTENANCE'
+  source: 'JOURNAL' | 'MAINTENANCE' | 'PARTS'
   on: string
-  kind: 'NOTE' | 'ISSUE' | 'MAINTENANCE'
+  kind: 'NOTE' | 'ISSUE' | 'MAINTENANCE' | 'PART_CHANGE'
   text: string
   resolved_on: string | null
   open_issue: boolean
