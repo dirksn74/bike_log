@@ -13,6 +13,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   history. Name, shop, purchase date, properties and notes are shared; the price is **per piece** or **for all
   together** (split evenly). Only for parts kept as spares (install them one by one); leave mark and serial
   number for later. Same in the PHP web version.
+- **Identical spares shown as one line** (Dirk 2026-11-15). Inventory lists fold parts with the same name,
+  product, state, km and place into one line, e.g. "15 × Conti Race 28"; *Show each one* lists links to every
+  single part. Only the display changes: each part keeps its own page, km and history. PHP: Spares and Parts.
 - **Rotate tires in one step** (Dirk 2026-11-15). Bike page → Manage parts → **Rotate tires** (Reifen
   umsetzen): the front tire goes to the rear wheel (or the rear one to the front), the tire that was there
   comes off (discarded, stored …) and a new one goes on, taken from stock, a stored spare or newly bought

@@ -322,30 +322,62 @@ function ItemList({ rows, empty }: { rows: ItemRow[]; empty: string }) {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Search name, model, location')} aria-label={tr('Search')} />
       </div>
       <ul className="list rows">
-        {shown.map((r) => (
-          <li key={r.id}>
-            <span>
-              <Link to={`/inventory/${r.id}`}>
-                <strong>{r.label}</strong>
-              </Link>
-              {r.product && <span className="muted"> — {r.product}</span>}
-              <br />
-              <span className="small">
-                {r.state === 'INSTALLED' ? r.location.text : r.state_text}
-                {r.readiness_text && r.state !== 'INSTALLED' && ` · ${r.readiness_text}`}
-                {tr(' · {usage} lifetime', { usage: usageText(r.usage) })}
-                {r.storage_location && ` · ${r.storage_location}`}
+        {groupRows(shown).map((g) => {
+          const r = g[0]
+          return (
+            <li key={r.id}>
+              <span>
+                {g.length > 1 ? (
+                  <strong>{tr('{n} × {label}', { n: g.length, label: r.label })}</strong>
+                ) : (
+                  <Link to={`/inventory/${r.id}`}>
+                    <strong>{r.label}</strong>
+                  </Link>
+                )}
+                {r.product && <span className="muted"> — {r.product}</span>}
+                <br />
+                <span className="small">
+                  {r.state === 'INSTALLED' ? r.location.text : r.state_text}
+                  {r.readiness_text && r.state !== 'INSTALLED' && ` · ${r.readiness_text}`}
+                  {g.length > 1 ? tr(' · {usage} lifetime each', { usage: usageText(r.usage) }) : tr(' · {usage} lifetime', { usage: usageText(r.usage) })}
+                  {r.storage_location && ` · ${r.storage_location}`}
+                </span>
+                <Compat rows={r.compatibility} />
+                {g.length > 1 && (
+                  <details className="small">
+                    <summary>{tr('Show each one')}</summary>
+                    {g.map((x, i) => (
+                      <span key={x.id}>
+                        {i > 0 && ' · '}
+                        <Link to={`/inventory/${x.id}`}>{`#${i + 1}`}</Link>
+                      </span>
+                    ))}
+                  </details>
+                )}
               </span>
-              <Compat rows={r.compatibility} />
-            </span>
-            {r.readiness === 'READY' && <Tag tone="good">{tr('ready')}</Tag>}
-            {(r.readiness === 'NEEDS_PREPARATION' || r.readiness === 'NEEDS_REPAIR') && <Tag tone="warn">{r.readiness === 'NEEDS_REPAIR' ? 'repair' : 'prepare'}</Tag>}
-            {r.readiness === 'WORN' && <Tag tone="bad">{tr('worn')}</Tag>}
-          </li>
-        ))}
+              {r.readiness === 'READY' && <Tag tone="good">{tr('ready')}</Tag>}
+              {(r.readiness === 'NEEDS_PREPARATION' || r.readiness === 'NEEDS_REPAIR') && <Tag tone="warn">{r.readiness === 'NEEDS_REPAIR' ? 'repair' : 'prepare'}</Tag>}
+              {r.readiness === 'WORN' && <Tag tone="bad">{tr('worn')}</Tag>}
+            </li>
+          )
+        })}
       </ul>
     </>
   )
+}
+
+/** Identical parts (same name, product, state, km, place) shown as one line "15 × Conti Race 28"
+ * (Dirk 2026-11-15). Each part keeps its own page and history; only the list folds them together. */
+function groupRows(rows: ItemRow[]): ItemRow[][] {
+  const groups = new Map<string, ItemRow[]>()
+  for (const r of rows) {
+    const key = JSON.stringify([r.component_type, r.label, r.product, r.state, r.state_text, r.readiness, r.storage_location,
+      r.location.text, usageText(r.usage), r.compatibility])
+    const g = groups.get(key)
+    if (g) g.push(r)
+    else groups.set(key, [r])
+  }
+  return [...groups.values()]
 }
 
 function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string) => void }) {

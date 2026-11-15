@@ -127,3 +127,33 @@ function rule_summary(array $r): string
     }
     return implode(t(' or '), $p) . $off;
 }
+
+/**
+ * Identical parts as one list line (Dirk 2026-11-15: "identical items can be grouped"): rows with the same key
+ * are folded into a group, in first-seen order. Each part keeps its own page and history.
+ * @return list<list<array>>
+ */
+function group_identical(array $rows, callable $key): array
+{
+    $groups = [];
+    foreach ($rows as $r) {
+        $groups[json_encode($key($r))][] = $r;
+    }
+    return array_values($groups);
+}
+
+/** "15 × Conti Race 28" plus a folded list of links #1 … #15 to each part (only for a group of more than one). */
+function group_name_html(array $g): string
+{
+    $first = $g[0];
+    if (count($g) === 1) {
+        return '<a href="' . h(url('part', ['id' => $first['id']])) . '">' . h(Domain::componentName($first)) . '</a>';
+    }
+    $links = [];
+    foreach ($g as $i => $p) {
+        $links[] = '<a href="' . h(url('part', ['id' => $p['id']])) . '">#' . ($i + 1) . '</a>';
+    }
+    return '<strong>' . h(t('{n} × {name}', ['n' => count($g), 'name' => Domain::componentName($first)])) . '</strong>'
+        . ' <details class="small"><summary>' . h(t('Show each one')) . '</summary>' . implode(' · ', $links) . '</details>';
+}
+

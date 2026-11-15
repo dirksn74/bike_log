@@ -30,8 +30,8 @@
 
 <section><h2><?= h(t('Individual spares')) ?></h2>
   <?php if (!$spares): ?><p class="muted"><?= h(t('No stored spare parts.')) ?></p><?php endif; ?>
-  <table class="list"><?php foreach ($spares as $s): ?>
-    <tr><td><a href="<?= h(url('part', ['id' => $s['id']])) ?>"><?= h(Domain::componentName($s)) ?></a> <span class="muted"><?= h(Catalog::typeName($s['component_type'])) ?></span></td>
+  <table class="list"><?php foreach (group_identical($spares, fn($x) => [$x['component_type'], Domain::componentName($x), Domain::totalsLabel($x['totals']), $x['storage_location'] ?? '']) as $g): $s = $g[0]; ?>
+    <tr><td><?= group_name_html($g) ?> <span class="muted"><?= h(Catalog::typeName($s['component_type'])) ?></span></td>
       <td class="num"><?= h(Domain::totalsLabel($s['totals'])) ?></td><td class="muted"><?= h($s['storage_location'] ?? '') ?></td>
       <td><a class="btn small" href="<?= h(url('part_install', ['id' => $s['id']])) ?>"><?= h(t('Install')) ?></a></td></tr>
   <?php endforeach; ?></table>
