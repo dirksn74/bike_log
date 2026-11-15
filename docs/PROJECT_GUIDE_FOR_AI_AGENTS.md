@@ -387,6 +387,9 @@ OTHER offer every part. `log` writes one journal issue per picked key with a sha
 new ones added to the group); `remove` voids all ("incident removed"), `restore` brings those back. The
 ride's incident count counts groups. Solved / Re-open on the ride = PATCH `incidents/{group}` with
 `resolved_on` today / null (the whole incident, every affected part).
+A Fix can be recorded after Solved while `fixable`; a replacement re-points later incident entries from the
+old part to the new one (`repairs._repoint_later_incidents`, undone in `clear_for_session`); a fix on the
+ride's day installs the new part at T23:59 (DECISIONS 150).
 **Ride summary.** `rides.ride_detail` adds `summary` (`ride_summary`: this ride's km/hours; the bike's
 total km from `bike_usage` incl. starting value, hours from recorded ride time, and this calendar year and
 month in the app timezone via `_period`) and `hours` per equipment row (contribution `duration_s`). UI:

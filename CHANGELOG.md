@@ -124,6 +124,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Settings → **Account** (server only): who is signed in, and Sign out.
 
 ### Fixed
+- **Two flats on one inner tube although you always replace it** (Dirk 2026-11-15: "how can a inner tube have 2
+  punctures? i replace them, i dont patch them"). Both flats had been marked **Solved** without a **Fix**, so
+  the app never learned the tube was replaced. Now: **Fix** stays on a solved incident until each part has a
+  fix; a punctured tube defaults to **Replaced**; recording the replacement afterwards moves later flats
+  (logged on the old tube, which was no longer on the bike) to the new tube, and undoing the fix moves them
+  back; a fix **On the road** puts the new part in after that ride, so the flat ride's km stay on the
+  punctured tube. No database change.
 - **Rides list: a long note now wraps under its own first word** (Dirk 2026-11-15: "Beobachten" should be
   right under "Kette"). In the Notes column the badges (incident, strava, indoor, …) sit in their own column
   and the note text in a block next to them, so a second note line no longer starts under the badges. On a

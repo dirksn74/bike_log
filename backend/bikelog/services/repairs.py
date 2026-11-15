@@ -255,7 +255,28 @@ def _replace_part(session: Session, comp: Component, *, at: str, source: dict, o
         raise DomainError(tr("Pick where the new part came from: a spare, stock or a new one"))
     children = [c["component_id"] for c in spares_svc.replace_options(session, comp.id)["children"] if c["carry_over"]]
     res = inv.replace(session, comp.id, carry_over=children, **kw)
+    _repoint_later_incidents(session, comp.id, res["new_component_id"], at)
     return tr("replaced with {res}", res=res['new_label'])
+
+
+def _installed_on(session: Session, component_id: int, day: str) -> bool:
+    from bikelog.models import Installation
+    return any(i.installed_at[:10] <= day and (i.removed_at is None or i.removed_at[:10] > day)
+               for i in session.scalars(select(Installation).where(Installation.component_id == component_id,
+                                                                   Installation.voided_at.is_(None))))
+
+
+def _repoint_later_incidents(session: Session, old_id: int, new_id: int, at: str) -> None:
+    """A replacement recorded afterwards (the 31 Oct flat fixed after the 14 Nov flat was logged): later
+    incidents still name the old part, which was no longer on the bike then. They move to the part that
+    took its place, so each tube counts only its own punctures (Dirk 2026-11-15). Undo moves them back."""
+    for e in session.scalars(select(JournalEntry).where(JournalEntry.component_id == old_id,
+                                                        JournalEntry.incident_type.is_not(None),
+                                                        JournalEntry.voided_at.is_(None),
+                                                        JournalEntry.entry_on > at[:10])):
+        if not _installed_on(session, old_id, e.entry_on) and _installed_on(session, new_id, e.entry_on):
+            e.component_id = new_id
+    session.flush()
 
 
 def _fix_spoke(session: Session, d: dict, bike_id: int | None, p: dict, *, at: str, note: str | None,
@@ -304,6 +325,9 @@ def fix(session: Session, group: str, *, at: str, parts: list[dict], note: str |
         raise DomainError(tr("Say what you did for at least one part (or leave the incident open)"))
     label = INCIDENT_TYPES.get(first.incident_type, first.incident_type)
     ws = worksessions.begin(session, at=at, bike_id=bike_id, title=tr("Fix: {label}", label=label), notes=note)
+    # fixed on the road (the ride's day, no time): the new part goes in after that ride, so the flat ride's km
+    # stay on the punctured tube, like Swap tube (Dirk 2026-11-15)
+    put_in = f"{at}T23:59" if ride is not None and len(at) == 10 and at == ride.ride_date else at
     texts = []
     for p in todo:
         e = rows.get(int(p["entry_id"]))
@@ -328,7 +352,7 @@ def fix(session: Session, group: str, *, at: str, parts: list[dict], note: str |
             if comp is not None:
                 if not d["installed"]:
                     raise DomainError(tr("{label} is not installed any more; it was changed already", label=comp.label))
-                text = _replace_part(session, comp, at=at, source=source, outcome=p.get("old_outcome"),
+                text = _replace_part(session, comp, at=put_in, source=source, outcome=p.get("old_outcome"),
                                      work_session_id=ws.id, reason=label.lower())
             elif d["kind"] == "POSITION":
                 text = replace_at_position(session, bike_id=bike_id, wheel=d["wheel"], damage=d["damage"], at=at,
@@ -360,7 +384,21 @@ def undo_fix(session: Session, group: str) -> dict:
 
 
 def clear_for_session(session: Session, ws_id: int) -> None:
-    """Called when a work session is undone: its fixes are taken back and their incidents reopen."""
+    """Called when a work session is undone: its fixes are taken back and their incidents reopen. Later
+    incidents moved onto the part it put in go back to the part it took out."""
+    from bikelog.models import Installation
+    put_in = {(i.parent_component_id, i.bike_id, i.slot): i.component_id for i in session.scalars(
+        select(Installation).where(Installation.install_session_id == ws_id))}
+    for i in session.scalars(select(Installation).where(Installation.removal_session_id == ws_id)):
+        new_id = put_in.get((i.parent_component_id, i.bike_id, i.slot))
+        if new_id is None:
+            continue
+        for e in session.scalars(select(JournalEntry).where(JournalEntry.component_id == new_id,
+                                                            JournalEntry.incident_type.is_not(None),
+                                                            JournalEntry.voided_at.is_(None))):
+            if e.repair_session_id == ws_id:
+                continue
+            e.component_id = i.component_id
     groups = set()
     for e in session.scalars(select(JournalEntry).where(JournalEntry.repair_session_id == ws_id)):
         e.repair = e.repair_text = e.repaired_on = e.repair_session_id = None

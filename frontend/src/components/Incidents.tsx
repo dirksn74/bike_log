@@ -399,10 +399,10 @@ export function IncidentRows({
                   )}
                 </div>
                 <div className="incident-actions">
-                  {r.open && r.fixable && (
+                  {r.fixable && (
                     <button
-                      className="btn btn-small btn-primary"
-                      title={tr('Say what you did: replaced, patched, or nothing yet')}
+                      className={`btn btn-small ${r.open ? "btn-primary" : ""}`}
+                      title={r.open ? tr('Say what you did: replaced, patched, or nothing yet') : tr('Marked solved without saying what you did. Record it now, e.g. the tube was replaced, so each tube keeps its own flats.')}
                       onClick={() => {
                         setEditing(null);
                         setFixing(r.group);

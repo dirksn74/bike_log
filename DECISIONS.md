@@ -838,6 +838,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     on each part (and Part life falls back to them); they now get the same suggestions (catalog.json
     `common_products`, `brand_model_choices` in pages/bike_pages.php). No schema change in either app.
 
+150. **A fix recorded after the incident was marked solved** (Dirk 2026-11-15: two flats on one tube). Solved
+    without a fix leaves the part in place, so a later flat on that wheel is logged on the same tube. The Fix
+    button now shows while `fixable` (any affected part without a fix), open or solved; a TUBE part defaults
+    to REPLACED in FixForm. `repairs._replace_part` then calls `_repoint_later_incidents`: incident entries
+    on the old part dated after the fix move to the new part when the old one was not installed that day and
+    the new one was (component_id is changed in place, no new rows). `clear_for_session` (work-session undo)
+    moves them back, pairing the session's installs and removals by parent/bike/slot. `fix` on the ride's day
+    (no time) installs at T23:59 like Swap tube and `replace_at_position`, so the flat ride's km stay on the
+    punctured part. No schema change.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
