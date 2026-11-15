@@ -1062,6 +1062,8 @@ export default function RidesPage() {
                     </td>
                     <td className="num">{km(r.distance_km)}</td>
                     <td>
+                      <div className="ride-notes-cell">
+                      <span className="ride-note-badges">
                       {r.removed && (
                         <Tag>
                           {r.status === "SOURCE_DELETED"
@@ -1094,17 +1096,18 @@ export default function RidesPage() {
                       {r.source_kind !== "MANUAL" && (
                         <Tag>{r.source_kind.toLowerCase()}</Tag>
                       )}
-                      {r.notes && (
-                        <span className="small muted ride-note-snippet" title={r.notes}>
-                          {" "}
-                          {r.notes.length > 60 ? `${r.notes.slice(0, 60)}…` : r.notes}
-                        </span>
-                      )}
                       {r.flags.map((f, i) => (
                         <Tag key={i} tone="warn" title={f.detail}>
                           {codeText(f.code)}
                         </Tag>
                       ))}
+                      </span>
+                      {r.notes && (
+                        <span className="small muted ride-note-snippet" title={r.notes}>
+                          {r.notes.length > 60 ? `${r.notes.slice(0, 60)}…` : r.notes}
+                        </span>
+                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
