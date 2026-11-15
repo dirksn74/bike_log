@@ -251,7 +251,7 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
         if outcome not in DISPOSITIONS or outcome == "VOIDED":
             raise DomainError(tr("{key}: unknown outcome {outcome}", key=key, outcome=repr(outcome)))
     created: dict[str, Component] = {}
-    note = f"Added with the groupset import: {template['name']}" + (f"\n{notes}" if notes else "")
+    note = tr("Added with the groupset import: {name}", name=template['name']) + (f"\n{notes}" if notes else "")
     for row in p["items"]:
         product = session.get(Product, row["product_id"]) if row["product_id"] else None
         if product is None:

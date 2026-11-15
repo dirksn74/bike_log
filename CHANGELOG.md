@@ -8,6 +8,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **German version** (Dirk 2026-11-15). Settings → **Language / Sprache**: English or Deutsch for the whole
+  app: every screen, reminder explanations, forecasts, messages and errors from the backend, the names of
+  part types, actions and default rules, numbers (1.234,5 km) and dates. The choice is kept across restarts;
+  English stays the default and looks exactly as before. Your own names and notes are never changed. Terms
+  match the PHP web version's German.
 - **Timeline with km and CSV export** (Dirk 2026-11-14). Bike page → new tab *Timeline*: everything done on
   the bike, newest first (work, checks and measurements, parts on/off and replaced, incidents, notes, starting
   km), with the bike's km at that moment and the part's own km. Part page → *Timeline with km · CSV export*

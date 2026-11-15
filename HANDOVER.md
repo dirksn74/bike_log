@@ -49,7 +49,8 @@ Options: `--no-browser`, `--port N`, `--data-dir PATH`, `--backup`, `--export`, 
 ## Checks actually run (final run on this commit)
 | Check | Result |
 |---|---|
-| Backend tests `pytest -q backend/tests` | 297 passed (incl. test_timeline.py) |
+| Backend tests `pytest -q backend/tests` | 303 passed (incl. test_timeline.py, test_i18n.py) |
+| German texts `python scripts/i18n_check.py` (DECISIONS 143) | 0 without German (1,622 screen texts, 1,005 backend texts) |
 | Older versions' data upgrades without loss (databases from 0003, 0.2.0, 26 Oct, 0.3.0: at start, via Restore, via Import) | pass (test_upgrade_real_data.py) |
 | Full export and import (checksum, bad files refused, backup first, idempotent, failed upgrade changes nothing) | pass (test_export_import.py); browser `e2e/export_import.cjs` 3/3 |
 | PHP tests `php php/tests/run.php` (incl. old database 005 + old data file upgrade, test_96) | 746 passed (incl. test_97_timeline) |

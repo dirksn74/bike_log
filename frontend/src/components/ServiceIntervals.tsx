@@ -8,7 +8,7 @@ import { useApp } from '../context'
 import { useApi } from '../hooks'
 import type { Rule } from '../types'
 import { Card, ErrorBox, Field, FormError, Loading, Sheet } from './ui'
-import { tr, locale, lc } from '../i18n'
+import { tr, trn, locale, lc } from '../i18n'
 
 type IntervalRule = Rule & { own_values?: number }
 
@@ -22,9 +22,9 @@ function describeRule(r: IntervalRule): string {
   if (r.trigger === 'PARENT_COUNT') return tr('replace after it has been on {interval_count} chains', { interval_count: r.interval_count })
   if (r.trigger === 'ONCE_AFTER_INSTALL') return tr('once after fitting{x}', { x: r.window_max_km ? tr(' (within {n} km)', { n: n(r.window_max_km) }) : '' })
   const every = [r.interval_km && `${n(r.interval_km)} km`, r.interval_hours && tr('{n} h of riding', { n: n(r.interval_hours) }), r.interval_months && tr('{n} months', { n: r.interval_months })].filter(Boolean)
-  let t = every.length ? `every ${every.join(' or ')}${every.length > 1 ? tr(', whichever comes first') : ''}` : tr('no interval set')
+  let t = every.length ? tr('every {items}', { items: every.join(tr(' or ')) }) + (every.length > 1 ? tr(', whichever comes first') : '') : tr('no interval set')
   if (r.after_top_up_km) t += tr('; after a liquid wax top-up: {n} km later', { n: n(r.after_top_up_km) })
-  const warn = [r.interval_km && r.warn_km && `${n(r.warn_km)} km`, r.interval_hours && r.warn_hours && `${n(r.warn_hours)} h`, r.interval_months && r.warn_days && `${r.warn_days} days`].filter(Boolean)
+  const warn = [r.interval_km && r.warn_km && `${n(r.warn_km)} km`, r.interval_hours && r.warn_hours && `${n(r.warn_hours)} h`, r.interval_months && r.warn_days && tr('{n} days', { n: r.warn_days })].filter(Boolean)
   if (warn.length) t += tr(' · reminds you {join} before', { join: warn.join(' / ') })
   return t
 }
@@ -72,7 +72,7 @@ export default function ServiceIntervals() {
                     <br />
                     <span className="small">
                       {r.active ? describeRule(r) : tr('switched off')}
-                      {r.own_values ? tr(' · {own_values} part{x} or bike{x2} with their own value', { own_values: r.own_values, x: r.own_values === 1 ? '' : 's', x2: r.own_values === 1 ? '' : 's' }) : ''}
+                      {r.own_values ? trn(' · {n} part or bike with its own value', ' · {n} parts or bikes with their own value', r.own_values) : ''}
                     </span>
                     {r.notes && <span className="small muted interval-note"><br />{r.notes}</span>}
                   </span>

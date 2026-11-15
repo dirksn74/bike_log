@@ -36,6 +36,11 @@ function detect(): Lang {
 }
 
 export const lang: Lang = detect()
+try {
+  document.documentElement.lang = lang       // screen readers and hyphenation
+} catch {
+  /* no document (tests) */
+}
 /** Locale for numbers and dates: German formats in German; the system's own otherwise (as before). */
 export const locale: string | undefined = lang === 'de' ? 'de-DE' : undefined
 

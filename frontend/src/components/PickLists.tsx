@@ -3,7 +3,7 @@ import { api } from '../api'
 import { useApp } from '../context'
 import { useApi } from '../hooks'
 import { Card, ErrorBox, FormError, Loading, Tag } from './ui'
-import { tr, lc } from '../i18n'
+import { tr, trn, lc } from '../i18n'
 
 interface Item {
   id: number
@@ -68,7 +68,7 @@ function ListEditor({ list, onChanged }: { list: PickList; onChanged: () => void
               <>
                 <input aria-label={tr('New name for {name}', { name: i.name })} value={edit.name} onChange={(e) => setEdit({ id: i.id, name: e.target.value })} autoFocus />
                 <span className="row-actions">
-                  <button className="btn btn-small btn-primary" disabled={!edit.name.trim()} onClick={() => run(() => api.patch(`/lists/items/${i.id}`, { name: edit.name }), tr('Renamed to {trim}{x}.', { trim: edit.name.trim(), x: i.uses ? tr(' on {uses} record{x}', { uses: i.uses, x: i.uses === 1 ? '' : 's' }) : '' }))}>
+                  <button className="btn btn-small btn-primary" disabled={!edit.name.trim()} onClick={() => run(() => api.patch(`/lists/items/${i.id}`, { name: edit.name }), tr('Renamed to {trim}{x}.', { trim: edit.name.trim(), x: i.uses ? trn(' on {n} record', ' on {n} records', i.uses) : '' }))}>
                     {tr('Save')}
                   </button>
                   <button className="btn btn-small" onClick={() => setEdit(null)}>

@@ -905,12 +905,12 @@ function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplace
               {tr('Install a part')}
             </button>
             {bareWheels.length > 0 && (
-              <button className="btn" onClick={onInstallTire} title={tr('No tire on {join}', { join: bareWheels.map((w) => w.label).join(' and ') })}>
+              <button className="btn" onClick={onInstallTire} title={tr('No tire on {join}', { join: bareWheels.map((w) => w.label).join(tr(' and ')) })}>
                 {tr('Install a tire')}
               </button>
             )}
             {noTube.length > 0 && (
-              <button className="btn" onClick={onInstallTube} title={tr('No inner tube recorded on {join}. Once it is in, its km count.', { join: noTube.map((w) => w.label).join(' and ') })}>
+              <button className="btn" onClick={onInstallTube} title={tr('No inner tube recorded on {join}. Once it is in, its km count.', { join: noTube.map((w) => w.label).join(tr(' and ')) })}>
                 {tr('Install an inner tube')}
               </button>
             )}
@@ -1317,9 +1317,9 @@ function CostCard({ bike, onEdit, onFrame }: { bike: BikeDetail; onEdit: () => v
       )}
       {(c.unpriced_parts > 0 || c.estimated || c.unpriced_bundles > 0) && (
         <p className="small muted">
-          {c.unpriced_bundles > 0 && tr('{unpriced_bundles} bundle{x} no price yet. ', { unpriced_bundles: c.unpriced_bundles, x: c.unpriced_bundles === 1 ? ' has' : tr('s have') })}
+          {c.unpriced_bundles > 0 && trn('{n} bundle has no price yet. ', '{n} bundles have no price yet. ', c.unpriced_bundles)}
           {c.unpriced_parts > 0 &&
-            tr('{unpriced_parts} installed part{x} no price{x2}; fine for parts that came with the bike. ', { unpriced_parts: c.unpriced_parts, x: c.unpriced_parts === 1 ? ' has' : tr('s have'), x2: c.unpriced_labels?.length ? ` (${c.unpriced_labels.slice(0, 5).join(', ')}${c.unpriced_labels.length > 5 ? ', …' : ''})` : '' })}
+            trn('{n} installed part has no price{x2}; fine for parts that came with the bike. ', '{n} installed parts have no price{x2}; fine for parts that came with the bike. ', c.unpriced_parts, { x2: c.unpriced_labels?.length ? ` (${c.unpriced_labels.slice(0, 5).join(', ')}${c.unpriced_labels.length > 5 ? ', …' : ''})` : '' })}
           {c.estimated && tr('≈: parts taken from stock are valued at the average price paid for that stock.')}
         </p>
       )}

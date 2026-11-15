@@ -1078,7 +1078,7 @@ def _spoke_items(session: Session, comp: Component) -> list[dict]:
     advice = (tr("replace the wheel, or have it re-laced with new spokes (your setting: after {limit}, under Settings)", limit=limit) if n >= limit
               else tr("after {limit} it is time to replace the wheel or re-lace it with new spokes", limit=limit))
     waiting = (tr(" {left} not replaced yet: ride carefully until it is fixed.", left=left) if left else "")
-    return [{"rule_code": "SPOKE_RELACE", "name": "Replace the wheel (or re-lace it)", "action_code": "WHEEL_RELACE",
+    return [{"rule_code": "SPOKE_RELACE", "name": tr("Replace the wheel (or re-lace it)"), "action_code": "WHEEL_RELACE",
              "component_id": comp.id, "component": comp.label, "component_type": comp.component_type,
              "status": status, "broken_spokes": n,
              "explanation": trn("{n} broken spoke on {label} {since}: {advice}.{waiting} A new wheel, a re-lace or a new spoke set starts the count again.", "{n} broken spokes on {label} {since}: {advice}.{waiting} A new wheel, a re-lace or a new spoke set starts the count again.", n, label=comp.label, since=since, advice=advice, waiting=waiting)}]
@@ -1152,7 +1152,7 @@ def bike_attention_items(session: Session, bike: Bike) -> list[dict]:
     if crash:
         insp = sub.last_event(["FRAME_INSPECT"])
         if not insp or insp.performed_on < crash.entry_on:
-            out.append({**base, "rule_code": "ATTENTION_CRASH", "name": "Frame and fork inspection after a crash",
+            out.append({**base, "rule_code": "ATTENTION_CRASH", "name": tr("Frame and fork inspection after a crash"),
                         "action_code": "FRAME_INSPECT", "journal_id": crash.id,
                         "explanation": tr("Crash on {entry_on}: inspect frame and fork before riding hard (cracks, splinters, milky patches on carbon: do not ride). Check the bars, levers, hanger and wheels too. Stays until a frame and fork inspection is logged.", entry_on=crash.entry_on)})
     return out

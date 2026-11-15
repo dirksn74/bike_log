@@ -33,9 +33,9 @@ export default function MountPicker({ componentType, bikeId, value, onChange, al
   const index = value ? targets.findIndex((t) => t.bike_id === value.bike_id && t.parent_component_id === value.parent_component_id && t.slot === value.slot) : -1
   const parents = (ctype?.parent_types ?? []).map((p) => lc(meta.component_types.find((t) => t.code === p)?.name) || p)
   const hint = q.data?.needs_parent
-    ? tr('A {toLowerCase} is mounted on a {join}. Wheels inside a wheelset are listed with the wheelset.', { toLowerCase: lc(ctype?.name), join: parents.join(' or ') })
+    ? tr('A {toLowerCase} is mounted on a {join}. Wheels inside a wheelset are listed with the wheelset.', { toLowerCase: lc(ctype?.name), join: parents.join(tr(' or ')) })
     : parents.length
-      ? tr('On the bike, or mounted on a {join}.', { join: parents.join(' or ') })
+      ? tr('On the bike, or mounted on a {join}.', { join: parents.join(tr(' or ')) })
       : undefined
   return (
     <Field label={tr('Where does it go?')} hint={hint}>
@@ -58,7 +58,7 @@ export default function MountPicker({ componentType, bikeId, value, onChange, al
           </optgroup>
         ))}
       </select>
-      {q.data && targets.length === 0 && <span className="field-hint">{tr('Nothing to mount it on yet')}{parents.length ? tr(': add a {join} first', { join: parents.join(' or ') }) : ''}.</span>}
+      {q.data && targets.length === 0 && <span className="field-hint">{tr('Nothing to mount it on yet')}{parents.length ? tr(': add a {join} first', { join: parents.join(tr(' or ')) }) : ''}.</span>}
     </Field>
   )
 }

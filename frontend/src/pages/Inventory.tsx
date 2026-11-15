@@ -1438,7 +1438,7 @@ export function ComponentDetailPage() {
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
         <Card title={tr('Parts on it')} className="span-2">
-          <p className="small muted">{tr('What is mounted on')} {data.label} {tr('now. Unfold a part to see what sits on it; open any part for its km, service and history.')}</p>
+          <p className="small muted">{tr('What is mounted on {label} now. Unfold a part to see what sits on it; open any part for its km, service and history.', { label: data.label })}</p>
           <PartTree nodes={data.parts} />
         </Card>
       )}
@@ -1485,7 +1485,7 @@ export function ComponentDetailPage() {
                   {!r.active && <Tag>{tr('off')}</Tag>}
                 </span>
                 <span className="muted small">
-                  {r.trigger === 'CYCLE_WINDOW' ? tr('once at {window_min_km}–{window_max_km} km after {actionName}', { window_min_km: r.window_min_km, window_max_km: r.window_max_km, actionName: actionName(r.cycle_action_code) }) : [r.interval_km && tr('every {interval_km} km', { interval_km: r.interval_km }), r.interval_months && tr('every {interval_months} months', { interval_months: r.interval_months })].filter(Boolean).join(' or ') + (r.after_top_up_km ? tr(', or {after_top_up_km} km after a liquid wax top-up', { after_top_up_km: r.after_top_up_km }) : '')}
+                  {r.trigger === 'CYCLE_WINDOW' ? tr('once at {window_min_km}–{window_max_km} km after {actionName}', { window_min_km: r.window_min_km, window_max_km: r.window_max_km, actionName: actionName(r.cycle_action_code) }) : [r.interval_km && tr('every {interval_km} km', { interval_km: r.interval_km }), r.interval_months && tr('every {interval_months} months', { interval_months: r.interval_months })].filter(Boolean).join(tr(' or ')) + (r.after_top_up_km ? tr(', or {after_top_up_km} km after a liquid wax top-up', { after_top_up_km: r.after_top_up_km }) : '')}
                   {' · '}
                   {r.component_id ? tr('this part') : tr('type default')} · {r.origin.toLowerCase()}
                   {r.requires_setup && tr(' · only {toLowerCase}', { toLowerCase: lc(setupLabel(meta.tire_setups, r.requires_setup)) })}

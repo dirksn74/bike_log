@@ -108,6 +108,7 @@ def assert_app_shows_it(paths: DataPaths, factory) -> None:
     c = TestClient(create_app(factory, paths, token=TOKEN, testing=True, static_dir=None))
     c.headers["X-BikeLog-Token"] = TOKEN
     assert c.get("/api/overview").status_code == 200
+    assert c.get("/api/settings").json()["language"] == "en"      # no language row before 0.4: English
     bikes = c.get("/api/bikes").json()
     assert bikes, "no bikes after the upgrade"
     for b in bikes:

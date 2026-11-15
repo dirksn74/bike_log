@@ -137,7 +137,7 @@ export default function OverviewPage() {
           <summary>
             <strong>{data.recent_rides[0].name || tr('Ride')}</strong>{' '}
             <span className="muted small">
-              {when(data.recent_rides[0].start_time_utc ?? data.recent_rides[0].ride_date)} · {km(data.recent_rides[0].distance_km)} · {data.recent_rides.length} {tr('recent ride')}{data.recent_rides.length === 1 ? '' : 's'}
+              {when(data.recent_rides[0].start_time_utc ?? data.recent_rides[0].ride_date)} · {km(data.recent_rides[0].distance_km)} · {trn('{n} recent ride', '{n} recent rides', data.recent_rides.length)}
             </span>
           </summary>
           <ul className="list">
