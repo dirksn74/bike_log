@@ -110,16 +110,14 @@ def _find_product(session: Session, maker: str, model: str, component_type: str)
 def _unique_label(session: Session, component_type: str, base: str, taken: set[str],
                   suffix: str | None = None) -> str:
     """The plain name; the bike's name is added only when another part already has it (UAT B6),
-    since parts move between bikes; then a number."""
+    since parts move between bikes. Names may repeat (0023)."""
     def used(label: str) -> bool:
         return label.lower() in taken or session.scalar(select(Component.id).where(
             Component.component_type == component_type, func.lower(Component.label) == label.lower())) is not None
     label = base
     if used(label) and suffix:
-        label = base = f"{base} ({suffix})"
-    n = 2
-    while used(label):
-        label, n = f"{base} ({n})", n + 1
+        label = f"{base} ({suffix})"
+    # no "(2)" any more: part names need not be unique (0023, DECISIONS 144)
     taken.add(label.lower())
     return label
 

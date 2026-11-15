@@ -230,6 +230,42 @@ def create_component(session: Session, *, component_type: str, label: str, produ
     return comp
 
 
+MAX_QUANTITY = 50
+
+
+def create_components(session: Session, *, quantity: int = 1, price_is_total: bool = False,
+                      **fields) -> list[Component]:
+    """Add several identical parts in one go (e.g. 15 inner tubes bought at once). Each one is its own
+    part with its own identity, km and history; nothing is summed per product. They share the name,
+    product, shop, purchase date, properties and notes. The price is per piece, or with ``price_is_total``
+    the total paid for all of them, split evenly (remaining cents go to the first ones).
+    Names follow the usual rules: tubes and tires share the name, a chain gets the next free letter,
+    other parts "name (2)", "name (3)" …"""
+    if not isinstance(quantity, int) or quantity < 1:
+        raise DomainError(tr("Quantity must be a whole number of at least 1"))
+    if quantity > MAX_QUANTITY:
+        raise DomainError(tr("Add at most {n} parts at once", n=MAX_QUANTITY))
+    if quantity > 1 and (fields.get("mark") or "").strip():
+        raise DomainError(tr("Leave the mark empty when adding several parts; each one can get its own mark later"))
+    if quantity > 1 and (fields.get("serial_number") or "").strip():
+        raise DomainError(tr("A serial number belongs to one part; add it later on each part's page"))
+    price = fields.pop("price_cents", None)
+    _check_price(price)
+    if price is not None and price_is_total:
+        base, rest = divmod(price, quantity)
+        prices = [base + (1 if i < rest else 0) for i in range(quantity)]
+    else:
+        prices = [price] * quantity
+    out = []
+    for i in range(quantity):
+        mark = fields.pop("mark", None)
+        if (i == 0 and quantity > 1 and fields.get("component_type") in LETTER_TYPES
+                and _free_letter(session, fields["component_type"], (fields.get("label") or "").strip()) is None):
+            mark = "A"     # chains bought together: A, B, C … so each is told apart from the start
+        out.append(create_component(session, price_cents=prices[i], mark=mark, **fields))
+    return out
+
+
 def update_product(session: Session, product_id: int, **fields) -> Product:
     p = session.get(Product, product_id)
     if not p:
@@ -321,12 +357,7 @@ def update_component(session: Session, component_id: int, **fields) -> Component
             setattr(comp, k, (fields[k] or "").strip() or None if k == "shop" else fields[k])
     if "specs" in fields:
         comp.specs_json = json.dumps(fields["specs"] or {})
-    try:
-        session.flush()
-    except IntegrityError as e:
-        hint = (tr("Give it a different mark, e.g. B.") if comp.component_type in LETTER_TYPES
-                else tr("Add something to tell them apart, e.g. a mark or where it is kept."))
-        raise Conflict(tr('Another {name} is already called "{label}". {hint}', name=COMPONENT_TYPES[comp.component_type].name.lower(), label=comp.label, hint=hint)) from e
+    session.flush()      # part names need not be unique (0023), so a rename cannot clash
     return comp
 
 
@@ -807,11 +838,10 @@ def _free_letter(session: Session, component_type: str, name: str) -> str | None
 
 
 def free_label(session: Session, component_type: str, label: str) -> str:
-    """The label as typed if no other part of this type has it, else the first free "label (2)".
-    Tires and inner tubes keep the typed name: several may share it (DECISIONS 129)."""
-    if component_type in SAME_NAME_TYPES or not _taken(session, component_type, label):
-        return label
-    return next(f"{label} {s}" for s in _suffixes(component_type) if not _taken(session, component_type, f"{label} {s}"))
+    """The label as typed. Since 0023 (DECISIONS 144) several parts may share a name, whatever the type: the
+    id tells them apart, so no "(2)" is added any more. Chains still get the next free letter as their mark
+    when they are created (create_component)."""
+    return label
 
 
 def _next_label(session: Session, old: Component) -> str:
