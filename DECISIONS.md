@@ -771,7 +771,10 @@ you disagree. Dates are 2026-10-24 unless noted.
     installations on a part while that part was on the bike (same rule as the bike timeline, `_root_bike`),
     with `on_label`; part installation periods without rides report 0 km instead of null ("unknown").
     The Manage parts buttons pick their form by a key, not by the translated label (the German "Swap tube"
-    opened the wrong form). No schema change, no migration.
+    opened the wrong form). The bike's change log adds the installation rows of parts on parts (they are
+    stored with component_id only, bike_id null, and rows can never be updated): `changelog._nested_rows`
+    picks them for `inv.nested_installations` of the bike, matching the INSTALLED / REMOVED row by the
+    installation's own date in its text, so older rows show up too. No schema change, no migration.
 145. **Part names need not be unique; several identical spares at once** (Dirk 2026-11-15: "i need to be able
     to enter 15 inner tubes into the inventory in one go"; then a rename failed with "UNIQUE constraint failed:
     component.component_type, component.label" and he wants names not unique, the internal id is the key).
@@ -789,5 +792,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     quantity fields in the part form. Then (Dirk: "yes, identical items can be grouped") the inventory lists
     fold parts that look the same (same type, name, product, state, km, place) into one line "N × name" with
     links to each; grouping is display only, never stored, so nothing about identity changes.
+
+146. **Rules for another setup are hidden, not shown as "Not for this setup"** (Dirk 2026-11-15: "remove the
+    sealant part, I don't use tubeless … it should not show up under service status when using inner tubes").
+    `maintenance._setup_known` says whether the setup a rule depends on is known (the wheel's own tire setup or
+    the Settings default; the bike's shifting). `component_status` / `bike_status` leave out NOT_APPLICABLE
+    rows whose setup is known (`setup_known` on the row); an unknown setup keeps the row because its text
+    says what to set. Part detail `rules[].applies` (`rule_applies`) = false for those; the Rules card folds
+    them under "Not for this setup (n)". Rules are not deleted or switched off, so a wheel set to tubeless
+    later gets them back with its history. The queue already hid NOT_APPLICABLE. No schema change.
+
+## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

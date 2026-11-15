@@ -98,3 +98,20 @@ def test_rotate_over_http(engine, paths):
     assert any(h["label"] == "Tire A" and h["on_label"] == "R wheel" for h in hist)
     bad = c.post(f"/api/bikes/{bike_id}/rotate-tires", json={"move_from": "SIDE", "at": "2026-11-16", "source": {"kind": "new"}})
     assert bad.status_code in (400, 422)
+
+
+def test_bike_change_log_shows_tire_moves_and_tube_changes_on_its_wheels(session):
+    from bikelog import changelog
+    b, fw, rw, ft, rt = setup(session)
+    other = bike(session, name="Other bike")
+    ws = worksessions.begin(session, at="2026-11-15", bike_id=b.id)
+    repairs.rotate_tires(session, bike_id=b.id, move_from="FRONT_WHEEL", at="2026-11-15",
+                         source={"kind": "new", "label": "Tire C"}, old_outcome="DISCARDED", work_session_id=ws.id)
+    session.flush()
+    rows = changelog.entries(session, bike_id=b.id)
+    seen = {(r["component"], r["action"]) for r in rows}
+    assert ("Tire A", "INSTALLED") in seen and ("Tire A", "REMOVED") in seen
+    assert ("Tire B", "REMOVED") in seen and ("Tire C", "INSTALLED") in seen
+    assert [r["id"] for r in rows] == sorted((r["id"] for r in rows), reverse=True)
+    # another bike does not get them
+    assert not any(r["component"] in ("Tire A", "Tire B", "Tire C") for r in changelog.entries(session, bike_id=other.id))

@@ -983,16 +983,26 @@ def _setup_row(c: Component, i: Installation, depth: int, root: Installation) ->
             "pressure_note": c.pressure_note}
 
 
+def nested_installations(session: Session, bike_id: int) -> list[tuple[Installation, bool, bool]]:
+    """Installations on a part (a tire on a wheel) that touched this bike: (installation, put on while the
+    part was on the bike, taken off while it was on the bike). Same rule as the bike timeline."""
+    from bikelog.services.timeline import _root_bike
+    out = []
+    for i in session.scalars(select(Installation).where(Installation.parent_component_id.is_not(None))):
+        on_install = _root_bike(session, i.parent_component_id, i.installed_utc) == bike_id
+        on_removal = bool(i.removed_utc) and _root_bike(session, i.parent_component_id, i.removed_utc,
+                                                         at_end=True) == bike_id
+        if on_install or on_removal:
+            out.append((i, on_install, on_removal))
+    return out
+
+
 def bike_installation_history(session: Session, bike: Bike) -> list[dict]:
     """Every installation on the bike, newest first: parts on the bike itself, and parts on a part while
     that part was on this bike (a tire or tube on a wheel, a cassette on the hub), with that part's label
     in ``on_label`` (Dirk 2026-11-15: tire moves were missing)."""
-    from bikelog.services.timeline import _root_bike
     installs = list(session.scalars(select(Installation).where(Installation.bike_id == bike.id)))
-    for i in session.scalars(select(Installation).where(Installation.parent_component_id.is_not(None))):
-        if _root_bike(session, i.parent_component_id, i.installed_utc) == bike.id or (
-                i.removed_utc and _root_bike(session, i.parent_component_id, i.removed_utc, at_end=True) == bike.id):
-            installs.append(i)
+    installs += [i for i, _, _ in nested_installations(session, bike.id)]
     installs.sort(key=lambda i: (i.installed_utc, i.id), reverse=True)
     rows = []
     for i in installs:

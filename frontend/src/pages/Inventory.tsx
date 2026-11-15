@@ -1315,6 +1315,24 @@ export function ComponentDetailPage() {
     setF({ ...f, km: u.starting_km !== null ? String(u.starting_km) : '', date: (u.starting_effective ?? firstInstall ?? today()).slice(0, 10), estimate: u.starting_km !== null ? u.starting_is_estimate : true })
     setSheet('start')
   }
+  const ruleItem = (r: Rule) => (
+              <li key={r.id}>
+                <span>
+                  {r.name}
+                  {!r.active && <Tag>{tr('off')}</Tag>}
+                </span>
+                <span className="muted small">
+                  {r.trigger === 'CYCLE_WINDOW' ? tr('once at {window_min_km}–{window_max_km} km after {actionName}', { window_min_km: r.window_min_km, window_max_km: r.window_max_km, actionName: actionName(r.cycle_action_code) }) : [r.interval_km && tr('every {interval_km} km', { interval_km: r.interval_km }), r.interval_months && tr('every {interval_months} months', { interval_months: r.interval_months })].filter(Boolean).join(tr(' or ')) + (r.after_top_up_km ? tr(', or {after_top_up_km} km after a liquid wax top-up', { after_top_up_km: r.after_top_up_km }) : '')}
+                  {' · '}
+                  {r.component_id ? tr('this part') : tr('type default')} · {r.origin.toLowerCase()}
+                  {r.requires_setup && tr(' · only {toLowerCase}', { toLowerCase: lc(setupLabel(meta.tire_setups, r.requires_setup)) })}
+                </span>
+                <button className="btn btn-small" onClick={() => setSheet({ rule: r })}>
+                  {tr('Edit')}
+                </button>
+              </li>
+  )
+
   return (
     <div className="grid">
       <Card
@@ -1533,25 +1551,16 @@ export function ComponentDetailPage() {
         {data.rules.length === 0 ? (
           <Empty title={tr('No rules')} />
         ) : (
-          <ul className="list">
-            {data.rules.map((r) => (
-              <li key={r.id}>
-                <span>
-                  {r.name}
-                  {!r.active && <Tag>{tr('off')}</Tag>}
-                </span>
-                <span className="muted small">
-                  {r.trigger === 'CYCLE_WINDOW' ? tr('once at {window_min_km}–{window_max_km} km after {actionName}', { window_min_km: r.window_min_km, window_max_km: r.window_max_km, actionName: actionName(r.cycle_action_code) }) : [r.interval_km && tr('every {interval_km} km', { interval_km: r.interval_km }), r.interval_months && tr('every {interval_months} months', { interval_months: r.interval_months })].filter(Boolean).join(tr(' or ')) + (r.after_top_up_km ? tr(', or {after_top_up_km} km after a liquid wax top-up', { after_top_up_km: r.after_top_up_km }) : '')}
-                  {' · '}
-                  {r.component_id ? tr('this part') : tr('type default')} · {r.origin.toLowerCase()}
-                  {r.requires_setup && tr(' · only {toLowerCase}', { toLowerCase: lc(setupLabel(meta.tire_setups, r.requires_setup)) })}
-                </span>
-                <button className="btn btn-small" onClick={() => setSheet({ rule: r })}>
-                  {tr('Edit')}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="list">{data.rules.filter((r) => r.applies !== false).map(ruleItem)}</ul>
+            {/* rules for another setup (sealant on an inner-tube wheel) are kept but folded away (Dirk 2026-11-15) */}
+            {data.rules.some((r) => r.applies === false) && (
+              <details className="small">
+                <summary>{tr('Not for this setup ({n})', { n: data.rules.filter((r) => r.applies === false).length })}</summary>
+                <ul className="list">{data.rules.filter((r) => r.applies === false).map(ruleItem)}</ul>
+              </details>
+            )}
+          </>
         )}
       </Card>
       {data.dispositions.length > 0 && (

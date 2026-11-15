@@ -114,6 +114,14 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   tires, tubes and other parts mounted on a part (on the rear wheel, on the hub …), with the part they sit
   on, so a tire moved from the front to the rear wheel shows up. Before, only parts directly on the bike
   were listed.
+- **No sealant reminders on inner-tube wheels** (Dirk 2026-11-15). A reminder that only fits another setup
+  (Top up / Clean out and renew sealant on a wheel set to inner tube, or set to inner tube by the default in
+  Settings; mechanical-only checks on a Di2 bike) no longer shows in Service status. On the part page its
+  rule is folded under *Not for this setup* and comes back by itself when the wheel is set to tubeless. While
+  the setup is unknown (a tire not on a wheel) it still shows, with what to set.
+- **Change log on the bike page** now also shows changes to parts on its wheels and other parts (a tire
+  moved to the rear wheel, a tube replaced after a flat, a new tire put on). They were recorded all along,
+  only on the part's own page; nothing is lost or re-written.
 - **"unknown" km** in a part's installation history for a period without rides now shows **0 km**.
 - **Swap tube in German**: Manage parts → Schlauch tauschen opened the wrong form when the app was in German.
 - **Restore of an older backup** (Settings → Backups → Restore, made before 26 Oct 2026) stopped with a

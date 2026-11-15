@@ -194,10 +194,14 @@ def test_setup_dependent_rules_follow_shifting_and_default_tire_setup(session):
     assert bike_row(session, b, "BIKE_DI2_CHECK")["status"] == "INSUFFICIENT_INFO"
     cable = part(session, "SHIFT_CABLE", "Rear cable")
     inv.install(session, cable.id, at="2026-09-01", bike_id=b.id, slot="SHIFT_CABLE_REAR")
-    assert "set to electronic" in status(session, cable, "SHIFT_CABLE_CHECK")["explanation"]
+    # a rule that does not fit a KNOWN setup is left out of the status (Dirk 2026-11-15), still explained
+    assert not any(r["rule_code"] == "SHIFT_CABLE_CHECK" for r in m.component_status(session, cable))
+    rule = next(r for r in m.effective_rules(session, cable) if r.rule_code == "SHIFT_CABLE_CHECK")
+    assert "set to electronic" in m.rule_status(session, cable, rule)["explanation"]
+    assert not m.rule_applies(session, cable, rule)
     inv.update_bike(session, b.id, shifting="MECHANICAL")
     assert status(session, cable, "SHIFT_CABLE_CHECK")["status"] == "OK"
-    assert bike_row(session, b, "BIKE_DI2_CHECK")["status"] == "NOT_APPLICABLE"
+    assert not any(r["rule_code"] == "BIKE_DI2_CHECK" for r in m.bike_status(session, b))
     with pytest.raises(DomainError):
         inv.update_bike(session, b.id, shifting="HYDRAULIC")
     # wheels without their own tube/tubeless setting use the default (inner tube)
@@ -205,7 +209,9 @@ def test_setup_dependent_rules_follow_shifting_and_default_tire_setup(session):
     tire = part(session, "TIRE", "GP5000")
     inv.install(session, wheel.id, at="2026-09-01", bike_id=b.id)
     inv.install(session, tire.id, at="2026-09-01", parent_component_id=wheel.id)
-    assert status(session, tire, "TIRE_SEALANT_RENEW")["status"] == "NOT_APPLICABLE"
+    assert not any(r["rule_code"].startswith("TIRE_SEALANT") for r in m.component_status(session, tire))
+    sealant = next(r for r in m.effective_rules(session, tire) if r.rule_code == "TIRE_SEALANT_RENEW")
+    assert m.rule_status(session, tire, sealant)["status"] == "NOT_APPLICABLE" and not m.rule_applies(session, tire, sealant)
     settings.set_value(session, "default_tire_setup", "TUBELESS")
     assert status(session, tire, "TIRE_SEALANT_RENEW")["status"] == "OK"
     with pytest.raises(DomainError):

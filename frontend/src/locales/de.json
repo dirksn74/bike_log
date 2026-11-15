@@ -731,6 +731,7 @@
  "Not done: {join}.": "Nicht erledigt: {join}.",
  "Not enough info": "Zu wenig Infos",
  "Not for this setup": "Nicht für dieses Setup",
+ "Not for this setup ({n})": "Nicht für dieses Setup ({n})",
  "Not from my stock (shop, other)": "Nicht aus meinem Vorrat (Werkstatt, anderes)",
  "Not recorded": "Nicht erfasst",
  "Not repaired": "Nicht repariert",

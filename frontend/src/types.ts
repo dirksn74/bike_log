@@ -441,6 +441,7 @@ export interface EventRow {
 
 export interface Rule {
   id: number
+  applies?: boolean // false: does not fit the part's known setup (a sealant rule on an inner-tube wheel)
   rule_code: string
   name: string
   component_type: string | null
