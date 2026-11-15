@@ -1546,3 +1546,38 @@ dl.props dd { margin: 0; }
     flex: 1 1 0;
   }
 }
+
+/* Rides list → Notes column: badges in their own column, note text in a block next to them,
+   so a wrapped note line starts under the note's first word (not under the badges).
+   Phone: badges above the note. */
+.ride-notes-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+.ride-note-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex: 0 1 auto;
+}
+.ride-note-badges:empty {
+  display: none;
+}
+.ride-note-badges > * {
+  margin: 0;
+}
+.ride-note-snippet {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  .ride-notes-cell {
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .ride-note-snippet {
+    flex: none;
+    min-width: 10rem;
+  }
+}

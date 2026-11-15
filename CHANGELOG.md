@@ -124,6 +124,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Settings → **Account** (server only): who is signed in, and Sign out.
 
 ### Fixed
+- **Rides list: a long note now wraps under its own first word** (Dirk 2026-11-15: "Beobachten" should be
+  right under "Kette"). In the Notes column the badges (incident, strava, indoor, …) sit in their own column
+  and the note text in a block next to them, so a second note line no longer starts under the badges. On a
+  phone the badges sit above the note. Screen change only, no data change.
 - **Renaming a part no longer fails when another part has the same name** (Dirk 2026-11-15: "UNIQUE
   constraint failed" when renaming the CEMA bottom bracket). Part names no longer have to be unique, for any
   part type; Bike Log tells parts apart by their internal id. New parts no longer get "(2)" added; chains
