@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { km, when } from '../format'
 import { useApi } from '../hooks'
 import { Empty, ErrorBox, Loading, Tag } from './ui'
+import ProductLinker from './ProductLinker'
 import { tr, locale } from '../i18n'
 
 interface LifeRow {
@@ -62,6 +63,7 @@ export default function PartLife() {
   if (!data || data.types.length === 0) return <Empty title={tr('No part history yet')}>{tr('Once parts have been on a bike, their life shows here.')}</Empty>
   return (
     <>
+      <ProductLinker onLinked={reload} />
       <p className="small muted">
         {tr('How long your parts lasted: every part that is out of use for good (worn out, retired, sold, returned under warranty) with its lifetime, and an average per product. ≈ marks estimates (km from before Bike Log, rides with an uncertain bike), ≥ a minimum (earlier use unknown). Parts still in use are listed apart and never count in an average.')}
       </p>
@@ -97,7 +99,10 @@ export default function PartLife() {
                 <tbody>
                   {t.products.map((p) => (
                     <tr key={p.product}>
-                      <td>{p.product}</td>
+                      <td>
+                        {p.product}
+                        {p.product_id === null && <div className="small muted">{tr('Set brand and model under "Parts without brand and model" above, or on the part\'s page under Edit details.')}</div>}
+                      </td>
                       <td className="num">{p.count}</td>
                       <td className="num">
                         <Km v={p.avg_km} estimated={p.estimated} minimum={p.minimum} />

@@ -818,6 +818,26 @@ you disagree. Dates are 2026-10-24 unless noted.
     CREATED / DELETED rows. Anything with history is retired as before (DB trigger unchanged). No schema
     change.
 
+149. **Brand and model on parts, with a list of common road bike products** (Dirk 2026-11-15: "where do i
+    enter product? maybe we should add brand and model for the spare parts and fill it with some common brands
+    and models"). Python app: brand and model stay on the existing `product` row (maker, model), never on the
+    part, so parts of one model share one product and the Part life report averages them; no schema change.
+    `common_products.py` holds a short pick list per part type (tires, tubes, chains, quick links, cassettes,
+    pads, rotors, bar tape, cleats, pedals, power meter pedals, sensors, computers, saddles, wheels …) with
+    other spellings (`aliases`, e.g. "GP5000 S TR") used only for suggestions. Typed from memory, unverified:
+    nothing is written until an entry is chosen; then `product_pick.resolve` reuses a product with the same
+    type + brand + model (case-insensitive) or makes one with spec_source "Bike Log common list (unverified)"
+    (typed in: "manual"). Brand without model is refused. Add part and Edit details have Brand + Model boxes
+    (free typing, suggestions: own products first); Add part fills an empty name with "brand model". Edit
+    sends the product only when brand or model changed, so saving other details never swaps the product row.
+    Suggest from the name: `common_products.score` (model or alias as whole words; longer match wins; brand in
+    the name +100; short models need the brand). Part life → "Parts without brand and model" lists name-only
+    parts with a suggestion (tick, one click to link; names stay as typed). API: GET /api/product-choices,
+    GET /api/product-suggest, GET /api/components-without-product, POST /api/components-without-product/link,
+    and `product_maker`/`product_model` on POST/PATCH /api/components. PHP already had Maker/Model text fields
+    on each part (and Part life falls back to them); they now get the same suggestions (catalog.json
+    `common_products`, `brand_model_choices` in pages/bike_pages.php). No schema change in either app.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

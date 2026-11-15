@@ -8,6 +8,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Brand and model for parts and spares** (Dirk 2026-11-15: "where do i enter product?"). Add part and the
+  part's Edit details now have **Brand** (Marke) and **Model** (Modell) boxes with suggestions: your own
+  products first, then a list of common road bike products (Continental, Schwalbe, Pirelli, Vittoria, Shimano,
+  SRAM, KMC, Wippermann, SwissStop, Favero, Magene …) for tires, tubes, chains, quick links, cassettes,
+  pads, rotors and more. The list is typed from memory and marked unverified; anything can be typed. Parts
+  with only a name: Inventory → Part life → **Parts without brand and model** suggests the product from the
+  name (e.g. "Continental Grand Prix 5000 S TR 28" …" → Continental Grand Prix 5000 S TR) and links the
+  ticked ones in one click; names stay as typed. The Part life report then averages per product. PHP web
+  version: its Maker/Model fields get the same suggestions. No database change.
 - **Delete a part entered by mistake** (Dirk 2026-11-15). Part page → More… → **Delete (entered by
   mistake)**, shown only while nothing has happened to the part yet (never installed, no km, no work, no
   notes, not taken from stock). Everything else is retired as before, so no history is lost.

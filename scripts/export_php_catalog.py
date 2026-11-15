@@ -43,6 +43,9 @@ def main() -> None:
     data["tire_setups"] = dict(catalog.TIRE_SETUPS)
     from bikelog.product_specs import fields_for
     data["product_spec_fields"] = {c: [_plain(f) for f in fields_for(c)] for c in catalog.COMPONENT_TYPES}
+    from bikelog.common_products import COMMON_PRODUCTS
+    data["common_products"] = {c: [{"maker": p.maker, "model": p.model} for p in rows]
+                               for c, rows in COMMON_PRODUCTS.items() if rows}
     out = ROOT / "php" / "app" / "catalog.json"
     out.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out.relative_to(ROOT)}: {len(data['component_types'])} types, "

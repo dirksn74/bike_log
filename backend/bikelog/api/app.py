@@ -43,6 +43,7 @@ from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import picklists
+from bikelog.services import product_pick
 from bikelog.services import spokes as spokes_svc
 from bikelog.services import wheels as wheels_svc
 from bikelog.services import bike_purge
@@ -147,6 +148,9 @@ class ComponentIn(Body):
     tire_setup: str | None = None
     shop: str | None = None
     mark: str | None = None
+    # brand and model (DECISIONS 149): find or make the product; used when product_id is not given
+    product_maker: str | None = None
+    product_model: str | None = None
     quantity: int = 1               # several identical parts at once; each is its own part (spares only)
     price_is_total: bool = False    # with quantity > 1: price_cents is the total, split evenly
     install: InstallIn | None = None
@@ -168,6 +172,19 @@ class ComponentPatch(Body):
     rotation_bike_id: int | None = None
     warranty_until: str | None = None
     shop: str | None = None
+    # brand and model (DECISIONS 149): sent together; both empty clears the product
+    product_maker: str | None = None
+    product_model: str | None = None
+
+
+class ProductLinkIn(Body):
+    component_id: int
+    maker: str | None = None
+    model: str | None = None
+
+
+class LinkProductsIn(Body):
+    links: list[ProductLinkIn]
 
 
 class SendOutIn(Body):
@@ -911,11 +928,14 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.post("/api/components", status_code=201)
     def create_component(body: ComponentIn, s: Session = Depends(db), op_id: str | None = OpId):
-        data = body.model_dump(exclude={"install", "quantity", "price_is_total"})
+        data = body.model_dump(exclude={"install", "quantity", "price_is_total", "product_maker", "product_model"})
         if body.install and body.quantity > 1:
             raise DomainError(tr("Several parts at once go to the spares; install them one by one"))
 
         def fn():
+            if data.get("product_id") is None and (body.product_maker or body.product_model):
+                prod = product_pick.resolve(s, body.component_type, body.product_maker, body.product_model)
+                data["product_id"] = prod.id if prod else None
             created = inv.create_components(s, quantity=body.quantity, price_is_total=body.price_is_total, **data)
             c = created[0]
             if body.install:
@@ -1030,7 +1050,31 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.patch("/api/components/{component_id}")
     def patch_component(component_id: int, body: ComponentPatch, s: Session = Depends(db)):
-        return _component_summary(s, inv.update_component(s, component_id, **body.model_dump(exclude_unset=True)))
+        fields = body.model_dump(exclude_unset=True)
+        if "product_maker" in fields or "product_model" in fields:
+            maker, model = fields.pop("product_maker", None), fields.pop("product_model", None)
+            if "product_id" not in fields:
+                prod = product_pick.resolve(s, inv.get_component(s, component_id).component_type, maker, model)
+                fields["product_id"] = prod.id if prod else None
+        return _component_summary(s, inv.update_component(s, component_id, **fields))
+
+    # brand + model (DECISIONS 149): pick list, and linking name-only parts to a product
+    @app.get("/api/product-choices")
+    def product_choices(component_type: str, s: Session = Depends(db)):
+        return product_pick.choices(s, component_type)
+
+    @app.get("/api/product-suggest")
+    def product_suggest(component_type: str, name: str, s: Session = Depends(db)):
+        return product_pick.suggest_for(s, component_type, name)
+
+    @app.get("/api/components-without-product")
+    def components_without_product(s: Session = Depends(db)):
+        return product_pick.unlinked(s)
+
+    @app.post("/api/components-without-product/link")
+    def link_products(body: LinkProductsIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return op(s, op_id, "component.link_products",
+                  lambda: product_pick.link_many(s, [ln.model_dump() for ln in body.links]))
 
     @app.delete("/api/components/{component_id}")
     def delete_component(component_id: int, s: Session = Depends(db)):
@@ -1826,6 +1870,8 @@ def _component_summary(s: Session, c: Component) -> dict:
             "type_name": t.name if t else c.component_type, "category": t.category if t else None,
             "product_id": c.product_id,
             "product": f"{c.product.maker or ''} {c.product.model}".strip() if c.product else None,
+            "product_maker": c.product.maker if c.product else None,
+            "product_model": c.product.model if c.product else None,
             "prior_usage": c.prior_usage, "status": c.status, "purchase_date": c.purchase_date,
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
             "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
