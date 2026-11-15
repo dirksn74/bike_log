@@ -151,6 +151,7 @@ export interface ComponentSummary {
   name?: string
   mark?: string | null
   shop?: string | null
+  created?: { id: number; label: string }[]
   rotation_bike_id?: number | null
   component_type: string
   type_name: string

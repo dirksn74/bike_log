@@ -12,6 +12,9 @@
     <?= field('model', t('Model'), old('model', (string)$c['model'])) ?>
     <?= field('mark', t('Mark'), old('mark', (string)$c['mark']), 'text', ['maxlength' => 80, 'data-help' => t('To tell identical parts apart, e.g. "A" or "1 dot".')]) ?>
   </div>
+  <?php if ($isNew): ?>
+    <?= field('quantity', t('How many?'), old('quantity', '1'), 'number', ['min' => 1, 'max' => 50, 'step' => 1, 'inputmode' => 'numeric', 'data-help' => t('Bought several? Each one becomes its own spare with its own km and history.')]) ?>
+  <?php endif; ?>
   <fieldset>
     <legend><?= h(t('Km before you started tracking it')) ?></legend>
     <label class="check"><input type="radio" name="prior_usage" value="NEW" <?= old('prior_usage', $c['prior_usage']) === 'NEW' ? 'checked' : '' ?>> <?= h(t('New (0 km)')) ?></label>
@@ -41,6 +44,9 @@
     <div class="row">
       <?= field('purchase_date', t('Bought on'), old('purchase_date', (string)$c['purchase_date']), 'date') ?>
       <?= field('price', t('Price'), old('price', money($c['price_cents'] === null ? null : (int)$c['price_cents'])), 'text', ['inputmode' => 'decimal']) ?>
+      <?php if ($isNew): ?>
+      <label><?= h(t('When several: that price is')) ?><select name="price_is_total"><?= options(['0' => t('per piece'), '1' => t('for all together')], old('price_is_total', '0')) ?></select></label>
+      <?php endif; ?>
       <?= field('shop', t('Shop'), old('shop', (string)$c['shop']), 'text', ['list' => 'shops']) ?>
     </div>
     <div class="row">

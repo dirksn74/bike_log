@@ -225,6 +225,44 @@ function page_part_edit(): void
             Session::flash('ok', t('Part saved.'));
             redirect('part', ['id' => $id]);
         }
+        // several identical spares at once (Dirk 2026-11-15: "15 inner tubes in one go"): each its own part
+        $qtyRaw = trim((string)post('quantity'));
+        $qty = $qtyRaw === '' ? 1 : (ctype_digit($qtyRaw) ? (int)$qtyRaw : 0);
+        if ($qty < 1 || $qty > 50) {
+            throw new UserError(t('Enter a whole number from 1 to 50'));
+        }
+        if ($qty > 1) {
+            if ((int)post('install_bike_id') || (int)post('install_parent_id')) {
+                throw new UserError(t('Several parts at once go to the spares; install them one by one'));
+            }
+            if ($row['serial_number'] !== null) {
+                throw new UserError(t('A serial number belongs to one part; add it later on each part\'s page'));
+            }
+            if ($row['mark'] !== null) {
+                throw new UserError(t('Leave the mark empty when adding several parts; each one can get its own mark later'));
+            }
+            $id = Db::tx(function () use ($uid, $row, $type, $qty) {
+                $prices = array_fill(0, $qty, $row['price_cents']);
+                if ($row['price_cents'] !== null && post('price_is_total') === '1') {
+                    $base = intdiv((int)$row['price_cents'], $qty);
+                    $rest = (int)$row['price_cents'] % $qty;
+                    for ($i = 0; $i < $qty; $i++) {
+                        $prices[$i] = $base + ($i < $rest ? 1 : 0);
+                    }
+                }
+                $first = 0;
+                for ($i = 0; $i < $qty; $i++) {
+                    $cid = Db::insert('components', ['price_cents' => $prices[$i]] + $row + ['user_id' => $uid, 'component_type' => $type, 'created_at' => now_utc()]);
+                    if ($type === 'WHEELSET') {
+                        Inventory::ensureWheels($uid, $cid, null);
+                    }
+                    $first = $first ?: $cid;
+                }
+                return $first;
+            });
+            Session::flash('ok', t('{n} × {name} added as separate spares.', ['n' => $qty, 'name' => $row['label']]));
+            redirect('parts');
+        }
         $id = Db::tx(function () use ($uid, $row, $type) {
             $id = Db::insert('components', $row + ['user_id' => $uid, 'component_type' => $type, 'created_at' => now_utc()]);
             $bikeId = (int)post('install_bike_id');

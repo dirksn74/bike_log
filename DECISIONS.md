@@ -772,5 +772,20 @@ you disagree. Dates are 2026-10-24 unless noted.
     with `on_label`; part installation periods without rides report 0 km instead of null ("unknown").
     The Manage parts buttons pick their form by a key, not by the translated label (the German "Swap tube"
     opened the wrong form). No schema change, no migration.
+145. **Part names need not be unique; several identical spares at once** (Dirk 2026-11-15: "i need to be able
+    to enter 15 inner tubes into the inventory in one go"; then a rename failed with "UNIQUE constraint failed:
+    component.component_type, component.label" and he wants names not unique, the internal id is the key).
+    Migration 0023 drops the partial unique index `uq_component_type_label` (0020) and adds a plain index
+    `ix_component_type_label`; no row changes (downgrade numbers duplicates "(2)" back). `free_label` returns
+    the typed name for every type; chains still get the next letter on create (Dirk likes letters). The rename
+    500 came from the IntegrityError handler reading `comp.label` after the failed flush (PendingRollbackError);
+    that handler is gone with the constraint. Quantity: `inventory.create_components` makes N separate
+    components (never one row with a count: each physical part has its own km, DECISIONS 129 and the
+    punctures rule), shared fields copied, price per piece or total split evenly in cents. Why not counted
+    stock (Inventory → Stock): that keeps an anonymous count until a part is installed; Dirk asked for parts
+    in the inventory, and both count toward the spares to keep. Why not a purchase bundle: a bundle's price
+    counts for the bike most parts went on, wrong for spares that end up on different bikes. Quantity is
+    refused with an install (one by one), a mark or a serial number. PHP: no unique name rule existed; same
+    quantity fields in the part form.
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

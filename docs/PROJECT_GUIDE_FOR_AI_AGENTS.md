@@ -168,7 +168,7 @@ scripts/release_notes.py text of a release page: docs/INSTALL.md + the version's
   BATTERY is fitted, else unknown).
 - **product**: what you can buy: `component_type`, maker, model, `specs_json`, `spec_source` (URL),
   `spec_version` (e.g. "JSON import ...; unverified"), `list_price_cents` (reference only).
-- **component**: one physical part: type, label (unique per type), product, `prior_usage`
+- **component**: one physical part: type, label (NOT unique since 0023: several parts may share a name, the id is the key), product, `prior_usage`
   (NEW/UNKNOWN/RECORDED), purchase date, `price_cents`, serial, status ACTIVE/RETIRED, `disposition`
   (STORED, AWAITING_SERVICE, RETIRED, DISCARDED, SOLD, VOIDED, IN_USE = rider gear such as shoes being worn), storage location,
   `purchase_session_id`, `from_stock_txn_id`.
@@ -219,7 +219,7 @@ its unique name constraint into a partial index) copies the stored CREATE statem
 and triggers; `migrate.upgrade_database` runs migrations with foreign keys off and runs
 `PRAGMA foreign_key_check` before the commit. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
 compares `models.py` with the migrated schema, so **every model change needs a new migration**
-(never edit a released one; 0011 is the newest).
+(never edit a released one; 0023 is the newest).
 
 ---
 
@@ -322,9 +322,20 @@ columns that hold its names. A before_flush hook canonicalises those columns and
 merge / hide via `/api/lists…`; dropdown names from `GET /api/lists/{code}`. Frontend: `ShopPicker`
 (select + "New shop…") in every purchase form, `PickLists` in Settings. e2e helper `pickShop`.
 
-**Labels.** Unique per part type except tires and tubes; the label is "name [mark]" (DECISIONS 132), a second
-chain of a name gets the next letter mark, other types get "(2)" from `inventory.free_label`; update refuses a
-duplicate (DECISIONS 105).
+**Labels.** Not unique (migration 0023, DECISIONS 145, Dirk 2026-11-15): any number of parts may share a name;
+never look a part up by its label, use the id. The label is "name [mark]" (DECISIONS 132); a second chain of
+a name still gets the next letter mark when created; `inventory.free_label` returns the typed name (no "(2)"
+any more); renaming to another part's name is allowed. Groupset imports still add the bike's name when the
+plain name exists. The product JSON import still treats an item whose label already exists for that type as
+"exists" (idempotent re-import).
+
+**Several identical parts at once** (DECISIONS 145). `inventory.create_components(quantity, price_is_total,
+…)` (max `MAX_QUANTITY` 50) makes N separate parts sharing name, product, shop, date, specs, notes; price per
+piece or the total split evenly in cents (remainder on the first ones); mark and serial number refused with
+quantity > 1; chains get A, B, C …. POST /api/components takes `quantity` and `price_is_total` (not with
+`install`) and answers the first part plus `created` [{id, label}] (always, also for one part). UI:
+ComponentForm "How many?" (only when kept as a spare) and "That price is per piece / for all N together".
+PHP: same fields in parts/edit (`quantity`, `price_is_total`), page_part_edit.
 
 **Breadcrumbs (`frontend/src/crumbs.ts`, `components/Breadcrumbs.tsx`, DECISIONS 104).** Rendered by
 App above the routes on every non-main page. `nextTrail` keeps the way you came (main item resets, a

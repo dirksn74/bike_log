@@ -173,6 +173,15 @@ $w->post('r=part_edit', ['component_type' => 'BRAKE_PADS', 'label' => '', 'maker
     'install_bike_id' => $bmc, 'slot' => 'REAR_PADS', 'installed_on' => '2026-10-01']);
 $newPads = Db::one("SELECT * FROM components WHERE user_id = ? AND label = 'Shimano L05A'", [$uid]);
 check($newPads !== null && Domain::currentBike($uid, (int)$newPads['id'])['id'] == $bmc, 'add part with install in one form');
+// several identical spares in one go (Dirk 2026-11-15: 15 inner tubes), total price split evenly
+$w->post('r=part_edit', ['component_type' => 'INNER_TUBE', 'label' => 'Conti Race 28', 'prior_usage' => 'NEW', 'quantity' => '15',
+    'price' => '100,00', 'price_is_total' => '1', 'purchase_date' => '2026-11-15']);
+$tubes15 = Db::all("SELECT * FROM components WHERE user_id = ? AND label = 'Conti Race 28' AND purchase_date = '2026-11-15'", [$uid]);
+check(count($tubes15) === 15 && count(array_unique(array_column($tubes15, 'id'))) === 15, 'quantity 15 makes 15 separate parts');
+check(array_sum(array_column($tubes15, 'price_cents')) == 10000 && min(array_column($tubes15, 'price_cents')) == 666, 'total price split evenly');
+$w->post('r=part_edit', ['component_type' => 'BRAKE_PADS', 'label' => 'Cage X', 'prior_usage' => 'NEW', 'quantity' => '2',
+    'install_bike_id' => $bmc, 'slot' => 'FRONT_PADS', 'installed_on' => '2026-10-01']);
+check((int)Db::value("SELECT COUNT(*) FROM components WHERE user_id = ? AND label = 'Cage X'", [$uid]) === 0, 'several at once cannot be installed');
 $w->post('r=log', ['target' => 'c:' . $newPads['id'], 'action_code' => 'PAD_MEASURE', 'performed_on' => '2026-10-02', 'measurement_value' => '0.8']);
 check(Db::value("SELECT outcome FROM maintenance_events WHERE component_id = ? ORDER BY id DESC LIMIT 1", [$newPads['id']]) === 'LOW', 'log form with measurement');
 $w->post("r=rule_edit&part=$chainB&code=CHAIN_HOT_WAX", ['interval_km' => '400', 'warn_km' => '40', 'origin' => 'PERSONAL', 'active' => '1']);

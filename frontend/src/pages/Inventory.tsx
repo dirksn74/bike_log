@@ -53,7 +53,7 @@ const GROUPSET = 'GROUPSET'
 // bike in one step: "Where does it go?" lists only that bike and is required.
 export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeId }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void; bikeId?: number }) {
   const { meta } = useApp()
-  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', mark: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '' })
+  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', mark: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '', qty: '1', price_total: false })
   const [props, setProps] = useState<Record<string, string>>({})
   const [propsOpen, setPropsOpen] = useState(presetType === 'COCKPIT' || presetType === 'WHEELSET')
   const [mount, setMount] = useState<MountTarget | null>(null)
@@ -64,13 +64,15 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
     setBusy(true)
     setError(null)
     try {
-      const body: Record<string, unknown> = { component_type: f.component_type, label: f.label, mark: f.mark.trim() || null, prior_usage: f.history === 'KNOWN' ? 'UNKNOWN' : f.history }
+      if (qtyBad) throw new Error(tr('Enter a whole number from 1 to 50'))
+      const body: Record<string, unknown> = { component_type: f.component_type, label: f.label, mark: qty > 1 ? null : f.mark.trim() || null, prior_usage: f.history === 'KNOWN' ? 'UNKNOWN' : f.history }
       if (f.notes) body.notes = f.notes
       const price = toCents(f.price)
       if (Number.isNaN(price)) throw new Error(tr('Price: enter an amount such as 49,90'))
       if (price !== null) body.price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
       if (f.shop.trim()) body.shop = f.shop.trim()
+      if (qty > 1) Object.assign(body, { quantity: qty, price_is_total: f.price_total })
       const specs = specsFrom(specFields, props)
       if (Object.keys(specs).length) body.specs = specs
       if (f.history === 'KNOWN') Object.assign(body, { starting_km: Number(f.start_km || 0), starting_date: f.start_date, starting_is_estimate: f.start_estimate })
@@ -87,6 +89,11 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
     }
   }
   const specFields = meta.component_types.find((t) => t.code === f.component_type)?.specs ?? []
+  // several identical spares at once (Dirk 2026-11-15: "15 inner tubes in one go"); each becomes its own part
+  const canMany = !bikeId && !mount
+  const qtyNum = Number(f.qty)
+  const qtyBad = canMany && f.qty.trim() !== '' && (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > 50)
+  const qty = canMany && !qtyBad && f.qty.trim() !== '' ? qtyNum : 1
   const typeField = (
     <Field label={tr('Type')}>
       <select
@@ -123,15 +130,30 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
           <Field label={tr('Name / label')} hint={tr('e.g. the product name. Properties can be added later.')}>
             <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
           </Field>
-          <Field label={tr('Mark (optional)')} hint={f.mark.trim() ? tr('Shown as "{x} [{trim}]"', { x: f.label.trim() || tr('Name'), trim: f.mark.trim() }) : f.component_type === 'CHAIN' ? tr('A, B …; a second chain of the same name gets the next letter by itself') : tr('A short tag to tell identical parts apart')}>
+          {qty > 1 ? null : <Field label={tr('Mark (optional)')} hint={f.mark.trim() ? tr('Shown as "{x} [{trim}]"', { x: f.label.trim() || tr('Name'), trim: f.mark.trim() }) : f.component_type === 'CHAIN' ? tr('A, B …; a second chain of the same name gets the next letter by itself') : tr('A short tag to tell identical parts apart')}>
             <input value={f.mark} maxLength={20} onChange={(e) => setF({ ...f, mark: e.target.value })} />
-          </Field>
+          </Field>}
         </div>
       </div>
+      {canMany && (
+        <div className="row">
+          <Field label={tr('How many?')} hint={qtyBad ? tr('Enter a whole number from 1 to 50') : qty > 1 ? tr('Adds {n} separate spares; each one keeps its own km and history.', { n: qty }) : tr('Bought several? Enter the number to add them all at once.')}>
+            <input inputMode="numeric" value={f.qty} aria-label={tr('How many?')} onChange={(e) => setF({ ...f, qty: e.target.value.replace(/[^0-9]/g, '') })} />
+          </Field>
+        </div>
+      )}
       <div className="row">
         <Field label={tr('Price paid (optional)')} hint={tr('Counts as running cost of the bike it is first installed on.')}>
           <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
         </Field>
+        {qty > 1 && (
+          <Field label={tr('That price is')}>
+            <select value={f.price_total ? 'TOTAL' : 'EACH'} onChange={(e) => setF({ ...f, price_total: e.target.value === 'TOTAL' })}>
+              <option value="EACH">{tr('per piece')}</option>
+              <option value="TOTAL">{tr('for all {n} together', { n: qty })}</option>
+            </select>
+          </Field>
+        )}
         <Field label={tr('Bought on (optional)')}>
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
@@ -188,7 +210,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={busy || !f.label.trim() || (!!bikeId && !mount)} onClick={save}>
-          {busy ? tr('Saving…') : bikeId ? tr('Save and install') : tr('Save')}
+          {busy ? tr('Saving…') : bikeId ? tr('Save and install') : qty > 1 ? tr('Add {n} parts', { n: qty }) : tr('Save')}
         </button>
         {onCancel && (
           <button className="btn" onClick={onCancel}>
@@ -829,7 +851,9 @@ export default function InventoryPage() {
             presetType={tab === 'chains' ? 'CHAIN' : undefined}
             onSaved={(c, typed) => {
               // back to the Inventory list (Dirk 2026-11-01); the new part is one click away in the lists
-              changed(typed && c.label !== typed ? tr('{label} added. You already have one with that name, so this one got a number to tell them apart; rename it any time with Edit details on its page.', { label: c.label }) : `${c.label} added.`)
+              const n = c.created?.length ?? 1
+              if (n > 1) changed(tr('{n} × {label} added as separate spares.', { n, label: typed || c.label }))
+              else changed(tr('{label} added.', { label: c.label }))   // names may repeat (DECISIONS 144); a chain may get a letter
               parts.reload()
               chains.reload()
             }}

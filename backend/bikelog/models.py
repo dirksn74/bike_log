@@ -98,9 +98,8 @@ class Component(Base):
     """One physical part you own. Identity never changes, whatever bike it is on."""
     __tablename__ = "component"
     __table_args__ = (
-        # names are unique per type, except tires and inner tubes: two "GP5000" are fine (0020, DECISIONS 129)
-        Index("uq_component_type_label", "component_type", "label", unique=True,
-              sqlite_where=text("component_type NOT IN ('TIRE', 'INNER_TUBE')")),
+        # names need not be unique: several parts may share a name, the id is the key (0023, DECISIONS 144)
+        Index("ix_component_type_label", "component_type", "label"),
         CheckConstraint("status IN ('ACTIVE','RETIRED')", name="ck_component_status"),
         CheckConstraint("prior_usage IN ('NEW','RECORDED','UNKNOWN')", name="ck_component_prior_usage"),
     )

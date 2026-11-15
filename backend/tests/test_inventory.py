@@ -31,12 +31,13 @@ def test_quick_add_needs_only_type_and_label(session):
 def test_three_individually_labelled_chains(session):
     for label in ("Chain A", "Chain B", "Chain C"):
         part(session, "CHAIN", label)
-    # a second identical chain gets the next letter as its mark (DECISIONS 132); other parts a number
+    # a second identical chain gets the next letter as its mark (DECISIONS 132); other parts keep the name (0023)
     b = part(session, "CHAIN", "Chain A")
     assert (b.label, b.mark) == ("Chain A [B]", "B")
     assert part(session, "CHAIN", "Chain A").label == "Chain A [C]"
     assert part(session, "SADDLE", "Arione").label == "Arione"
-    assert part(session, "SADDLE", "Arione").label == "Arione (2)"
+    s2 = part(session, "SADDLE", "Arione")
+    assert s2.label == "Arione" and s2.id != b.id
 
 
 def test_tires_and_tubes_keep_their_product_name_without_a_number(session):
@@ -48,7 +49,6 @@ def test_tires_and_tubes_keep_their_product_name_without_a_number(session):
 
 def test_the_mark_is_part_of_the_name(session):
     """Dirk 2026-11-02: name "Shimano XT CN-M8100 12-fach Kette", mark "A" → "… Kette [A]"; same for tires."""
-    from bikelog.services.errors import Conflict
     xt = "Shimano XT CN-M8100 12-fach Kette"
     a = part(session, "CHAIN", xt)
     b = part(session, "CHAIN", xt)
@@ -60,9 +60,8 @@ def test_the_mark_is_part_of_the_name(session):
     assert b.label == f"{xt} [D]"
     inv.update_component(session, b.id, label=f"{xt} [D]")      # an unchanged full name is no rename
     assert b.label == f"{xt} [D]"
-    with pytest.raises(Conflict, match=r"Another chain is already called .*\[A\]\"\. Give it a different mark"):
-        inv.update_component(session, b.id, mark="A")
-    session.rollback()
+    inv.update_component(session, b.id, mark="A")      # names (and marks) may repeat since 0023 (DECISIONS 144)
+    assert a.label == b.label == f"{xt} [A]" and a.id != b.id
     c = part(session, "CHAIN", "KMC X12", mark="1")
     assert (c.label, c.mark) == ("KMC X12 [1]", "1")
     inv.update_component(session, c.id, mark=None)

@@ -123,17 +123,18 @@ def test_undo_takes_back_the_whole_import(session):
     assert all(c.disposition == "VOIDED" for c in created)  # kept as records, not deleted
 
 
-def test_second_import_reuses_products_and_gets_unique_labels(session):
+def test_second_import_reuses_products_and_names_by_bike(session):
     b1, b2 = bike(session), bike(session, name="BMC Roadmachine")
     first = run_import(session, b1)
     products = session.scalar(select(func.count(Product.id)))
     second = run_import(session, b2)
     assert session.scalar(select(func.count(Product.id))) == products
     assert second["new_products"] == 0
-    third = run_import(session)                             # no bike: all spares, labels still unique
+    third = run_import(session)                             # no bike: all spares; names may repeat (0023)
     assert third["counts"]["SPARE"] == len(third["items"])
-    labels = [c["label"] for r in (first, second, third) for c in r["created"]]
-    assert len(labels) == len(set(labels))
+    ids = [c["component_id"] for r in (first, second, third) for c in r["created"]]
+    assert len(ids) == len(set(ids))
+    assert any("BMC Roadmachine" in c["label"] for c in second["created"])   # told apart by the bike's name
 
 
 def test_options_and_item_selection(session):

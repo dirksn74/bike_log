@@ -147,6 +147,8 @@ class ComponentIn(Body):
     tire_setup: str | None = None
     shop: str | None = None
     mark: str | None = None
+    quantity: int = 1               # several identical parts at once; each is its own part (spares only)
+    price_is_total: bool = False    # with quantity > 1: price_cents is the total, split evenly
     install: InstallIn | None = None
 
 
@@ -909,16 +911,21 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.post("/api/components", status_code=201)
     def create_component(body: ComponentIn, s: Session = Depends(db), op_id: str | None = OpId):
-        data = body.model_dump(exclude={"install"})
+        data = body.model_dump(exclude={"install", "quantity", "price_is_total"})
+        if body.install and body.quantity > 1:
+            raise DomainError(tr("Several parts at once go to the spares; install them one by one"))
 
         def fn():
-            c = inv.create_component(s, **data)
+            created = inv.create_components(s, quantity=body.quantity, price_is_total=body.price_is_total, **data)
+            c = created[0]
             if body.install:
                 inv.install(s, c.id, **body.install.model_dump())
             if c.component_type == "WHEELSET":     # its front and rear wheel, so tires have somewhere to go
                 from bikelog.services import wheels
-                wheels.ensure_wheels(s, c.id)
-            return _component_summary(s, c)
+                for w in created:
+                    wheels.ensure_wheels(s, w.id)
+            # the first part as before, plus every part made (several when a quantity was given)
+            return {**_component_summary(s, c), "created": [{"id": w.id, "label": w.label} for w in created]}
         return run_once(s, op_id, "component.create", fn)
 
     # ---- timeline (services/timeline.py): bike and part, filters, CSV export

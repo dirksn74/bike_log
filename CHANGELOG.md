@@ -8,6 +8,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Add several identical spares at once** (Dirk 2026-11-15: "15 inner tubes in one go"). Inventory → Add
+  part → **How many?** (Wie viele?): enter e.g. 15 and every tube becomes its own spare with its own km and
+  history. Name, shop, purchase date, properties and notes are shared; the price is **per piece** or **for all
+  together** (split evenly). Only for parts kept as spares (install them one by one); leave mark and serial
+  number for later. Same in the PHP web version.
 - **Rotate tires in one step** (Dirk 2026-11-15). Bike page → Manage parts → **Rotate tires** (Reifen
   umsetzen): the front tire goes to the rear wheel (or the rear one to the front), the tire that was there
   comes off (discarded, stored …) and a new one goes on, taken from stock, a stored spare or newly bought
@@ -98,6 +103,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Settings → **Account** (server only): who is signed in, and Sign out.
 
 ### Fixed
+- **Renaming a part no longer fails when another part has the same name** (Dirk 2026-11-15: "UNIQUE
+  constraint failed" when renaming the CEMA bottom bracket). Part names no longer have to be unique, for any
+  part type; Bike Log tells parts apart by their internal id. New parts no longer get "(2)" added; chains
+  still get a letter. Database update 0023 removes only the uniqueness rule, every record stays as it was.
 - **Installation history on the bike page** (Journal and history → Installation history) now also lists
   tires, tubes and other parts mounted on a part (on the rear wheel, on the hub …), with the part they sit
   on, so a tire moved from the front to the rear wheel shows up. Before, only parts directly on the bike
