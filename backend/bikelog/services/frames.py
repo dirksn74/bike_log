@@ -82,6 +82,28 @@ def ensure_frames(session: Session, bike_id: int | None = None) -> int:
     return changed
 
 
+def follow_bike_start(session: Session, bike: Bike, old: UsageAdjustment | None) -> int:
+    """The bike's odometer was changed: the automatic frame whose km from before were copied from the old
+    odometer value gets the new one too (DECISIONS 151). A frame with its own, different value is left alone."""
+    new = _bike_start(session, bike)
+    if old is None or new is None:
+        return 0
+    changed = 0
+    for i in list(session.scalars(select(Installation).join(Component, Component.id == Installation.component_id)
+                                  .where(Installation.bike_id == bike.id, Installation.note == AUTO_NOTE,
+                                         Installation.voided_at.is_(None),
+                                         Component.component_type.in_([c for c, _ in PARTS])))):
+        adj = session.scalar(select(UsageAdjustment).where(UsageAdjustment.component_id == i.component_id,
+                                                           UsageAdjustment.kind == "STARTING",
+                                                           UsageAdjustment.voided_at.is_(None)))
+        if not adj or (adj.km, adj.effective_utc, adj.is_estimate) != (old.km, old.effective_utc, old.is_estimate):
+            continue
+        inv.set_starting_usage(session, component_id=i.component_id, km=new.km, effective=new.effective_at,
+                               is_estimate=new.is_estimate, note=adj.note)
+        changed += 1
+    return changed
+
+
 def _follow_start(session: Session, rows: list[Installation], start: str) -> int:
     """The automatic installation, while it is the part's only one, starts with the bike."""
     if len(rows) != 1:

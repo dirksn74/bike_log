@@ -867,3 +867,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     (+ `ck_rule_lifetime`: interval_km required), every row kept with id/uuid, indexes and triggers put back;
     the rule row itself is added at start by `ensure_reference_data`. PHP: migration 009 widens the ENUM and adds
     the rule for every user (INSERT IGNORE), `Reminders::lifetime`.
+151. **A starting value of 0 km is known, never an estimate** (Dirk 2026-11-16: "why estimated starting value? it
+    is 0"). The Add bike form had "The odometer value is an estimate" ticked by default, so a new bike entered
+    with 0 km showed "≈ 0 km (estimate)" and "includes an estimated starting value". Now: the box starts
+    unticked; `inventory.set_starting_usage` stores any 0 km starting value (bike or part) as known, whatever the
+    caller sends, because 0 km means new; the bike page has **Mark as known** (one click, shown only for an
+    estimated odometer) and **Change odometer / Set odometer** (km, date, estimate box). A change voids the old
+    starting value (kept as history) and writes a new one, as before; the automatic frame part whose km from
+    before were copied from the old bike value follows (`frames.follow_bike_start`), a frame with its own value
+    is left alone. Migration 0025 marks every active 0 km starting value that was saved as an estimate as known
+    and adds the note "[0 km marked known by update 0025]"; nothing else changes and the downgrade puts exactly
+    those rows back. Estimates above 0 km stay estimates. PHP version: no starting km for bikes, not affected.

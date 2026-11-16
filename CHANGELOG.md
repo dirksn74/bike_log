@@ -133,6 +133,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Settings → **Account** (server only): who is signed in, and Sign out.
 
 ### Fixed
+- **A new bike with 0 km is no longer shown as "estimated"** (Dirk 2026-11-16: "why estimated starting value?
+  it is 0"). The Add bike form had "The odometer value is an estimate" ticked by default, so 0 km was saved as
+  an estimate. The box now starts unticked, and 0 km is always stored as known (bikes and parts). The update
+  corrects existing 0 km starting values that were saved as estimates (e.g. TIME NXR: "405 km", known); other
+  values are not changed. New on the bike page under the odometer line: **Mark as known** (one click, when the
+  odometer is an estimate) and **Change odometer** (km, date, estimate). The old value is kept as history, and
+  the bike's frame part follows the change.
 - **Two flats on one inner tube although you always replace it** (Dirk 2026-11-15: "how can a inner tube have 2
   punctures? i replace them, i dont patch them"). Both flats had been marked **Solved** without a **Fix**, so
   the app never learned the tube was replaced. Now: **Fix** stays on a solved incident until each part has a

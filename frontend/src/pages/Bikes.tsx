@@ -31,7 +31,7 @@ import { tr, codeText, trn, lc } from '../i18n'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
   const { meta } = useApp()
-  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: true, price: '', purchase_date: '', shifting: '', shop: '' })
+  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: false, price: '', purchase_date: '', shifting: '', shop: '' })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -385,6 +385,7 @@ export function BikeDetailPage() {
             {data.usage.starting_is_estimate ? tr(' (estimate)') : ''}{tr(', plus')} {km(data.usage.ride_km)} {tr('from rides since.')}
           </p>
         )}
+        <OdometerEdit bike={data} onSaved={reload} />
         {data.status === 'RETIRED' && <p className="small"><Tag>{tr('retired')}</Tag> {tr('Hidden from the bike list; its rides, km and history are kept. Restore brings it back.')}</p>}
         <ShiftingSelect bike={data} onSaved={reload} />
       </Card>
@@ -1246,6 +1247,75 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, o
 const COST_KIND: Record<string, string> = { PART: 'part', BUNDLE: 'bundle', STOCK: tr('from stock'), SERVICE: 'service' }
 
 // Electronic or mechanical shifting: decides whether Di2 checks or cable checks apply to this bike.
+/** Change the bike's odometer when tracking started, or mark it as known (DECISIONS 151). The old value is
+ *  kept as history (voided, never deleted); an automatic frame part that carried the old value follows. */
+function OdometerEdit({ bike, onSaved }: { bike: BikeDetail; onSaved: () => void }) {
+  const { toast } = useApp()
+  const u = bike.usage
+  const [open, setOpen] = useState(false)
+  const [f, setF] = useState({ km: '', date: '', estimate: false })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  function start() {
+    setF({ km: u.starting_km !== null ? String(u.starting_km) : '', date: (u.starting_effective ?? today()).slice(0, 10), estimate: u.starting_is_estimate && u.starting_km !== 0 })
+    setError(null)
+    setOpen(true)
+  }
+  async function send(body: { km: number; effective: string | null; is_estimate: boolean }, msg: string) {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.post(`/bikes/${bike.id}/starting-usage`, body)
+      toast(msg)
+      setOpen(false)
+      onSaved()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const kmValue = Number(f.km.replace(',', '.'))
+  return (
+    <div className="small">
+      {!open && (
+        <>
+          {u.starting_km !== null && u.starting_is_estimate && (
+            <button className="btn btn-small" disabled={busy} title={tr('The odometer value is exact, not a guess')}
+              onClick={() => send({ km: u.starting_km as number, effective: u.starting_effective, is_estimate: false }, tr('Odometer marked as known.'))}>
+              {tr('Mark as known')}
+            </button>
+          )}{' '}
+          <button className="btn btn-small" onClick={start}>
+            {u.starting_km !== null ? tr('Change odometer') : tr('Set odometer')}
+          </button>
+        </>
+      )}
+      {open && (
+        <div className="form">
+          <Field label={tr('Odometer when you start tracking')} hint={tr('A new bike: 0 km. Rides before this date are inside this value.')}>
+            <div className="row">
+              <input inputMode="decimal" aria-label={tr('Odometer km')} value={f.km} onChange={(e) => setF({ ...f, km: e.target.value })} placeholder="km" />
+              <input type="date" aria-label={tr('Odometer date')} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+            </div>
+          </Field>
+          <label className="check">
+            <input type="checkbox" checked={f.estimate && kmValue !== 0} disabled={kmValue === 0} onChange={(e) => setF({ ...f, estimate: e.target.checked })} /> {tr('The odometer value is an estimate')}
+          </label>
+          <FormError error={error} />
+          <div className="form-actions">
+            <button className="btn" onClick={() => setOpen(false)}>{tr('Cancel')}</button>
+            <button className="btn btn-primary" disabled={busy || f.km.trim() === '' || Number.isNaN(kmValue)}
+              onClick={() => send({ km: kmValue, effective: f.date || null, is_estimate: f.estimate && kmValue !== 0 }, tr('Odometer saved.'))}>
+              {busy ? tr('Saving…') : tr('Save')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ShiftingSelect({ bike, onSaved }: { bike: BikeDetail; onSaved: () => void }) {
   const { meta, toast } = useApp()
   const label = (code: string | null) => lc(meta.shifting_types.find((t) => t.code === code)?.label)

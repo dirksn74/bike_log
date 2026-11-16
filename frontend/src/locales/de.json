@@ -1836,5 +1836,15 @@
  "… page": "… Seite",
  "≈ estimated, ≥ at least.": "≈ geschätzt, ≥ mindestens.",
  "≈ share": "≈ Anteil",
- "≈: parts taken from stock are valued at the average price paid for that stock.": "≈: Teile aus dem Vorrat werden mit dem durchschnittlich gezahlten Preis dieses Vorrats bewertet."
+ "≈: parts taken from stock are valued at the average price paid for that stock.": "≈: Teile aus dem Vorrat werden mit dem durchschnittlich gezahlten Preis dieses Vorrats bewertet.",
+ "A new bike: 0 km. Rides before this date are inside this value.": "Neues Rad: 0 km. Fahrten vor diesem Datum sind in diesem Wert enthalten.",
+ "Change odometer": "Kilometerstand ändern",
+ "Mark as known": "Als bekannt markieren",
+ "Odometer date": "Datum des Kilometerstands",
+ "Odometer km": "Kilometerstand in km",
+ "Odometer marked as known.": "Kilometerstand als bekannt markiert.",
+ "Odometer saved.": "Kilometerstand gespeichert.",
+ "Odometer when you start tracking": "Kilometerstand zu Beginn der Erfassung",
+ "Set odometer": "Kilometerstand eintragen",
+ "The odometer value is exact, not a guess": "Der Kilometerstand ist genau, nicht geschätzt"
 }
