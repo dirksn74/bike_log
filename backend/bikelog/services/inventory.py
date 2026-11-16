@@ -369,6 +369,8 @@ def set_starting_usage(session: Session, *, km: float, effective: str | None, is
     """Starting mileage as of an effective date. Rides before that date are inside this value."""
     if km < 0:
         raise DomainError(tr("Starting mileage cannot be negative"))
+    if km == 0:     # 0 km = new bike or part: a known value, never an estimate (DECISIONS 151)
+        is_estimate = False
     tz = settings.tz(session)
     w = parse_when(effective or utc_now(), tz)
     q = select(UsageAdjustment).where(UsageAdjustment.kind == "STARTING", UsageAdjustment.voided_at.is_(None))

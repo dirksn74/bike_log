@@ -885,9 +885,11 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.post("/api/bikes/{bike_id}/starting-usage")
     def bike_start(bike_id: int, body: StartingIn, s: Session = Depends(db)):
-        inv.get_bike(s, bike_id)
+        bike = inv.get_bike(s, bike_id)
+        old = frames_svc._bike_start(s, bike)
         inv.set_starting_usage(s, bike_id=bike_id, km=body.km, effective=body.effective,
                                is_estimate=body.is_estimate, note=body.note)
+        frames_svc.follow_bike_start(s, bike, old)
         return _bike_summary(s, inv.get_bike(s, bike_id))
 
     @app.post("/api/bikes/{bike_id}/group-wheels")

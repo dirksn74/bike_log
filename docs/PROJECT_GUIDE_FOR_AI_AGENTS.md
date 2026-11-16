@@ -423,6 +423,7 @@ the choices of the incident's ride). e2e helpers `setupItem`, `openGroups`, `ope
 | Prices, initial/running cost | costs.py | bike list, bike page Costs card, part Edit details | DECISIONS 31–34 |
 | Purchase bundles (groupset bought at one price), parts kept as spares at import | services/bundles.py, groupsets.py, costs.py | components/Bundles.tsx (bike page "Bought as a bundle"), GroupsetImport.tsx, part page | docs/groupsets.md, DECISIONS 51–52 |
 | Km from before (starting mileage of a part, e.g. a wheelset from another bike) | inventory.set_starting_usage, usage.py | part page → Starting km / "Add km from before"; Add part form | DECISIONS 53 |
+| Bike odometer when tracking started: set, change, mark as known; 0 km is always known | inventory.set_starting_usage, frames.follow_bike_start, migration 0025 | bike page → `OdometerEdit` (Mark as known / Change odometer); Add bike form | DECISIONS 151 |
 | Look and feel (top bar, orange accent, cards, stat blocks; phone bottom tab bar) | n/a | App.tsx (skeleton), index.css (tokens on :root) | docs/ui-style.md, DECISIONS 100 |
 | Screen order (needs doing → state → history), reminder grouping, two-line reasons with "more", part page More… menu | n/a | TaskList.tsx (`GroupedTasks`, `Why`), Overview.tsx, Maintenance.tsx, Bikes.tsx, Inventory.tsx | docs/ui-style.md "Screen order", DECISIONS 121 |
 | Journal | journal.py | components/Journal.tsx (bike and part pages) | DECISIONS 35 |
