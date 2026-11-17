@@ -63,6 +63,20 @@ class HttpResponse:
 Transport = Callable[[str, str, dict, bytes | None, float], HttpResponse]
 
 
+def strava_id(obj: dict) -> str:
+    """The Strava id of an activity or athlete as text. From June 2027 Strava ids may be 64-bit, so
+    Strava sends ``id_str`` next to ``id`` and asks apps to use it. We prefer ``id_str`` and fall back
+    to ``id`` (Python ints are exact at any size, and str(id) == id_str), so rides stored before this
+    change keep matching on re-sync. Ids are only ever stored and passed on as text, never as numbers,
+    because the browser (JavaScript) rounds whole numbers above 2^53."""
+    v = obj.get("id_str")
+    if v is None or str(v).strip() == "":
+        v = obj["id"]
+    if isinstance(v, float):  # never expected; a float would already have lost digits
+        raise ValueError(f"Strava id {v!r} is not exact")
+    return str(v).strip()
+
+
 def urllib_transport(method: str, url: str, headers: dict, body: bytes | None, timeout: float) -> HttpResponse:
     req = urllib.request.Request(url, data=body, method=method, headers=headers)
     try:
@@ -137,7 +151,7 @@ class EnvTokenStore:
         env = read_env(self.path)
         if not env.get("STRAVA_REFRESH_TOKEN"):
             return None
-        return {"athlete_id": int(env["STRAVA_ATHLETE_ID"]) if env.get("STRAVA_ATHLETE_ID") else None,
+        return {"athlete_id": env.get("STRAVA_ATHLETE_ID") or None,   # text: may be a 64-bit id
                 "refresh_token": env["STRAVA_REFRESH_TOKEN"], "access_token": env.get("STRAVA_ACCESS_TOKEN", ""),
                 "expires_at": int(env.get("STRAVA_TOKEN_EXPIRES_AT") or 0), "scope": env.get("STRAVA_SCOPE")}
 
@@ -210,7 +224,7 @@ class StravaClient:
         """Authorization code -> tokens. Returns the token record incl. athlete id and granted scope."""
         self._require_app()
         data = self._token_request({"grant_type": "authorization_code", "code": code})
-        tok = {"athlete_id": data["athlete"]["id"], "access_token": data["access_token"],
+        tok = {"athlete_id": strava_id(data["athlete"]), "access_token": data["access_token"],
                "refresh_token": data["refresh_token"], "expires_at": data["expires_at"],
                "scope": data.get("scope")}
         self.tokens.save(tok)
@@ -262,9 +276,9 @@ class StravaClient:
         self.tokens.save(tok)
         return tok
 
-    def athlete_id(self) -> int | None:
+    def athlete_id(self) -> str | None:
         tok = self.tokens.load()
-        return tok["athlete_id"] if tok else None
+        return str(tok["athlete_id"]) if tok and tok.get("athlete_id") is not None else None
 
     def deauthorize(self) -> None:
         """Revoke this app's access at Strava, then forget the local tokens."""

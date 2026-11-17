@@ -19,11 +19,13 @@ def act(i: int, start: str, km: float = 40.0, sport: str = "Ride", gear: str | N
          # fields we must ignore:
          "map": {"summary_polyline": "abc"}, "average_watts": 200, "average_heartrate": 140}
     a.update(kw)
+    a.setdefault("id_str", str(a["id"]))   # real Strava sends both since late 2026 (64-bit ids from June 2027)
     return a
 
 
 class FakeStrava:
-    def __init__(self, activities=None, gear=None):
+    def __init__(self, activities=None, gear=None, athlete_id=ATHLETE):
+        self.athlete_id = athlete_id
         self.activities = {a["id"]: a for a in (activities or [])}
         self.gear = gear or {}
         self.calls = []
@@ -48,7 +50,7 @@ class FakeStrava:
             form = {k: v[0] for k, v in urllib.parse.parse_qs(body.decode()).items()}
             self.token_counter += 1
             data = {"access_token": f"at{self.token_counter}", "refresh_token": f"rt{self.token_counter}",
-                    "expires_at": self.now + 6 * 3600, "athlete": {"id": ATHLETE}, "scope": "read,activity:read_all"}
+                    "expires_at": self.now + 6 * 3600, "athlete": {"id": self.athlete_id, "id_str": str(self.athlete_id)}, "scope": "read,activity:read_all"}
             if form.get("grant_type") == "refresh_token" and not form.get("refresh_token", "").startswith("rt"):
                 return HttpResponse(400, {}, b"{}")
             return self._json(data)
