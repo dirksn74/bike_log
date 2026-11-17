@@ -132,6 +132,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   backup file, then Restore it). This is how your data moves from the PC to the server.
 - Settings → **Account** (server only): who is signed in, and Sign out.
 
+### Changed
+- **Ready for Strava's longer ride ids (June 2027).** Strava wrote that ride and athlete ids may get much
+  longer after 1 June 2027 and that apps should use the new `id_str` field. Bike Log already kept these ids
+  safely as text, so nothing was at risk; the Strava sync now reads `id_str` first (falling back to the old
+  `id`), and your rides already imported keep matching on the next sync, so no ride is doubled. No database
+  change. PHP web version: no Strava, not affected.
+
 ### Fixed
 - **A new bike with 0 km is no longer shown as "estimated"** (Dirk 2026-11-16: "why estimated starting value?
   it is 0"). The Add bike form had "The odometer value is an estimate" ticked by default, so 0 km was saved as

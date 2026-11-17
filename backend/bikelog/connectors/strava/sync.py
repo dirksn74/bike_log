@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from bikelog.changelog import from_source
 from bikelog.catalog import RIDE_SPORT_TYPES
-from bikelog.connectors.strava.client import StravaClient
+from bikelog.connectors.strava.client import StravaClient, strava_id
 from bikelog.models import RideSource, StravaConnection
 from bikelog.services import imports, settings
 from bikelog.timeutil import utc_now
@@ -121,7 +121,7 @@ def _imported(session: Session, act: dict) -> bool:
     """Already a ride here (it stays and keeps being updated, whatever its bike)."""
     return session.scalar(select(RideSource.id).where(
         RideSource.source_kind == SOURCE_KIND, RideSource.source_account == SOURCE_ACCOUNT,
-        RideSource.source_ref == str(act["id"]))) is not None
+        RideSource.source_ref == strava_id(act))) is not None
 
 
 def _gear(gear_id: str | None) -> str | None:
@@ -168,7 +168,7 @@ def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool =
                         newest = act["start_date"]
                         continue
                     res = imports.upsert_record(s, source_kind=SOURCE_KIND, source_account=SOURCE_ACCOUNT,
-                                                source_ref=str(act["id"]), values=values)
+                                                source_ref=strava_id(act), values=values)
                     counts[res] = counts.get(res, 0) + 1
                     newest = act["start_date"]
                 conn = s.get(StravaConnection, SOURCE_ACCOUNT)

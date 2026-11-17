@@ -27,6 +27,9 @@ commands below (or with `BIKELOG_ENABLE_STRAVA=1` for developers). The app works
   recent rides is picked up; Re-read all catches older changes.
 * Each page is written in one transaction together with the cursor: resumable, never ahead of the data.
 * Identity `(STRAVA, "strava", activity id)` shared with the CSV export.
+* Strava ids are kept as text, never as numbers: the activity id is read from `id_str` when Strava sends it,
+  else from `id` (`client.strava_id`). Strava ids may be 64-bit from June 2027, and a browser rounds numbers
+  above 2^53; rides stored from the old numeric `id` match the same `id_str` (tests/test_strava_64bit_ids.py).
 * Gear ids (`b12345`) mapped to bikes by their Strava gear id; trainer/VirtualRide uses the trainer profile.
 * Local corrections, your bike choice (or "no bike") and removed rides are preserved across sync and
   Re-read; removed rides are never imported again; rate limits, retries and token refresh in `client.py`.

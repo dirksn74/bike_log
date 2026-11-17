@@ -878,3 +878,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     is left alone. Migration 0025 marks every active 0 km starting value that was saved as an estimate as known
     and adds the note "[0 km marked known by update 0025]"; nothing else changes and the downgrade puts exactly
     those rows back. Estimates above 0 km stay estimates. PHP version: no starting km for bikes, not affected.
+152. **Strava ids as text, `id_str` first (64-bit ids from June 2027)** (Dirk 2026-11-17, Strava API notice:
+    activity and athlete ids may become 64-bit after 2027-06-01; Strava now also sends `id_str`). Checked: the
+    app was already safe. Python reads JSON numbers exactly at any size; the activity id has always been stored
+    as text in `ride_source.source_ref` (VARCHAR 128) and the athlete id as text in `strava.env`; neither is
+    sent to the browser as a number (JavaScript would round above 2^53); gear ids (`b123…`) are not affected.
+    Hardening: `client.strava_id(obj)` returns `id_str` when present, else `str(id)`, and refuses a float id.
+    Sync (`_imported`, `upsert_record`) and `exchange_code` use it; `EnvTokenStore.load` and
+    `StravaClient.athlete_id()` now return the athlete id as text. Because `str(id) == id_str`, rides stored
+    before this change match on re-sync (no duplicates). No schema change, no migration. Tests:
+    tests/test_strava_64bit_ids.py (ids 2^53+1 and 2^63−25, old-to-new answer, rounded number with id_str).
+    PHP version has no Strava.

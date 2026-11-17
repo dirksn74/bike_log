@@ -453,7 +453,9 @@ Strava details: full API sync with permanent storage (Dirk's choice). Credential
 Callback Domain" = `localhost`). Rides map to bikes by `strava_gear_id`; unknown gear links a bike with the
 same name or creates one. Sync is resumable (cursor written with each page), looks back 30 days from the
 cursor so gear changed on Strava is picked up, and runs in the background after a backup. Disconnect keeps
-all rides (`mark_disconnected`).
+all rides (`mark_disconnected`). Strava activity/athlete ids are TEXT everywhere (`client.strava_id`: `id_str` first, else
+`str(id)`; 64-bit ids from June 2027; never send them to the frontend as JSON numbers, JS rounds above 2^53;
+DECISIONS 152).
 
 Rides and the bike: the user's bike choice (or "no bike") is a `ride_override` on field `bike_id`
 (`rides.assign_bike`, `POST /api/rides/assign-bike` with `ride_ids` and `bike_id` or null). Overrides win
